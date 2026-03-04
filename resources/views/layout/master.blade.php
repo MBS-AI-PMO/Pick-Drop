@@ -1,20 +1,15 @@
 <!DOCTYPE html>
 <!--
-Template Name: NobleUI - Laravel Admin Dashboard Template
-Author: NobleUI
-Website: https://nobleui.com
-Contact: nobleui.team@gmail.com
-Purchase: https://1.envato.market/nobleui_laravel
-License: You must have a valid license to legally use this template for your project.
+Template Name: PickDrop - Laravel Admin Dashboard
+Author: PickDrop Team
 -->
 <html>
 <head>
   <meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <meta name="description" content="Responsive Laravel Admin Dashboard Template based on Bootstrap 5">
-	<meta name="author" content="NobleUI">
-	<meta name="keywords" content="nobleui, bootstrap, bootstrap 5, bootstrap5, admin, dashboard, template, responsive, css, sass, html, laravel, theme, front-end, ui kit, web">
+  <meta name="description" content="PickDrop Admin Dashboard Template">
+	<meta name="author" content="PickDrop">
 
   <title>PickDrop Admin Panel</title>
 
@@ -30,7 +25,7 @@ License: You must have a valid license to legally use this template for your pro
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- End fonts -->
   
   <!-- CSRF Token -->
@@ -49,12 +44,68 @@ License: You must have a valid license to legally use this template for your pro
   <!-- CSS for LTR layout-->
   @vite(['resources/sass/app.scss', 'resources/css/custom.css'])
 
-  <!-- CSS for RTL layout-->
-  <!-- @vite(['resources/rtl-css/app-rtl.css', 'resources/rtl-css/custom-rtl.css']) -->
+  <!-- SweetAlert CSS Include Global -->
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+
+  <!-- Global Custom Styling for Pick-Drop -->
+  <style>
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6, .navbar-brand, .sidebar-brand, .card-title, .fw-bold {
+        font-family: 'Outfit', sans-serif;
+    }
+    .sidebar .sidebar-header .sidebar-brand {
+        font-weight: 800;
+        font-size: 26px;
+        color: #1d3557;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .sidebar .sidebar-header .sidebar-brand span {
+        color: #e63946;
+    }
+    [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand {
+        color: #f1faee;
+    }
+    [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand span {
+        color: #ff4d6d;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #e63946 0%, #d90429 100%);
+        border: none;
+        box-shadow: 0 4px 10px rgba(230, 57, 70, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #d90429 0%, #b3001b 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(230, 57, 70, 0.3);
+    }
+    .card {
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0,0,0,0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    [data-bs-theme="dark"] .card {
+        border-color: rgba(255,255,255,0.05);
+        background: #1e2129;
+    }
+    .badge {
+        border-radius: 8px;
+        padding: 0.4em 0.8em;
+        font-weight: 500;
+    }
+    .rounded-circle {
+        border-radius: 50% !important;
+    }
+    .bg-primary-subtle, .bg-primary.bg-opacity-10 { background-color: rgba(230, 57, 70, 0.1) !important; color: #e63946 !important;}
+  </style>
 
   @stack('style')
 </head>
-<body data-base-url="{{url('/')}}">
+<body data-base-url="{{route('dashboard')}}">
 
   <script>
     // Create splash screen container
@@ -99,6 +150,35 @@ License: You must have a valid license to legally use this template for your pro
     <!-- common js -->
     @vite(['resources/js/pages/template.js'])
     <!-- end common js -->
+
+    <!-- SweetAlert Base Included in Master for global use -->
+    <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: '{!! session('success') !!}',
+                timer: 3000,
+                showConfirmButton: false,
+                scrollbarPadding: false,
+                customClass: { popup: 'rounded-4' }
+            });
+        @endif
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: '{!! session('error') !!}',
+                timer: 3000,
+                showConfirmButton: true,
+                scrollbarPadding: false,
+                customClass: { popup: 'rounded-4' }
+            });
+        @endif
+    });
+    </script>
 
     @stack('custom-scripts')
 </body>
