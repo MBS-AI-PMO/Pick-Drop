@@ -7,7 +7,7 @@
     <h1 class="fw-bolder mb-22 mt-2 fs-80px text-secondary">404</h1>
     <h4 class="mb-2">Page Not Found</h4>
     <h6 class="text-secondary mb-3 text-center">Oops!! The page you were looking for doesn't exist.</h6>
-    <a href="{{ url('/') }}"><i data-lucide="arrow-left" class="w-15px"></i> Back to home</a>
+    <a href="{{ route('dashboard') }}"><i data-lucide="arrow-left" class="w-15px"></i> Back to home</a>
   </div>
 </div>
 @endsection

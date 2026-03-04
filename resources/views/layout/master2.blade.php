@@ -16,7 +16,7 @@ License: You must have a valid license to legally use this template for your pro
 	<meta name="author" content="NobleUI">
 	<meta name="keywords" content="nobleui, bootstrap, bootstrap 5, bootstrap5, admin, dashboard, template, responsive, css, sass, html, laravel, theme, front-end, ui kit, web">
 
-  <title>NobleUI - Laravel Admin Dashboard Template</title>
+  <title>PickDrop Admin Dashboard </title>
 
   <!-- color-modes:js -->
   @vite(['resources/js/pages/color-modes.js'])
@@ -54,7 +54,7 @@ License: You must have a valid license to legally use this template for your pro
 
   @stack('style')
 </head>
-<body data-base-url="{{url('/')}}">
+<body data-base-url="{{route('dashboard')}}">
 
   <script>
     // Create splash screen container

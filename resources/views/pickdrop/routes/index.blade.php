@@ -23,7 +23,7 @@
       <a class="nav-link px-4" href="#" data-filter="afternoon">Afternoon</a>
     </li>
   </ul>
-  <a href="{{ url('routes/create') }}" class="btn btn-primary">
+  <a href="{{ route('routes.create') }}" class="btn btn-primary">
     <i data-lucide="plus" class="icon-sm me-1"></i> Create Route
   </a>
 </div>

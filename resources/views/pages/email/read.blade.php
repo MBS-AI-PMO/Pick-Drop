@@ -18,12 +18,12 @@
                 </div>
               </div>
               <div class="d-grid my-3">
-                <a class="btn btn-primary" href="{{ url('/email/compose') }}">Compose Email</a>
+                <a class="btn btn-primary" href="{{ route('email.compose') }}">Compose Email</a>
               </div>
             <div class="email-aside-nav collapse">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a class="nav-link d-flex align-items-center" href="{{ url('/email/inbox') }}">
+                  <a class="nav-link d-flex align-items-center" href="{{ route('email.inbox') }}">
                     <i data-lucide="inbox" class="icon-lg me-2"></i>
                     Inbox
                     <span class="badge bg-danger fw-bolder ms-auto">2

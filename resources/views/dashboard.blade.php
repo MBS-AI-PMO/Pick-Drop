@@ -80,7 +80,7 @@
             <h6 class="card-title mb-0">Live Fleet Tracking</h6>
             <p class="text-secondary fs-12px mb-0">Showing all active vehicles</p>
           </div>
-          <a href="{{ url('/vehicles') }}" class="btn btn-sm btn-outline-primary">View All</a>
+          <a href="{{ route('vehicles.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
         </div>
         {{-- Map Placeholder --}}
         <div class="rounded-3 overflow-hidden position-relative" style="height:260px; background:linear-gradient(135deg,#e8f0fe 0%,#f0f4ff 100%);">
