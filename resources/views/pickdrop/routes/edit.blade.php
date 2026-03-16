@@ -14,12 +14,14 @@
     <h4 class="mb-1">Edit Route <span class="text-secondary fw-normal">#R-123</span></h4>
     <p class="text-secondary mb-0">Update route details, stops and student assignments</p>
   </div>
-  <a href="#" class="btn btn-light">
+  <a href="{{ route('routes.index') }}" class="btn btn-light">
     <i data-lucide="arrow-left" class="icon-sm me-1"></i> Back to Routes
   </a>
 </div>
 
-<form>
+<form method="POST" action="{{ route('routes.update', $route) }}">
+  @csrf
+  @method('PUT')
   <div class="row g-4">
 
     {{-- Left Column: Route Info --}}
@@ -37,40 +39,46 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label fw-semibold">Route Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" value="Central Elementary Morning">
+              <input type="text" name="name" class="form-control" value="{{ old('name', $route->name) }}" required>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Shift <span class="text-danger">*</span></label>
-              <select class="form-select">
-                <option value="morning" selected>Morning</option>
-                <option value="afternoon">Afternoon</option>
+              <select class="form-select" name="shift" required>
+                @php $shiftVal = old('shift', $route->shift); @endphp
+                <option value="morning" {{ $shiftVal === 'morning' ? 'selected' : '' }}>Morning</option>
+                <option value="afternoon" {{ $shiftVal === 'afternoon' ? 'selected' : '' }}>Afternoon</option>
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Assign Vehicle <span class="text-danger">*</span></label>
-              <select class="form-select">
+              <select class="form-select" name="vehicle_id">
                 <option value="">Select vehicle</option>
-                <option selected>Bus #45</option>
-                <option>Bus #32</option>
-                <option>Bus #18</option>
-                <option>Van #12</option>
+                @foreach($vehicles as $vehicle)
+                  <option value="{{ $vehicle->id }}"
+                          {{ (int) old('vehicle_id', $route->vehicle_id) === $vehicle->id ? 'selected' : '' }}>
+                    {{ $vehicle->name }} ({{ $vehicle->license_plate }})
+                  </option>
+                @endforeach
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
-              <input type="time" class="form-control" value="07:45">
+              <input type="time" name="start_time" class="form-control"
+                     value="{{ old('start_time', $route->start_time ? \Carbon\Carbon::parse($route->start_time)->format('H:i') : '') }}">
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
-              <input type="time" class="form-control" value="08:45">
+              <input type="time" name="end_time" class="form-control"
+                     value="{{ old('end_time', $route->end_time ? \Carbon\Carbon::parse($route->end_time)->format('H:i') : '') }}">
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Final Destination <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" value="Central Elementary School">
+              <input type="text" name="destination" class="form-control"
+                     value="{{ old('destination', $route->destination) }}" required>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Description <span class="text-secondary fw-normal">(optional)</span></label>
-              <textarea class="form-control" rows="2" placeholder="Add any notes about this route..."></textarea>
+              <textarea class="form-control" name="description" rows="2" placeholder="Add any notes about this route...">{{ old('description', $route->description) }}</textarea>
             </div>
           </div>
         </div>
@@ -85,103 +93,41 @@
             </div>
             <h6 class="mb-0 fw-bold">Route Stops</h6>
           </div>
-          <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onclick="addStop()">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Stop
-          </button>
+          <span class="badge bg-light text-secondary fs-12px">
+            Managed by parents/students via mobile app (read-only here)
+          </span>
         </div>
         <div class="card-body">
           <div id="stopsContainer" class="d-flex flex-column gap-3">
-
-            {{-- Stop 1: Pre-filled --}}
-            <div class="stop-row border rounded-3 p-3 bg-light">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop 1</span>
-                <button type="button" class="btn btn-sm btn-light text-danger ms-auto" onclick="removeStop(this)">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-              <div class="row g-2">
-                <div class="col-md-5">
-                  <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" value="123 Main St">
+            @forelse($route->stops as $index => $stop)
+              <div class="stop-row border rounded-3 p-3 bg-light">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">
+                    Stop {{ $index + 1 }}
+                  </span>
                 </div>
-                <div class="col-md-3">
-                  <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-                  <input type="time" class="form-control form-control-sm" value="08:05">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                  <select class="form-select form-select-sm" multiple>
-                    <option selected>John Doe</option>
-                    <option selected>Jane Smith</option>
-                    <option>Alan Wake</option>
-                    <option>Sarah Connor</option>
-                    <option>Mike Johnson</option>
-                  </select>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <p class="form-label fs-13px text-secondary mb-1">Stop Name / Location</p>
+                    <p class="mb-0 fw-semibold">{{ $stop->name }}</p>
+                  </div>
+                  <div class="col-md-3">
+                    <p class="form-label fs-13px text-secondary mb-1">Arrival Time</p>
+                    <p class="mb-0">
+                      {{ $stop->arrival_time ? \Carbon\Carbon::parse($stop->arrival_time)->format('g:i A') : '—' }}
+                    </p>
+                  </div>
+                  <div class="col-md-3">
+                    <p class="form-label fs-13px text-secondary mb-1">Order</p>
+                    <p class="mb-0">#{{ $stop->order }}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {{-- Stop 2: Pre-filled --}}
-            <div class="stop-row border rounded-3 p-3 bg-light">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop 2</span>
-                <button type="button" class="btn btn-sm btn-light text-danger ms-auto" onclick="removeStop(this)">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-              <div class="row g-2">
-                <div class="col-md-5">
-                  <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" value="456 Oak Ave">
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-                  <input type="time" class="form-control form-control-sm" value="08:18">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                  <select class="form-select form-select-sm" multiple>
-                    <option>John Doe</option>
-                    <option>Jane Smith</option>
-                    <option selected>Alan Wake</option>
-                    <option>Sarah Connor</option>
-                    <option>Mike Johnson</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {{-- Stop 3: Pre-filled --}}
-            <div class="stop-row border rounded-3 p-3 bg-light">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop 3</span>
-                <button type="button" class="btn btn-sm btn-light text-danger ms-auto" onclick="removeStop(this)">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-              <div class="row g-2">
-                <div class="col-md-5">
-                  <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" value="789 Pine Blvd">
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-                  <input type="time" class="form-control form-control-sm" value="08:26">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                  <select class="form-select form-select-sm" multiple>
-                    <option>John Doe</option>
-                    <option>Jane Smith</option>
-                    <option>Alan Wake</option>
-                    <option selected>Sarah Connor</option>
-                    <option selected>Mike Johnson</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
+            @empty
+              <p class="text-secondary fs-13px mb-0">
+                No stops have been added yet. Parents and students will add stops from the mobile app.
+              </p>
+            @endforelse
           </div>
         </div>
       </div>
@@ -224,23 +170,36 @@
           <div class="d-flex flex-column gap-2">
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Route ID</span>
-              <span class="fw-semibold fs-13px">#R-123</span>
+              <span class="fw-semibold fs-13px">{{ $route->code ?? ('#R-'.$route->id) }}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Total Stops</span>
-              <span class="fw-semibold fs-13px" id="previewStopCount">3</span>
+              <span class="fw-semibold fs-13px" id="previewStopCount">{{ $route->stops->count() }}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Shift</span>
-              <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
+              @php $shift = strtolower($route->shift); @endphp
+              @if($shift === 'morning')
+                <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
+              @elseif($shift === 'afternoon')
+                <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#fef3c7;color:#92400e;">Afternoon</span>
+              @else
+                <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#f3f4f6;color:#6b7280;">{{ $route->shift }}</span>
+              @endif
             </div>
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-              <span class="text-secondary fs-13px">Students</span>
-              <span class="fw-semibold fs-13px">12</span>
+              <span class="text-secondary fs-13px">Status</span>
+              <span class="fw-semibold fs-13px">{{ $route->status ?? 'Active' }}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center py-2">
               <span class="text-secondary fs-13px">Vehicle</span>
-              <span class="fw-semibold fs-13px">Bus #45</span>
+              <span class="fw-semibold fs-13px">
+                @if($route->vehicle)
+                  {{ $route->vehicle->name }} ({{ $route->vehicle->license_plate }})
+                @else
+                  —
+                @endif
+              </span>
             </div>
           </div>
         </div>
@@ -265,7 +224,7 @@
         </div>
         <div class="card-body">
           <p class="text-secondary fs-13px mb-3">Deleting this route will remove all associated stop and student assignments permanently.</p>
-          <button type="button" class="btn btn-outline-danger w-100">
+          <button type="button" class="btn btn-outline-danger w-100" disabled>
             <i data-lucide="trash-2" class="icon-sm me-1"></i> Delete Route
           </button>
         </div>
@@ -279,62 +238,10 @@
 
 @push('custom-scripts')
 <script>
-  let stopCount = document.querySelectorAll('.stop-row').length;
-
-  function addStop() {
-    stopCount++;
-    const container = document.getElementById('stopsContainer');
-    const div = document.createElement('div');
-    div.className = 'stop-row border rounded-3 p-3 bg-light';
-    div.innerHTML = `
-      <div class="d-flex align-items-center gap-2 mb-3">
-        <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop ${stopCount}</span>
-        <button type="button" class="btn btn-sm btn-light text-danger ms-auto" onclick="removeStop(this)">
-          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-        </button>
-      </div>
-      <div class="row g-2">
-        <div class="col-md-5">
-          <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-          <input type="text" class="form-control form-control-sm" placeholder="e.g. 123 Main Street">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-          <input type="time" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-          <select class="form-select form-select-sm" multiple>
-            <option>John Doe</option>
-            <option>Jane Smith</option>
-            <option>Alan Wake</option>
-            <option>Sarah Connor</option>
-            <option>Mike Johnson</option>
-          </select>
-        </div>
-      </div>`;
-    container.appendChild(div);
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    updateStopCount();
-  }
-
-  function removeStop(btn) {
-    btn.closest('.stop-row').remove();
-    renumberStops();
-    updateStopCount();
-  }
-
-  function renumberStops() {
-    document.querySelectorAll('.stop-number').forEach((badge, i) => {
-      badge.textContent = `Stop ${i + 1}`;
-    });
-    stopCount = document.querySelectorAll('.stop-row').length;
-  }
-
-  function updateStopCount() {
-    const count = document.querySelectorAll('.stop-row').length;
-    const el = document.getElementById('previewStopCount');
-    if (el) el.textContent = count;
+  // Keep preview stop count in sync on page load (read-only)
+  const previewStopCount = document.getElementById('previewStopCount');
+  if (previewStopCount) {
+    previewStopCount.textContent = document.querySelectorAll('#stopsContainer .stop-row').length;
   }
 </script>
 @endpush

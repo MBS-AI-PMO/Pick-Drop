@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\SchoolRouteController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -14,11 +16,23 @@ Route::middleware(['auth'])->group(function () {
     })->name('dashboard');
     
     // PickDrop Domain Routes
-    Route::get('/users', function () { return view('pickdrop.users.index'); })->name('users.index');
-    Route::get('/vehicles', function () { return view('pickdrop.vehicles.index'); })->name('vehicles.index');
-    Route::get('/routes', function () { return view('pickdrop.routes.index'); })->name('routes.index');
-    Route::get('/routes/create', function () { return view('pickdrop.routes.create'); })->name('routes.create');
-    Route::get('/routes/{id}/edit', function ($id) { return view('pickdrop.routes.edit'); })->name('routes.edit');
+    Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+    Route::resource('vehicles', \App\Http\Controllers\VehicleController::class)->except(['create', 'show', 'edit']);
+    Route::resource('vehicle-categories', \App\Http\Controllers\VehicleCategoryController::class)->except(['create', 'show', 'edit']);
+    Route::get('/locations', [LocationController::class, 'index'])->name('locations.index');
+    Route::post('/locations/cities', [LocationController::class, 'storeCity'])->name('locations.cities.store');
+    Route::post('/locations/cities/import', [LocationController::class, 'importCities'])->name('locations.cities.import');
+    Route::put('/locations/cities/{city}', [LocationController::class, 'updateCity'])->name('locations.cities.update');
+    Route::delete('/locations/cities/{city}', [LocationController::class, 'destroyCity'])->name('locations.cities.destroy');
+    Route::post('/locations/areas', [LocationController::class, 'storeArea'])->name('locations.areas.store');
+    Route::put('/locations/areas/{area}', [LocationController::class, 'updateArea'])->name('locations.areas.update');
+    Route::delete('/locations/areas/{area}', [LocationController::class, 'destroyArea'])->name('locations.areas.destroy');
+    Route::get('/routes', [SchoolRouteController::class, 'index'])->name('routes.index');
+    Route::get('/routes/create', [SchoolRouteController::class, 'create'])->name('routes.create');
+    Route::post('/routes', [SchoolRouteController::class, 'store'])->name('routes.store');
+    Route::get('/routes/{route}/edit', [SchoolRouteController::class, 'edit'])->name('routes.edit');
+    Route::put('/routes/{route}', [SchoolRouteController::class, 'update'])->name('routes.update');
+    Route::delete('/routes/{route}', [SchoolRouteController::class, 'destroy'])->name('routes.destroy');
     Route::get('/payments', function () { return view('pickdrop.payments.index'); })->name('payments.index');
     Route::get('/reports', function () { return view('pickdrop.reports.index'); })->name('reports.index');
 

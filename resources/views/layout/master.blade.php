@@ -72,16 +72,15 @@ Author: PickDrop Team
         color: #ff4d6d;
     }
     .btn-primary {
-        background: linear-gradient(135deg, #e63946 0%, #d90429 100%);
-        border: none;
-        box-shadow: 0 4px 10px rgba(230, 57, 70, 0.2);
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #d90429 0%, #b3001b 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 15px rgba(230, 57, 70, 0.3);
-    }
+    background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+    border: none;
+    box-shadow: 0 4px 10px rgba(29, 53, 87, 0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(29, 53, 87, 0.35);
+}
     .card {
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);

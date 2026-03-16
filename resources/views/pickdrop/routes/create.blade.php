@@ -20,7 +20,9 @@
 </div>
 
 <form>
-  <div class="row g-4">
+  <form method="POST" action="{{ route('routes.store') }}">
+    @csrf
+    <div class="row g-4">
 
     {{-- Left Column: Route Info --}}
     <div class="col-lg-8">
@@ -37,103 +39,46 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label fw-semibold">Route Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" placeholder="e.g. Central Elementary Morning Pickup">
+              <input type="text" name="name" class="form-control" placeholder="e.g. Central Elementary Morning Pickup" value="{{ old('name') }}" required>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Shift <span class="text-danger">*</span></label>
-              <select class="form-select">
+              <select class="form-select" name="shift" required>
                 <option value="">Select shift</option>
-                <option value="morning">Morning</option>
-                <option value="afternoon">Afternoon</option>
+                <option value="morning" {{ old('shift') === 'morning' ? 'selected' : '' }}>Morning</option>
+                <option value="afternoon" {{ old('shift') === 'afternoon' ? 'selected' : '' }}>Afternoon</option>
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Assign Vehicle <span class="text-danger">*</span></label>
-              <select class="form-select">
+              <select class="form-select" name="vehicle_id">
                 <option value="">Select vehicle</option>
-                <option>Bus #45</option>
-                <option>Bus #32</option>
-                <option>Bus #18</option>
-                <option>Van #12</option>
+                @foreach($vehicles as $vehicle)
+                  <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                    {{ $vehicle->name }} ({{ $vehicle->license_plate }})
+                  </option>
+                @endforeach
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
-              <input type="time" class="form-control">
+              <input type="time" name="start_time" class="form-control" value="{{ old('start_time') }}">
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
-              <input type="time" class="form-control">
+              <input type="time" name="end_time" class="form-control" value="{{ old('end_time') }}">
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Final Destination <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" placeholder="e.g. Central Elementary School">
+              <input type="text" name="destination" class="form-control" placeholder="e.g. Central Elementary School" value="{{ old('destination') }}" required>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Description <span class="text-secondary fw-normal">(optional)</span></label>
-              <textarea class="form-control" rows="2" placeholder="Add any notes about this route..."></textarea>
+              <textarea class="form-control" name="description" rows="2" placeholder="Add any notes about this route...">{{ old('description') }}</textarea>
             </div>
           </div>
         </div>
       </div>
-
-      {{-- Route Stops Card --}}
-      <div class="card">
-        <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center gap-2">
-            <div class="w-32px h-32px rounded-2 d-flex align-items-center justify-content-center" style="background:rgba(var(--bs-success-rgb),0.1);">
-              <i data-lucide="map-pin" class="text-success" style="width:16px;height:16px;"></i>
-            </div>
-            <h6 class="mb-0 fw-bold">Route Stops</h6>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" onclick="addStop()">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Stop
-          </button>
-        </div>
-        <div class="card-body">
-          <div id="stopsContainer" class="d-flex flex-column gap-3">
-
-            {{-- Stop Row Template --}}
-            <div class="stop-row border rounded-3 p-3 bg-light">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop 1</span>
-                <span class="text-secondary fs-13px ms-auto">Drag to reorder</span>
-                <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeStop(this)">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-              <div class="row g-2">
-                <div class="col-md-5">
-                  <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" placeholder="e.g. 123 Main Street">
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-                  <input type="time" class="form-control form-control-sm">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                  <select class="form-select form-select-sm" multiple>
-                    <option>John Doe</option>
-                    <option>Jane Smith</option>
-                    <option>Alan Wake</option>
-                    <option>Sarah Connor</option>
-                    <option>Mike Johnson</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {{-- Empty state hint --}}
-          <p class="text-secondary fs-13px text-center mt-3 mb-0" id="noStopsHint" style="display:none;">
-            <i data-lucide="info" style="width:14px;height:14px;" class="me-1"></i>
-            No stops added yet. Click "Add Stop" to begin.
-          </p>
-        </div>
-      </div>
-
     </div>
 
     {{-- Right Column: Summary --}}
@@ -207,75 +152,9 @@
 
     </div>
   </div>
-</form>
+  </form>
 
 @endsection
-
-@push('custom-scripts')
-<script>
-  let stopCount = 1;
-
-  function addStop() {
-    stopCount++;
-    const container = document.getElementById('stopsContainer');
-    const div = document.createElement('div');
-    div.className = 'stop-row border rounded-3 p-3 bg-light';
-    div.innerHTML = `
-      <div class="d-flex align-items-center gap-2 mb-3">
-        <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">Stop ${stopCount}</span>
-        <span class="text-secondary fs-13px ms-auto">Drag to reorder</span>
-        <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeStop(this)">
-          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-        </button>
-      </div>
-      <div class="row g-2">
-        <div class="col-md-5">
-          <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location <span class="text-danger">*</span></label>
-          <input type="text" class="form-control form-control-sm" placeholder="e.g. 123 Main Street">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fs-13px text-secondary mb-1">Arrival Time <span class="text-danger">*</span></label>
-          <input type="time" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-          <select class="form-select form-select-sm" multiple>
-            <option>John Doe</option>
-            <option>Jane Smith</option>
-            <option>Alan Wake</option>
-            <option>Sarah Connor</option>
-            <option>Mike Johnson</option>
-          </select>
-        </div>
-      </div>`;
-    container.appendChild(div);
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    updateStopCount();
-  }
-
-  function removeStop(btn) {
-    const row = btn.closest('.stop-row');
-    row.remove();
-    renumberStops();
-    updateStopCount();
-  }
-
-  function renumberStops() {
-    document.querySelectorAll('.stop-number').forEach((badge, i) => {
-      badge.textContent = `Stop ${i + 1}`;
-    });
-    stopCount = document.querySelectorAll('.stop-row').length;
-  }
-
-  function updateStopCount() {
-    const count = document.querySelectorAll('.stop-row').length;
-    const el = document.getElementById('previewStopCount');
-    if (el) el.textContent = count;
-    const hint = document.getElementById('noStopsHint');
-    if (hint) hint.style.display = count === 0 ? '' : 'none';
-  }
-</script>
-@endpush
 
 @push('style')
 <style>

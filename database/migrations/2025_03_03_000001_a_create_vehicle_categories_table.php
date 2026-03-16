@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('vehicle_settings', function (Blueprint $table) {
+       Schema::create('vehicle_categories', function (Blueprint $table) {
             $table->id();
-            $table->string('type'); // e.g. 'Bus', 'Van'
-            $table->integer('capacity')->nullable(); // e.g. 28, 40
+            $table->string('vehicle_name');
+            $table->integer('passenger_capacity');
+            $table->tinyInteger('status')->default(1);
             $table->timestamps();
         });
     }
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('vehicle_settings');
+        Schema::dropIfExists('vehicle_categories');
     }
 };

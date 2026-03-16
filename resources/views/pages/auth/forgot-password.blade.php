@@ -85,7 +85,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #e63946 0%, #d90429 100%);
+    background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
     border: none;
     border-radius: 12px;
     padding: 0.8rem;
