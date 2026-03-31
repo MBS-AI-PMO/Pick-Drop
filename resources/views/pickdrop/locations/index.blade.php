@@ -5,15 +5,15 @@
 {{-- Page Header --}}
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
-    <h4 class="mb-1">Location Management</h4>
-    <p class="text-secondary mb-0">Manage cities and areas with coordinates</p>
+    <h4 class="mb-1">Cities Management</h4>
+    <p class="text-secondary mb-0">Manage cities and their core coordinates</p>
   </div>
 </div>
 
 {{-- Filters + Add City Button --}}
 <div class="card mb-3">
   <div class="card-body py-3">
-    <form method="GET" action="{{ route('locations.index') }}" id="locationFilterForm">
+    <form method="GET" action="{{ route('locations.cities.index') }}" id="locationFilterForm">
       <div class="row g-2 align-items-center">
 
         {{-- Search --}}
@@ -45,7 +45,7 @@
   </div>
 </div>
 
-{{-- Cities & Areas Table --}}
+{{-- Cities Table --}}
 <div class="card">
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -86,7 +86,7 @@
                 <div class="d-flex flex-wrap gap-1">
                   @foreach($city->areas as $area)
                     <span class="badge bg-light text-secondary border"
-                          onclick='openEditAreaModal(@json($area->toArray()), @json($city->only(["id","name"])))'
+                          onclick='openEditAreaModal(@json($area->toArray()), @json($city->toArray()))'
                           style="cursor:pointer;">
                       {{ $area->name }}
                     </span>
@@ -101,7 +101,7 @@
                   <i data-lucide="edit-2" class="icon-sm"></i>
                 </button>
                 <button class="btn btn-sm btn-light btn-icon" title="Add Area"
-                        onclick='openAddAreaModal({{ $city->id }}, @json($city->name))'>
+                        onclick='openAddAreaModal(@json($city->toArray()))'>
                   <i data-lucide="map-pin" class="icon-sm"></i>
                 </button>
                 <form action="{{ route('locations.cities.destroy', $city) }}" method="POST"
@@ -283,13 +283,27 @@
               <label class="form-label fw-semibold">Area Name <span class="text-danger">*</span></label>
               <input type="text" name="name" id="areaName" class="form-control" required>
             </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Search from Map</label>
+              <div class="input-group">
+                <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map...">
+                <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn">
+                  <i data-lucide="search" class="icon-sm me-1"></i> Search
+                </button>
+              </div>
+              <div id="areaMapSearchResults" class="list-group mt-2 d-none"></div>
+              <small class="text-muted d-block mt-1">Search a place or click directly on map to set area coordinates.</small>
+            </div>
+            <div class="col-12">
+              <div id="areaPickerMap" class="border rounded"></div>
+            </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Latitude</label>
-              <input type="number" step="0.0000001" name="latitude" id="areaLat" class="form-control">
+              <input type="number" step="0.0000001" name="latitude" id="areaLat" class="form-control" required>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Longitude</label>
-              <input type="number" step="0.0000001" name="longitude" id="areaLng" class="form-control">
+              <input type="number" step="0.0000001" name="longitude" id="areaLng" class="form-control" required>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Status</label>
@@ -315,6 +329,15 @@
 </div>
 
 @endsection
+
+@push('plugin-scripts')
+@php
+  $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', '');
+@endphp
+@if($googleMapsApiKey)
+<script src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapsApiKey }}&libraries=places&language=en&region=PK" async defer></script>
+@endif
+@endpush
 
 @push('custom-scripts')
 <script>
@@ -353,6 +376,148 @@
 
   const editCityModal = new bootstrap.Modal(document.getElementById('editCityModal'));
   const areaModal     = new bootstrap.Modal(document.getElementById('areaModal'));
+  const areaMapEl     = document.getElementById('areaPickerMap');
+  const areaLatEl     = document.getElementById('areaLat');
+  const areaLngEl     = document.getElementById('areaLng');
+  const mapSearchEl   = document.getElementById('areaMapSearchInput');
+  const mapResultsEl  = document.getElementById('areaMapSearchResults');
+  const mapSearchBtn  = document.getElementById('areaMapSearchBtn');
+
+  let areaMap;
+  let areaMarker;
+  let activeCityContext = null;
+  let areaGeocoder;
+  let areaSearchAutocomplete;
+  let mapReady = false;
+
+  function initAreaMap() {
+    if (areaMap || !areaMapEl || typeof google === 'undefined' || !google.maps) return;
+
+    areaMap = new google.maps.Map(areaMapEl, {
+      center: { lat: 24.8607, lng: 67.0011 },
+      zoom: 11,
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: false
+    });
+    areaGeocoder = new google.maps.Geocoder();
+    mapReady = true;
+
+    areaMap.addListener('click', function (event) {
+      setAreaCoordinates(event.latLng.lat(), event.latLng.lng(), true);
+    });
+
+    if (mapSearchEl && google.maps.places) {
+      areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
+        fields: ['geometry', 'formatted_address', 'name'],
+        componentRestrictions: { country: 'pk' }
+      });
+      areaSearchAutocomplete.bindTo('bounds', areaMap);
+      areaSearchAutocomplete.addListener('place_changed', function () {
+        const place = areaSearchAutocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) return;
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        setAreaCoordinates(lat, lng, true);
+      });
+    }
+  }
+
+  function setAreaCoordinates(lat, lng, moveMap = false) {
+    const fixedLat = Number(lat).toFixed(7);
+    const fixedLng = Number(lng).toFixed(7);
+    areaLatEl.value = fixedLat;
+    areaLngEl.value = fixedLng;
+
+    if (!areaMap || typeof google === 'undefined' || !google.maps) return;
+    const markerPosition = { lat: Number(fixedLat), lng: Number(fixedLng) };
+    if (!areaMarker) {
+      areaMarker = new google.maps.Marker({
+        map: areaMap,
+        position: markerPosition,
+        draggable: true
+      });
+      areaMarker.addListener('dragend', function (event) {
+        setAreaCoordinates(event.latLng.lat(), event.latLng.lng(), false);
+      });
+    } else {
+      areaMarker.setPosition(markerPosition);
+    }
+    if (moveMap) {
+      areaMap.setCenter(markerPosition);
+      areaMap.setZoom(14);
+    }
+  }
+
+  function searchOnMap() {
+    if (!mapReady || !areaGeocoder || !mapSearchEl) return;
+    const query = mapSearchEl.value.trim();
+    if (query.length < 2) return;
+
+    mapSearchBtn.disabled = true;
+    areaGeocoder.geocode({ address: query, region: 'PK' }, function (results, status) {
+      mapSearchBtn.disabled = false;
+      if (status === 'OK' && results && results[0]) {
+        const picked = results[0];
+        const lat = picked.geometry.location.lat();
+        const lng = picked.geometry.location.lng();
+        setAreaCoordinates(lat, lng, true);
+      }
+    });
+  }
+
+  function hideMapSearchResults() {
+    if (!mapResultsEl) return;
+    mapResultsEl.classList.add('d-none');
+    mapResultsEl.innerHTML = '';
+  }
+
+  function focusMapToCityContext() {
+    if (!areaMap || !activeCityContext) return;
+    if (activeCityContext.latitude && activeCityContext.longitude) {
+      areaMap.setCenter({
+        lat: Number(activeCityContext.latitude),
+        lng: Number(activeCityContext.longitude)
+      });
+      areaMap.setZoom(12);
+    }
+  }
+
+  function resetMapSearchState() {
+    mapSearchEl.value = '';
+    hideMapSearchResults();
+    if (areaMarker && areaMap) {
+      areaMarker.setMap(null);
+      areaMarker = null;
+    }
+  }
+
+  mapSearchBtn?.addEventListener('click', searchOnMap);
+  mapSearchEl?.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchOnMap();
+    }
+  });
+
+  areaLatEl?.addEventListener('change', function () {
+    if (!areaLatEl.value || !areaLngEl.value) return;
+    setAreaCoordinates(areaLatEl.value, areaLngEl.value, false);
+  });
+  areaLngEl?.addEventListener('change', function () {
+    if (!areaLatEl.value || !areaLngEl.value) return;
+    setAreaCoordinates(areaLatEl.value, areaLngEl.value, false);
+  });
+
+  document.getElementById('areaModal')?.addEventListener('shown.bs.modal', function () {
+    initAreaMap();
+    setTimeout(() => {
+      if (areaMap && typeof google !== 'undefined' && google.maps) {
+        google.maps.event.trigger(areaMap, 'resize');
+        focusMapToCityContext();
+      }
+    }, 150);
+  });
 
   function openEditCityModal(city) {
     document.getElementById('editCityName').value   = city.name || '';
@@ -363,22 +528,26 @@
     editCityModal.show();
   }
 
-  function openAddAreaModal(cityId, cityName) {
+  function openAddAreaModal(city) {
+    activeCityContext = city;
     document.getElementById('areaModalLabel').textContent = 'Add Area';
     document.getElementById('areaForm').action            = '{{ route('locations.areas.store') }}';
     document.getElementById('areaFormMethod').value       = 'POST';
-    document.getElementById('areaCityId').value           = cityId;
-    document.getElementById('areaCityName').value         = cityName;
+    document.getElementById('areaCityId').value           = city.id;
+    document.getElementById('areaCityName').value         = city.name;
     document.getElementById('areaName').value             = '';
     document.getElementById('areaLat').value              = '';
     document.getElementById('areaLng').value              = '';
     document.getElementById('areaStatus').value           = 'Active';
+    resetMapSearchState();
+    focusMapToCityContext();
     document.getElementById('deleteAreaBtn').classList.add('d-none');
     document.getElementById('areaSubmitBtn').textContent  = 'Add Area';
     areaModal.show();
   }
 
   function openEditAreaModal(area, city) {
+    activeCityContext = city;
     document.getElementById('areaModalLabel').textContent = 'Edit Area';
     document.getElementById('areaForm').action            = `/locations/areas/${area.id}`;
     document.getElementById('areaFormMethod').value       = 'PUT';
@@ -388,6 +557,11 @@
     document.getElementById('areaLat').value              = area.latitude ?? '';
     document.getElementById('areaLng').value              = area.longitude ?? '';
     document.getElementById('areaStatus').value           = area.status || 'Active';
+    resetMapSearchState();
+    focusMapToCityContext();
+    if (area.latitude && area.longitude) {
+      setAreaCoordinates(area.latitude, area.longitude, true);
+    }
 
     const deleteBtn = document.getElementById('deleteAreaBtn');
     deleteBtn.classList.remove('d-none');
@@ -440,6 +614,9 @@
 @push('style')
 <style>
   .fs-13px { font-size: 13px; }
+  #areaPickerMap { height: 280px; min-height: 220px; }
+  #areaMapSearchResults { max-height: 180px; overflow-y: auto; }
+  .pac-container { z-index: 2000 !important; }
 </style>
 @endpush
 

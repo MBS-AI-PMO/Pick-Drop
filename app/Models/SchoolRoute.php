@@ -12,6 +12,9 @@ class SchoolRoute extends Model
     protected $table = 'routes';
 
     protected $fillable = [
+        'city_id',
+        'area_id',
+        'area_ids',
         'code',
         'name',
         'shift',
@@ -19,6 +22,8 @@ class SchoolRoute extends Model
         'start_time',
         'end_time',
         'destination',
+        'destination_latitude',
+        'destination_longitude',
         'description',
         'status',
     ];
@@ -26,6 +31,7 @@ class SchoolRoute extends Model
     protected $casts = [
         'start_time' => 'datetime:H:i',
         'end_time'   => 'datetime:H:i',
+        'area_ids'   => 'array',
     ];
 
     public function vehicle()

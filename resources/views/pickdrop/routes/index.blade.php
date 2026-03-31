@@ -28,12 +28,13 @@
           </div>
         </div>
 
-        {{-- Shift Filter --}}
+        {{-- City Filter --}}
         <div class="col-12 col-md-3">
-          <select class="form-select" name="shift" id="shiftFilter" onchange="this.form.submit()">
-            <option value="all" {{ request('shift', 'all') === 'all' ? 'selected' : '' }}>All Shifts</option>
-            <option value="morning" {{ request('shift') === 'morning' ? 'selected' : '' }}>Morning</option>
-            <option value="afternoon" {{ request('shift') === 'afternoon' ? 'selected' : '' }}>Afternoon</option>
+          <select class="form-select" name="city" id="cityFilter" onchange="this.form.submit()">
+            <option value="all" {{ request('city', 'all') === 'all' ? 'selected' : '' }}>All Cities</option>
+            @foreach(($availableCities ?? collect()) as $city)
+              <option value="{{ $city }}" {{ request('city') === $city ? 'selected' : '' }}>{{ $city }}</option>
+            @endforeach
           </select>
         </div>
 
@@ -42,7 +43,7 @@
           <button type="submit" class="btn btn-outline-secondary">
             <i data-lucide="filter" style="width:15px;height:15px;" class="me-1"></i> Filter
           </button>
-          @if(request('search') || (request('shift') && request('shift') !== 'all'))
+          @if(request('search') || (request('city') && request('city') !== 'all'))
             <a href="{{ route('routes.index') }}" class="btn btn-outline-danger ms-1">
               <i data-lucide="x" style="width:15px;height:15px;"></i>
             </a>

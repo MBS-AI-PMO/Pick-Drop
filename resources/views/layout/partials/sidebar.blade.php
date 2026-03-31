@@ -27,11 +27,25 @@
         </a>
       </li>
 
-      <li class="nav-item {{ active_class(['locations', 'locations/*']) }}">
-        <a href="{{ route('locations.index') }}" class="nav-link">
+      <li class="nav-item {{ request()->is('locations*') ? 'active' : '' }}">
+        <a class="nav-link {{ request()->is('locations*') ? 'active' : '' }}"
+           data-bs-toggle="collapse" href="#locations-nav" role="button"
+           aria-expanded="{{ request()->is('locations*') ? 'true' : 'false' }}"
+           aria-controls="locations-nav">
           <i class="link-icon" data-lucide="map"></i>
           <span class="link-title">Locations</span>
+          <i class="link-arrow" data-lucide="chevron-down"></i>
         </a>
+        <div class="collapse {{ request()->is('locations*') ? 'show' : '' }}" id="locations-nav">
+          <ul class="nav sub-menu">
+            <li class="nav-item">
+              <a href="{{ route('locations.cities.index') }}" class="nav-link {{ request()->is('locations') || request()->is('locations/cities') ? 'active' : '' }}">Manage Cities</a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ route('locations.areas.index') }}" class="nav-link {{ request()->is('locations/areas') ? 'active' : '' }}">Manage Areas</a>
+            </li>
+          </ul>
+        </div>
       </li>
 
       <li class="nav-item {{ request()->is('vehicles*') || request()->is('vehicle-categories*') ? 'active' : '' }}">

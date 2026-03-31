@@ -1,5 +1,9 @@
 @extends('layout.master')
 
+@push('plugin-styles')
+<link href="{{ asset('build/plugins/select2/select2.min.css') }}" rel="stylesheet" />
+@endpush
+
 @section('content')
 
 {{-- Page Header --}}
@@ -19,10 +23,9 @@
   </a>
 </div>
 
-<form>
-  <form method="POST" action="{{ route('routes.store') }}">
-    @csrf
-    <div class="row g-4">
+<form method="POST" action="{{ route('routes.store') }}" id="createRouteForm">
+  @csrf
+  <div class="row g-4">
 
     {{-- Left Column: Route Info --}}
     <div class="col-lg-8">
@@ -37,9 +40,33 @@
         </div>
         <div class="card-body">
           <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Select City <span class="text-danger">*</span></label>
+              <select class="form-select" name="city_id" id="routeCitySelect" required>
+                <option value="">Select city</option>
+                @foreach($citiesWithAreas as $city)
+                  <option value="{{ $city->id }}" {{ (string) old('city_id') === (string) $city->id ? 'selected' : '' }}>
+                    {{ $city->name }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Select Route Area <span class="text-danger">*</span></label>
+              <select class="form-select" name="area_ids[]" id="routeAreaSelect" required>
+                <option value="">Select area</option>
+              </select>
+              <input type="hidden" name="area_id" id="routePrimaryAreaId" value="{{ old('area_id') }}">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" value="1" id="allowMultiArea" name="allow_multi_area" {{ old('allow_multi_area') ? 'checked' : '' }}>
+                <label class="form-check-label text-secondary" for="allowMultiArea">
+                  Allow multi-area route (destination can be outside selected area but inside selected city)
+                </label>
+              </div>
+            </div>
             <div class="col-12">
-              <label class="form-label fw-semibold">Route Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" placeholder="e.g. Central Elementary Morning Pickup" value="{{ old('name') }}" required>
+              <label class="form-label fw-semibold">Custom Route Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="e.g. G-10 Morning Pickup 1" value="{{ old('name') }}" required>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Shift <span class="text-danger">*</span></label>
@@ -70,7 +97,20 @@
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Final Destination <span class="text-danger">*</span></label>
-              <input type="text" name="destination" class="form-control" placeholder="e.g. Central Elementary School" value="{{ old('destination') }}" required>
+              <input type="text" name="destination" id="destinationAddress" class="form-control mb-2"
+                     placeholder="Search destination address..." value="{{ old('destination') }}" required>
+              <small class="text-muted d-block mb-2">Type to search from map suggestions, or manually enter destination text.</small>
+              <div id="destinationMap" class="border rounded" style="height: 260px;"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Destination Latitude <span class="text-danger">*</span></label>
+              <input type="number" step="0.0000001" name="destination_latitude" id="destinationLat"
+                     class="form-control" value="{{ old('destination_latitude') }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Destination Longitude <span class="text-danger">*</span></label>
+              <input type="number" step="0.0000001" name="destination_longitude" id="destinationLng"
+                     class="form-control" value="{{ old('destination_longitude') }}" required>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Description <span class="text-secondary fw-normal">(optional)</span></label>
@@ -152,9 +192,326 @@
 
     </div>
   </div>
-  </form>
+</form>
 
 @endsection
+
+@push('plugin-scripts')
+@php $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', ''); @endphp
+<script src="{{ asset('build/plugins/select2/select2.min.js') }}"></script>
+@if($googleMapsApiKey)
+<script src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapsApiKey }}&libraries=places&language=en&region=PK" async defer></script>
+@endif
+@endpush
+
+@push('custom-scripts')
+@php
+  $citiesWithAreasJson = $citiesWithAreas->map(function ($city) {
+    return [
+      'id' => $city->id,
+      'name' => $city->name,
+      'areas' => $city->areas->map(function ($area) {
+        return [
+          'id' => $area->id,
+          'name' => $area->name,
+          'latitude' => $area->latitude,
+          'longitude' => $area->longitude,
+        ];
+      })->values(),
+    ];
+  })->values();
+@endphp
+<script>
+  @if(session('success'))
+  Swal.fire({
+    icon: 'success',
+    title: 'Success',
+    text: "{{ session('success') }}",
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true
+  });
+  @endif
+
+  @if(session('error'))
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: "{{ session('error') }}",
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 4500,
+    timerProgressBar: true
+  });
+  @endif
+
+  @if($errors->any())
+  Swal.fire({
+    icon: 'error',
+    title: 'Validation Error',
+    html: `{!! implode('<br>', $errors->all()) !!}`,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 5500,
+    timerProgressBar: true
+  });
+  @endif
+
+  const citiesWithAreas = @json($citiesWithAreasJson);
+
+  const citySelect = document.getElementById('routeCitySelect');
+  const areaSelect = document.getElementById('routeAreaSelect');
+  const primaryAreaInput = document.getElementById('routePrimaryAreaId');
+  const allowMultiArea = document.getElementById('allowMultiArea');
+  const destinationLat = document.getElementById('destinationLat');
+  const destinationLng = document.getElementById('destinationLng');
+  const destinationAddress = document.getElementById('destinationAddress');
+
+  let destinationMap;
+  let destinationMarker;
+  let destinationGeocoder;
+  let destinationAutocomplete;
+  let destinationSearchDebounce;
+  let select2FallbackLoading = false;
+
+  function loadSelect2Fallback(callback) {
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      callback?.();
+      return;
+    }
+    if (select2FallbackLoading) return;
+    select2FallbackLoading = true;
+
+    if (!document.getElementById('routeAreaSelect2FallbackCss')) {
+      const link = document.createElement('link');
+      link.id = 'routeAreaSelect2FallbackCss';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css';
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
+    script.onload = function () {
+      select2FallbackLoading = false;
+      callback?.();
+    };
+    script.onerror = function () {
+      select2FallbackLoading = false;
+    };
+    document.body.appendChild(script);
+  }
+
+  function initRouteAreaSelect2() {
+    if (!areaSelect) return;
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
+      loadSelect2Fallback(initRouteAreaSelect2);
+      return;
+    }
+    const $areaSelect = window.jQuery(areaSelect);
+    if ($areaSelect.hasClass('select2-hidden-accessible')) {
+      $areaSelect.select2('destroy');
+    }
+
+    const isMulti = !!allowMultiArea?.checked;
+    areaSelect.multiple = isMulti;
+    $areaSelect.select2({
+      width: '100%',
+      placeholder: isMulti ? 'Select one or more areas' : 'Select area',
+      closeOnSelect: !isMulti,
+      allowClear: true
+    });
+  }
+
+  function getSelectedCityAreas() {
+    const selectedCityId = citySelect.value;
+    const city = citiesWithAreas.find((item) => String(item.id) === String(selectedCityId));
+    return city ? city.areas : [];
+  }
+
+  function getSelectedAreaIds() {
+    return Array.from(areaSelect?.selectedOptions || [])
+      .map((opt) => opt.value)
+      .filter((v) => v);
+  }
+
+  function syncPrimaryArea() {
+    const selectedIds = getSelectedAreaIds();
+    if (primaryAreaInput) primaryAreaInput.value = selectedIds[0] || '';
+  }
+
+  function populateAreas(selectedAreaId = '', selectedAreaIds = []) {
+    const areas = getSelectedCityAreas();
+    areaSelect.innerHTML = '';
+    const selectedSet = new Set((selectedAreaIds || []).map((v) => String(v)));
+    if (selectedAreaId) selectedSet.add(String(selectedAreaId));
+    areas.forEach((area) => {
+      const option = document.createElement('option');
+      option.value = area.id;
+      option.textContent = area.name;
+      if (selectedSet.has(String(area.id))) option.selected = true;
+      areaSelect.appendChild(option);
+    });
+    initRouteAreaSelect2();
+    syncPrimaryArea();
+  }
+
+  function getSelectedArea() {
+    const areas = getSelectedCityAreas();
+    const selectedIds = getSelectedAreaIds();
+    const primaryId = selectedIds[0];
+    return areas.find((item) => String(item.id) === String(primaryId));
+  }
+
+  function setDestinationCoordinates(lat, lng, moveMap = false) {
+    destinationLat.value = Number(lat).toFixed(7);
+    destinationLng.value = Number(lng).toFixed(7);
+    if (!destinationMap || typeof google === 'undefined' || !google.maps) return;
+    const pos = { lat: Number(destinationLat.value), lng: Number(destinationLng.value) };
+    if (!destinationMarker) {
+      destinationMarker = new google.maps.Marker({ map: destinationMap, position: pos, draggable: true });
+      destinationMarker.addListener('dragend', function (event) {
+        setDestinationCoordinates(event.latLng.lat(), event.latLng.lng(), false);
+      });
+    } else {
+      destinationMarker.setPosition(pos);
+    }
+    if (moveMap) {
+      destinationMap.setCenter(pos);
+      destinationMap.setZoom(14);
+    }
+  }
+
+  function initDestinationMap() {
+    if (destinationMap || typeof google === 'undefined' || !google.maps) return;
+    destinationMap = new google.maps.Map(document.getElementById('destinationMap'), {
+      center: { lat: 24.8607, lng: 67.0011 },
+      zoom: 11
+    });
+    destinationGeocoder = new google.maps.Geocoder();
+    destinationMap.addListener('click', function (event) {
+      setDestinationCoordinates(event.latLng.lat(), event.latLng.lng(), true);
+      destinationGeocoder.geocode({ location: event.latLng }, function (results, status) {
+        if (status === 'OK' && results[0]) destinationAddress.value = results[0].formatted_address;
+      });
+    });
+
+    if (destinationAddress && google.maps.places) {
+      destinationAutocomplete = new google.maps.places.Autocomplete(destinationAddress, {
+        fields: ['geometry', 'formatted_address', 'name'],
+        componentRestrictions: { country: 'pk' }
+      });
+      destinationAutocomplete.bindTo('bounds', destinationMap);
+      destinationAutocomplete.addListener('place_changed', function () {
+        const place = destinationAutocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) return;
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        setDestinationCoordinates(lat, lng, true);
+        destinationAddress.value = place.formatted_address || destinationAddress.value;
+      });
+    }
+  }
+
+  function ensureDestinationMapReady() {
+    if (destinationMap) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      initDestinationMap();
+      if (destinationMap || attempts >= 20) {
+        clearInterval(timer);
+      }
+    }, 250);
+  }
+
+  function searchDestinationFromAddress() {
+    if (!destinationGeocoder || !destinationAddress) return;
+    const query = destinationAddress.value.trim();
+    if (query.length < 2) return;
+    destinationGeocoder.geocode({ address: query, region: 'PK' }, function (results, status) {
+      if (status !== 'OK' || !results[0]) return;
+      const result = results[0];
+      setDestinationCoordinates(result.geometry.location.lat(), result.geometry.location.lng(), true);
+      destinationAddress.value = result.formatted_address || destinationAddress.value;
+    });
+  }
+
+  function scheduleDestinationSearch() {
+    clearTimeout(destinationSearchDebounce);
+    destinationSearchDebounce = setTimeout(() => {
+      searchDestinationFromAddress();
+    }, 500);
+  }
+
+  citySelect?.addEventListener('change', function () {
+    populateAreas();
+  });
+
+  allowMultiArea?.addEventListener('change', function () {
+    areaSelect.multiple = !!allowMultiArea.checked;
+    if (!allowMultiArea.checked) {
+      const selectedIds = getSelectedAreaIds();
+      const keepId = selectedIds[0] || '';
+      Array.from(areaSelect.options).forEach((opt) => {
+        opt.selected = keepId ? String(opt.value) === String(keepId) : false;
+      });
+    }
+    initRouteAreaSelect2();
+    syncPrimaryArea();
+  });
+
+  areaSelect?.addEventListener('change', function () {
+    if (!allowMultiArea?.checked) {
+      const selectedIds = getSelectedAreaIds();
+      const keepId = selectedIds[selectedIds.length - 1] || '';
+      Array.from(areaSelect.options).forEach((opt) => {
+        opt.selected = keepId ? String(opt.value) === String(keepId) : false;
+      });
+    }
+    syncPrimaryArea();
+    const area = getSelectedArea();
+    if (!area || !area.latitude || !area.longitude || !destinationMap) return;
+    destinationMap.setCenter({ lat: Number(area.latitude), lng: Number(area.longitude) });
+    destinationMap.setZoom(13);
+  });
+
+  destinationAddress?.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchDestinationFromAddress();
+    }
+  });
+  destinationAddress?.addEventListener('input', scheduleDestinationSearch);
+  destinationAddress?.addEventListener('focus', ensureDestinationMapReady);
+
+  destinationLat?.addEventListener('change', function () {
+    if (!destinationLat.value || !destinationLng.value) return;
+    setDestinationCoordinates(destinationLat.value, destinationLng.value, false);
+  });
+  destinationLng?.addEventListener('change', function () {
+    if (!destinationLat.value || !destinationLng.value) return;
+    setDestinationCoordinates(destinationLat.value, destinationLng.value, false);
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    areaSelect.multiple = !!allowMultiArea?.checked;
+    populateAreas(@json(old('area_id')), @json(old('area_ids', [])));
+    ensureDestinationMapReady();
+    setTimeout(() => {
+      if (destinationLat.value && destinationLng.value) {
+        setDestinationCoordinates(destinationLat.value, destinationLng.value, true);
+      } else if (destinationAddress.value) {
+        searchDestinationFromAddress();
+      }
+    }, 700);
+  });
+</script>
+@endpush
 
 @push('style')
 <style>
@@ -164,5 +521,6 @@
   .fs-13px { font-size: 13px; }
   .stop-row { transition: box-shadow 0.15s; }
   .stop-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .pac-container { z-index: 2000 !important; }
 </style>
 @endpush
