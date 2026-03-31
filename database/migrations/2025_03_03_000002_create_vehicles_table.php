@@ -15,8 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('license_plate');
-            $table->foreignId('vehicle_type_id')->nullable()->constrained('vehicle_settings')->nullOnDelete();
-            $table->foreignId('vehicle_capacity_id')->nullable()->constrained('vehicle_settings')->nullOnDelete();
+            $table->foreignId('vehicle_category_id')->nullable()->constrained('vehicle_categories')->nullOnDelete();
             $table->foreignId('driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('route_id')->nullable(); // Assuming route might be foreign key later, string for now
             $table->string('status')->default('Active');

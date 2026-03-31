@@ -10,23 +10,59 @@
   </div>
 </div>
 
-{{-- Tabs + Create Button --}}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-  <ul class="nav nav-pills gap-1" id="routeTabs">
-    <li class="nav-item">
-      <a class="nav-link active px-4" href="#" data-filter="all">All Routes</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link px-4" href="#" data-filter="morning">Morning</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link px-4" href="#" data-filter="afternoon">Afternoon</a>
-    </li>
-  </ul>
-  <a href="{{ route('routes.create') }}" class="btn btn-primary">
-    <i data-lucide="plus" class="icon-sm me-1"></i> Create Route
-  </a>
-</div>
+{{-- Filters + Create Button (match users index style) --}}
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="GET" action="{{ route('routes.index') }}" id="routeFilterForm">
+      <div class="row g-2 align-items-center">
+
+        {{-- Search --}}
+        <div class="col-12 col-md-4">
+          <div class="input-group">
+            <div class="input-group-text bg-transparent border-end-0">
+              <i data-lucide="search" style="width:16px;height:16px;"></i>
+            </div>
+            <input type="text" name="search" class="form-control border-start-0 ps-0"
+                   id="routeSearch" placeholder="Search routes..."
+                   value="{{ request('search') }}">
+          </div>
+        </div>
+
+        {{-- City Filter --}}
+        <div class="col-12 col-md-3">
+          <select class="form-select" name="city" id="cityFilter" onchange="this.form.submit()">
+            <option value="all" {{ request('city', 'all') === 'all' ? 'selected' : '' }}>All Cities</option>
+            @foreach(($availableCities ?? collect()) as $city)
+              <option value="{{ $city }}" {{ request('city') === $city ? 'selected' : '' }}>{{ $city }}</option>
+            @endforeach
+          </select>
+        </div>
+
+        {{-- Filter / Clear --}}
+        <div class="col-auto">
+          <button type="submit" class="btn btn-outline-secondary">
+            <i data-lucide="filter" style="width:15px;height:15px;" class="me-1"></i> Filter
+          </button>
+          @if(request('search') || (request('city') && request('city') !== 'all'))
+            <a href="{{ route('routes.index') }}" class="btn btn-outline-danger ms-1">
+              <i data-lucide="x" style="width:15px;height:15px;"></i>
+            </a>
+          @endif
+        </div>
+
+        {{-- Spacer --}}
+        <div class="col"></div>
+
+        {{-- Create Button --}}
+        <div class="col-auto">
+          <a href="{{ route('routes.create') }}" class="btn btn-primary">
+            <i data-lucide="plus" class="icon-sm me-1"></i> Create Route
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+ </div>
 
 {{-- Routes Table --}}
 <div class="card">
@@ -47,221 +83,91 @@
         </thead>
         <tbody id="routesTableBody">
 
-          {{-- Row 1 --}}
-          <tr class="route-item" data-shift="morning">
-            <td class="ps-4">
+          @forelse($routes as $route)
+          <tr>
+            <td class="ps-4 py-3 text-muted">{{ $routes->firstItem() + $loop->index }}</td>
+            <td class="ps-2">
               <div class="d-flex align-items-center gap-2">
-                <div class="w-36px h-36px rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="background:rgba(var(--bs-primary-rgb),0.1);">
+                <div class="w-36px h-36px rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="background:rgba(var(--bs-primary-rgb),0.1);">
                   <i data-lucide="map" class="text-primary" style="width:16px;height:16px;"></i>
                 </div>
                 <div>
-                  <p class="mb-0 fw-semibold fs-14px">#R-123</p>
-                  <small class="text-secondary">Central Elementary Morning</small>
+                  <p class="mb-0 fw-semibold fs-14px">{{ $route->code ?? ('#R-'.$route->id) }}</p>
+                  <small class="text-secondary">{{ $route->name }}</small>
                 </div>
               </div>
             </td>
             <td>
-              <span class="fs-13px">Central Elementary School</span>
+              <span class="fs-13px">{{ $route->destination ?? '—' }}</span>
             </td>
             <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="bus" class="text-info" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">Bus #45</span>
-              </div>
+              @if($route->vehicle)
+                <div class="d-flex align-items-center gap-1">
+                  <i data-lucide="bus" class="text-info" style="width:14px;height:14px;"></i>
+                  <span class="fs-13px">{{ $route->vehicle->name }} ({{ $route->vehicle->license_plate }})</span>
+                </div>
+              @else
+                <span class="text-secondary fs-13px">—</span>
+              @endif
             </td>
             <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="users" class="text-success" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">12 Students</span>
-              </div>
+              @if($route->start_time && $route->end_time)
+                <span class="fs-13px">
+                  {{ \Carbon\Carbon::parse($route->start_time)->format('g:i A') }}
+                  –
+                  {{ \Carbon\Carbon::parse($route->end_time)->format('g:i A') }}
+                </span>
+              @else
+                <span class="fs-13px text-secondary">—</span>
+              @endif
             </td>
             <td>
-              <span class="fs-13px">7:45 AM – 8:45 AM</span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-light px-2 py-1 fs-12px" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                <i data-lucide="map-pin" style="width:12px;height:12px;" class="me-1"></i>6 Stops
+              <button class="btn btn-sm btn-light px-2 py-1 fs-12px"
+                      data-bs-toggle="modal"
+                      data-bs-target="#viewStopsModal"
+                      data-route-id="{{ $route->id }}">
+                <i data-lucide="map-pin" style="width:12px;height:12px;" class="me-1"></i>
+                {{ $route->stops_count }} Stops
               </button>
             </td>
             <td>
-              <span class="badge rounded-pill px-3 py-1" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
+              @php $shift = strtolower($route->shift); @endphp
+              @if($shift === 'morning')
+                <span class="badge rounded-pill px-3 py-1" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
+              @elseif($shift === 'afternoon')
+                <span class="badge rounded-pill px-3 py-1" style="background:#fef3c7;color:#92400e;">Afternoon</span>
+              @else
+                <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $route->shift }}</span>
+              @endif
             </td>
             <td class="text-end pe-4">
               <div class="d-flex align-items-center justify-content-end gap-2">
-                <button class="btn btn-sm btn-light" title="View Stops" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                  <i data-lucide="eye" style="width:14px;height:14px;"></i>
-                </button>
-                <a href="{{ url('routes/123/edit') }}" class="btn btn-sm btn-success px-3">
+                <a href="{{ route('routes.edit', $route) }}" class="btn btn-sm btn-success px-3">
                   <i data-lucide="edit-2" class="icon-xs me-1"></i> Edit
                 </a>
-                <button class="btn btn-sm btn-light text-danger" title="Delete">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
+                <form action="{{ route('routes.destroy', $route) }}" method="POST" class="d-inline m-0 p-0"
+                      onsubmit="confirmRouteDelete(event, this)">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit" class="btn btn-sm btn-light text-danger" title="Delete">
+                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
-
-          {{-- Row 2 --}}
-          <tr class="route-item" data-shift="afternoon">
-            <td class="ps-4">
-              <div class="d-flex align-items-center gap-2">
-                <div class="w-36px h-36px rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="background:rgba(var(--bs-warning-rgb),0.1);">
-                  <i data-lucide="map" class="text-warning" style="width:16px;height:16px;"></i>
-                </div>
-                <div>
-                  <p class="mb-0 fw-semibold fs-14px">#R-124</p>
-                  <small class="text-secondary">Gulshan Afternoon Drop</small>
-                </div>
+          @empty
+          <tr>
+            <td colspan="8" class="text-center py-5">
+              <div class="mb-3 text-muted">
+                <i data-lucide="map" style="width:48px;height:48px;opacity:0.4;"></i>
               </div>
-            </td>
-            <td>
-              <span class="fs-13px">Gulshan Roundabout</span>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="bus" class="text-info" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">Bus #32</span>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="users" class="text-success" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">9 Students</span>
-              </div>
-            </td>
-            <td>
-              <span class="fs-13px">3:30 PM – 4:30 PM</span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-light px-2 py-1 fs-12px" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                <i data-lucide="map-pin" style="width:12px;height:12px;" class="me-1"></i>4 Stops
-              </button>
-            </td>
-            <td>
-              <span class="badge rounded-pill px-3 py-1" style="background:#fef3c7;color:#92400e;">Afternoon</span>
-            </td>
-            <td class="text-end pe-4">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <button class="btn btn-sm btn-light" title="View Stops" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                  <i data-lucide="eye" style="width:14px;height:14px;"></i>
-                </button>
-                <a href="{{ url('routes/124/edit') }}" class="btn btn-sm btn-success px-3">
-                  <i data-lucide="edit-2" class="icon-xs me-1"></i> Edit
-                </a>
-                <button class="btn btn-sm btn-light text-danger" title="Delete">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
+              <h6 class="text-secondary">No Routes Found</h6>
+              <p class="text-muted small mb-0">Try adjusting your search or filters.</p>
             </td>
           </tr>
-
-          {{-- Row 3 --}}
-          <tr class="route-item" data-shift="morning">
-            <td class="ps-4">
-              <div class="d-flex align-items-center gap-2">
-                <div class="w-36px h-36px rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="background:rgba(var(--bs-success-rgb),0.1);">
-                  <i data-lucide="map" class="text-success" style="width:16px;height:16px;"></i>
-                </div>
-                <div>
-                  <p class="mb-0 fw-semibold fs-14px">#R-125</p>
-                  <small class="text-secondary">North Side Morning Pickup</small>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="fs-13px">North Academy</span>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="truck" class="text-info" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">Van #12</span>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="users" class="text-success" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">7 Students</span>
-              </div>
-            </td>
-            <td>
-              <span class="fs-13px">8:00 AM – 9:00 AM</span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-light px-2 py-1 fs-12px" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                <i data-lucide="map-pin" style="width:12px;height:12px;" class="me-1"></i>5 Stops
-              </button>
-            </td>
-            <td>
-              <span class="badge rounded-pill px-3 py-1" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
-            </td>
-            <td class="text-end pe-4">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <button class="btn btn-sm btn-light" title="View Stops" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                  <i data-lucide="eye" style="width:14px;height:14px;"></i>
-                </button>
-                <a href="{{ url('routes/125/edit') }}" class="btn btn-sm btn-success px-3">
-                  <i data-lucide="edit-2" class="icon-xs me-1"></i> Edit
-                </a>
-                <button class="btn btn-sm btn-light text-danger" title="Delete">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-
-          {{-- Row 4 --}}
-          <tr class="route-item" data-shift="afternoon">
-            <td class="ps-4">
-              <div class="d-flex align-items-center gap-2">
-                <div class="w-36px h-36px rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="background:rgba(var(--bs-danger-rgb),0.1);">
-                  <i data-lucide="map" class="text-danger" style="width:16px;height:16px;"></i>
-                </div>
-                <div>
-                  <p class="mb-0 fw-semibold fs-14px">#R-126</p>
-                  <small class="text-secondary">Defence Afternoon Drop</small>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="fs-13px">DHA Phase 5</span>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="bus" class="text-info" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">Bus #18</span>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <i data-lucide="users" class="text-success" style="width:14px;height:14px;"></i>
-                <span class="fs-13px">11 Students</span>
-              </div>
-            </td>
-            <td>
-              <span class="fs-13px">2:30 PM – 3:30 PM</span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-light px-2 py-1 fs-12px" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                <i data-lucide="map-pin" style="width:12px;height:12px;" class="me-1"></i>7 Stops
-              </button>
-            </td>
-            <td>
-              <span class="badge rounded-pill px-3 py-1" style="background:#fef3c7;color:#92400e;">Afternoon</span>
-            </td>
-            <td class="text-end pe-4">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <button class="btn btn-sm btn-light" title="View Stops" data-bs-toggle="modal" data-bs-target="#viewStopsModal">
-                  <i data-lucide="eye" style="width:14px;height:14px;"></i>
-                </button>
-                <a href="{{ url('routes/126/edit') }}" class="btn btn-sm btn-success px-3">
-                  <i data-lucide="edit-2" class="icon-xs me-1"></i> Edit
-                </a>
-                <button class="btn btn-sm btn-light text-danger" title="Delete">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
+          @endforelse
 
         </tbody>
       </table>
@@ -269,343 +175,84 @@
   </div>
 </div>
 
+{{-- Pagination Footer --}}
+@if($routes->hasPages())
+  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
+    <small class="text-muted">
+      Showing {{ $routes->firstItem() }}–{{ $routes->lastItem() }} of {{ $routes->total() }} routes
+    </small>
+    <div>
+      {{ $routes->links('pagination::bootstrap-5') }}
+    </div>
+  </div>
+@endif
 
-{{-- ========== VIEW STOPS MODAL ========== --}}
+
+{{-- ========== VIEW STOPS MODAL (READ-ONLY, STOPS MANAGED VIA MOBILE APP) ========== --}}
 <div class="modal fade" id="viewStopsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-md">
     <div class="modal-content">
       <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold">Route Stops – #R-123</h5>
+        <h5 class="modal-title fw-bold" id="stopsModalTitle">Route Stops</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
-        <p class="text-secondary fs-13px mb-3">Central Elementary Morning · 7:45 AM – 8:45 AM</p>
-        <div class="d-flex flex-column gap-3">
-          <div class="d-flex align-items-start gap-3">
-            <div class="d-flex flex-column align-items-center">
-              <div class="w-8px h-8px rounded-circle bg-primary mt-1 flex-shrink-0"></div>
-              <div class="route-line flex-grow-1"></div>
-            </div>
-            <div class="pb-2 w-100 border-bottom">
-              <p class="mb-0 fw-semibold fs-13px">123 Main St</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:05 AM</small>
-                <small class="text-secondary"><i data-lucide="users" style="width:11px;height:11px;" class="me-1"></i>2 students</small>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="d-flex flex-column align-items-center">
-              <div class="w-8px h-8px rounded-circle bg-primary mt-1 flex-shrink-0"></div>
-              <div class="route-line flex-grow-1"></div>
-            </div>
-            <div class="pb-2 w-100 border-bottom">
-              <p class="mb-0 fw-semibold fs-13px">456 Oak Ave</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:18 AM</small>
-                <small class="text-secondary"><i data-lucide="users" style="width:11px;height:11px;" class="me-1"></i>3 students</small>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="d-flex flex-column align-items-center">
-              <div class="w-8px h-8px rounded-circle bg-primary mt-1 flex-shrink-0"></div>
-              <div class="route-line flex-grow-1"></div>
-            </div>
-            <div class="pb-2 w-100 border-bottom">
-              <p class="mb-0 fw-semibold fs-13px">789 Pine Blvd</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:26 AM</small>
-                <small class="text-secondary"><i data-lucide="users" style="width:11px;height:11px;" class="me-1"></i>2 students</small>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="d-flex flex-column align-items-center">
-              <div class="w-8px h-8px rounded-circle bg-primary mt-1 flex-shrink-0"></div>
-              <div class="route-line flex-grow-1"></div>
-            </div>
-            <div class="pb-2 w-100 border-bottom">
-              <p class="mb-0 fw-semibold fs-13px">22 Elm Street</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:33 AM</small>
-                <small class="text-secondary"><i data-lucide="users" style="width:11px;height:11px;" class="me-1"></i>2 students</small>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="d-flex flex-column align-items-center">
-              <div class="w-8px h-8px rounded-circle bg-primary mt-1 flex-shrink-0"></div>
-              <div class="route-line flex-grow-1"></div>
-            </div>
-            <div class="pb-2 w-100 border-bottom">
-              <p class="mb-0 fw-semibold fs-13px">55 Maple Dr</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:40 AM</small>
-                <small class="text-secondary"><i data-lucide="users" style="width:11px;height:11px;" class="me-1"></i>1 student</small>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div>
-              <div class="w-8px h-8px rounded-circle bg-success mt-1 flex-shrink-0"></div>
-            </div>
-            <div class="w-100">
-              <p class="mb-0 fw-semibold fs-13px text-success">Central Elementary School</p>
-              <div class="d-flex gap-3 mt-1">
-                <small class="text-secondary"><i data-lucide="clock" style="width:11px;height:11px;" class="me-1"></i>8:45 AM</small>
-                <small class="text-secondary fw-semibold">Final Destination</small>
-              </div>
-            </div>
-          </div>
+        <p class="text-secondary fs-13px mb-3" id="stopsModalSubtitle">
+          Stops on this route (added via mobile app by parents/students).
+        </p>
+        <div class="d-flex flex-column gap-3" id="stopsModalBody">
+          {{-- Stops will be injected via JS / backend in future --}}
+          <p class="text-muted fs-13px mb-0">No stop details loaded.</p>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#editRouteModal">Edit Route</button>
       </div>
     </div>
   </div>
 </div>
 
-
-{{-- ========== CREATE ROUTE MODAL ========== --}}
-<div class="modal fade" id="createRouteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold">Create New Route</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body pt-2">
-        <div class="row g-3">
-          <div class="col-12">
-            <label class="form-label fw-semibold">Route Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" placeholder="e.g. Central Elementary Morning">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Shift</label>
-            <select class="form-select">
-              <option>Morning</option>
-              <option>Afternoon</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Assign Vehicle</label>
-            <select class="form-select">
-              <option>Bus #45</option>
-              <option>Bus #32</option>
-              <option>Van #12</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Start Time</label>
-            <input type="time" class="form-control" value="07:45">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">End Time</label>
-            <input type="time" class="form-control" value="08:45">
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-semibold">Destination</label>
-            <input type="text" class="form-control" placeholder="e.g. Central Elementary School">
-          </div>
-
-          {{-- Stops Section --}}
-          <div class="col-12 mt-3">
-            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
-              <label class="form-label fw-semibold mb-0">Route Stops</label>
-              <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center" onclick="addStopField('create-stops-container')">
-                <i data-lucide="plus" class="icon-xs me-1"></i> Add Stop
-              </button>
-            </div>
-            <div id="create-stops-container" class="d-flex flex-column gap-2 overflow-auto" style="max-height: 250px;">
-              <div class="route-stop-row d-flex gap-2 align-items-start p-2 bg-light rounded border">
-                <div class="flex-grow-1 row g-2">
-                  <div class="col-md-5">
-                    <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location</label>
-                    <input type="text" class="form-control form-control-sm" placeholder="Location">
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label fs-13px text-secondary mb-1">Arrival Time</label>
-                    <input type="time" class="form-control form-control-sm">
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                    <select class="form-select form-select-sm" multiple data-placeholder="Select students">
-                      <option>John Doe</option>
-                      <option>Jane Smith</option>
-                      <option>Alan Wake</option>
-                      <option>Sarah Connor</option>
-                    </select>
-                  </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-light text-danger mt-4" onclick="this.closest('.route-stop-row').remove()">
-                  <i data-lucide="trash-2" class="icon-xs"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary px-4">Create Route</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-{{-- ========== EDIT ROUTE MODAL ========== --}}
-<div class="modal fade" id="editRouteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold">Edit Route – #R-123</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body pt-2">
-        <div class="row g-3">
-          <div class="col-12">
-            <label class="form-label fw-semibold">Route Name</label>
-            <input type="text" class="form-control" value="Central Elementary Morning">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Shift</label>
-            <select class="form-select"><option selected>Morning</option><option>Afternoon</option></select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Assign Vehicle</label>
-            <select class="form-select"><option selected>Bus #45</option><option>Bus #32</option></select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Start Time</label>
-            <input type="time" class="form-control" value="07:45">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">End Time</label>
-            <input type="time" class="form-control" value="08:45">
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-semibold">Destination</label>
-            <input type="text" class="form-control" value="Central Elementary School">
-          </div>
-
-          {{-- Stops Section --}}
-          <div class="col-12 mt-3">
-            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
-              <label class="form-label fw-semibold mb-0">Route Stops</label>
-              <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center" onclick="addStopField('edit-stops-container')">
-                <i data-lucide="plus" class="icon-xs me-1"></i> Add Stop
-              </button>
-            </div>
-            <div id="edit-stops-container" class="d-flex flex-column gap-2 overflow-auto" style="max-height: 250px;">
-              <div class="route-stop-row d-flex gap-2 align-items-start p-2 bg-light rounded border">
-                <div class="flex-grow-1 row g-2">
-                  <div class="col-md-5">
-                    <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location</label>
-                    <input type="text" class="form-control form-control-sm" value="123 Main St">
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label fs-13px text-secondary mb-1">Arrival Time</label>
-                    <input type="time" class="form-control form-control-sm" value="08:05">
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                    <select class="form-select form-select-sm" multiple data-placeholder="Select students">
-                      <option selected>John Doe</option>
-                      <option selected>Jane Smith</option>
-                      <option>Alan Wake</option>
-                      <option>Sarah Connor</option>
-                    </select>
-                  </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-light text-danger mt-4" onclick="this.closest('.route-stop-row').remove()">
-                  <i data-lucide="trash-2" class="icon-xs"></i>
-                </button>
-              </div>
-              <div class="route-stop-row d-flex gap-2 align-items-start p-2 bg-light rounded border">
-                <div class="flex-grow-1 row g-2">
-                  <div class="col-md-5">
-                    <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location</label>
-                    <input type="text" class="form-control form-control-sm" value="456 Oak Ave">
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label fs-13px text-secondary mb-1">Arrival Time</label>
-                    <input type="time" class="form-control form-control-sm" value="08:18">
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-                    <select class="form-select form-select-sm" multiple data-placeholder="Select students">
-                      <option>John Doe</option>
-                      <option>Jane Smith</option>
-                      <option selected>Alan Wake</option>
-                      <option>Sarah Connor</option>
-                    </select>
-                  </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-light text-danger mt-4" onclick="this.closest('.route-stop-row').remove()">
-                  <i data-lucide="trash-2" class="icon-xs"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary px-4">Save Changes</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 @endsection
 
 @push('custom-scripts')
 <script>
-  document.querySelectorAll('#routeTabs .nav-link').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      e.preventDefault();
-      document.querySelectorAll('#routeTabs .nav-link').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-      const filter = this.dataset.filter;
-      document.querySelectorAll('.route-item').forEach(item => {
-        item.style.display = (filter === 'all' || item.dataset.shift === filter) ? '' : 'none';
-      });
-    });
+  @if(session('success'))
+  Swal.fire({
+      icon: 'success', title: 'Success', text: "{{ session('success') }}",
+      toast: true, position: 'top-end', showConfirmButton: false,
+      timer: 3000, timerProgressBar: true
   });
+  @endif
 
-  function addStopField(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const stopHtml = `
-      <div class="route-stop-row d-flex gap-2 align-items-start p-2 bg-light rounded border">
-        <div class="flex-grow-1 row g-2">
-          <div class="col-md-5">
-            <label class="form-label fs-13px text-secondary mb-1">Stop Name / Location</label>
-            <input type="text" class="form-control form-control-sm" placeholder="Location">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fs-13px text-secondary mb-1">Arrival Time</label>
-            <input type="time" class="form-control form-control-sm">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fs-13px text-secondary mb-1">Assign Students</label>
-            <select class="form-select form-select-sm" multiple data-placeholder="Select students">
-              <option>John Doe</option>
-              <option>Jane Smith</option>
-              <option>Alan Wake</option>
-              <option>Sarah Connor</option>
-            </select>
-          </div>
-        </div>
-        <button type="button" class="btn btn-sm btn-light text-danger mt-4" onclick="this.closest('.route-stop-row').remove()">
-          <i data-lucide="trash-2" class="icon-xs"></i>
-        </button>
-      </div>`;
-    container.insertAdjacentHTML('beforeend', stopHtml);
-    if(typeof lucide !== 'undefined') lucide.createIcons();
+  @if($errors->any())
+  Swal.fire({
+      icon: 'error', title: 'Validation Error',
+      html: `{!! implode('<br>', $errors->all()) !!}`,
+      toast: true, position: 'top-end', showConfirmButton: false,
+      timer: 5000, timerProgressBar: true
+  });
+  @endif
+
+  // Submit search on Enter
+  const routeSearch = document.getElementById('routeSearch');
+  if (routeSearch) {
+    routeSearch.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('routeFilterForm').submit();
+    });
+  }
+
+  function confirmRouteDelete(event, form) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "This will permanently delete the route.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it!'
+    }).then(result => { if (result.isConfirmed) form.submit(); });
   }
 </script>
 @endpush

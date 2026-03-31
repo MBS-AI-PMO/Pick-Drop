@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('vehicle_settings', function (Blueprint $table) {
-            $table->id();
-            $table->string('type'); // e.g. 'Bus', 'Van'
-            $table->integer('capacity')->nullable(); // e.g. 28, 40
-            $table->timestamps();
+        Schema::table('routes', function (Blueprint $table) {
+            $table->json('area_ids')->nullable()->after('area_id');
         });
     }
 
@@ -24,6 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('vehicle_settings');
+        Schema::table('routes', function (Blueprint $table) {
+            $table->dropColumn('area_ids');
+        });
     }
 };
+
