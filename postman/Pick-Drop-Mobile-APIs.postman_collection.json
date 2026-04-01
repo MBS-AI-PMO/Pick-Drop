@@ -1,0 +1,120 @@
+{
+  "info": {
+    "_postman_id": "3a1c1a6c-aecf-4a9f-b69b-0a22db524001",
+    "name": "Pick-Drop Mobile APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection for Parent, Self, and Driver mobile APIs."
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "parent_token", "value": "" },
+    { "key": "self_token", "value": "" },
+    { "key": "driver_token", "value": "" },
+    { "key": "city_id", "value": "1" },
+    { "key": "area_id", "value": "1" },
+    { "key": "student_id", "value": "1" },
+    { "key": "request_id", "value": "1" },
+    { "key": "pickup_request_id", "value": "1" },
+    { "key": "notification_id", "value": "1" },
+    { "key": "ride_id", "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Parent",
+      "item": [
+        {
+          "name": "Auth - Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Parent User\",\n  \"email\": \"parent@example.com\",\n  \"address\": \"G-10 Islamabad\",\n  \"contact\": \"03001234567\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\",\n  \"type\": \"parent\"\n}"
+            },
+            "url": "{{base_url}}/parent/register"
+          }
+        },
+        { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"parent@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/parent/login" } },
+        { "name": "Auth - Forgot Password", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"parent@example.com\"\n}" }, "url": "{{base_url}}/parent/forgot-password" } },
+        { "name": "Auth - Reset Password", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"parent@example.com\",\n  \"token\": \"PASTE_RESET_TOKEN\",\n  \"password\": \"newpass123\",\n  \"password_confirmation\": \"newpass123\"\n}" }, "url": "{{base_url}}/parent/reset-password" } },
+        { "name": "Auth - Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/logout" } },
+
+        { "name": "Email Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/email/verify/send" } },
+        { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"token\": \"PASTE_VERIFICATION_TOKEN\"\n}" }, "url": "{{base_url}}/parent/email/verify" } },
+
+        { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/me" } },
+        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parent Updated\",\n  \"address\": \"F-11 Islamabad\",\n  \"contact\": \"03111234567\"\n}" }, "url": "{{base_url}}/parent/me" } },
+
+        { "name": "Account - Change Password", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"123456\",\n  \"password\": \"newpass123\",\n  \"password_confirmation\": \"newpass123\"\n}" }, "url": "{{base_url}}/parent/account/change-password" } },
+        { "name": "Account - Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"password\": \"newpass123\"\n}" }, "url": "{{base_url}}/parent/account" } },
+
+        { "name": "Locations - Cities", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/cities" } },
+        { "name": "Locations - Areas by City", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/cities/{{city_id}}/areas" } },
+
+        { "name": "Students - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students" } },
+        { "name": "Students - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali\",\n  \"grade\": \"5\",\n  \"school_name\": \"ABC School\",\n  \"school_location\": \"Blue Area\",\n  \"city_id\": {{city_id}},\n  \"pickup_area_id\": {{area_id}},\n  \"pickup_location\": \"Street 10\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"pickup_time\": \"07:30\",\n  \"dropoff_time\": \"14:30\"\n}" }, "url": "{{base_url}}/parent/students" } },
+        { "name": "Students - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students/{{student_id}}" } },
+        { "name": "Students - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"grade\": \"6\",\n  \"pickup_time\": \"07:45\"\n}" }, "url": "{{base_url}}/parent/students/{{student_id}}" } },
+        { "name": "Students - Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students/{{student_id}}" } },
+
+        { "name": "Requests - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests" } },
+        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"parent\",\n  \"student_id\": {{student_id}},\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"pickup_point\": \"Home Gate\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"drop_point\": \"School Main Gate\",\n  \"drop_lat\": 33.7000,\n  \"drop_lng\": 73.0600,\n  \"pickup_time\": \"07:30\",\n  \"drop_time\": \"14:30\",\n  \"days\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]\n}" }, "url": "{{base_url}}/parent/requests" } },
+        { "name": "Requests - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}" } },
+        { "name": "Requests - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_time\": \"07:45\"\n}" }, "url": "{{base_url}}/parent/requests/{{request_id}}" } },
+        { "name": "Requests - Cancel", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}" } },
+        { "name": "Requests - Driver Info", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}/driver" } },
+        { "name": "Requests - Tracking", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}/tracking" } },
+        { "name": "Requests - Messages List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{pickup_request_id}}/messages" } },
+        { "name": "Requests - Message to Driver", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"message\": \"Please pick up 10 minutes early.\"\n}" }, "url": "{{base_url}}/parent/requests/{{pickup_request_id}}/messages" } },
+
+        { "name": "Trips - Recent", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/trips/recent" } },
+        { "name": "Trips - Today Status", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/trips/today-status" } },
+
+        { "name": "Issues - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/issues" } },
+        { "name": "Issues - Report", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_request_id\": {{request_id}},\n  \"subject\": \"Driver Delay\",\n  \"description\": \"Driver came 20 minutes late\"\n}" }, "url": "{{base_url}}/parent/issues" } },
+
+        { "name": "Notifications - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/notifications" } },
+        { "name": "Notifications - Mark Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/notifications/{{notification_id}}/read" } },
+        { "name": "Notifications - Mark All Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/notifications/mark-all-read" } },
+        { "name": "Notification Preferences - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/notification-preferences" } },
+        { "name": "Notification Preferences - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"push_enabled\": true,\n  \"email_enabled\": true,\n  \"new_messages\": true,\n  \"child_activity\": true,\n  \"school_alerts\": true,\n  \"payment_reminders\": true,\n  \"weekly_updates\": false,\n  \"promotions\": false\n}" }, "url": "{{base_url}}/parent/notification-preferences" } }
+      ]
+    },
+    {
+      "name": "Self",
+      "item": [
+        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Self User\",\n  \"email\": \"self@example.com\",\n  \"address\": \"G-11 Islamabad\",\n  \"contact\": \"03009998888\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\",\n  \"type\": \"self\"\n}" }, "url": "{{base_url}}/self/register" } },
+        { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"self@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/self/login" } },
+        { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/me" } },
+        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"self\",\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"pickup_point\": \"Office\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"drop_point\": \"Home\",\n  \"drop_lat\": 33.7000,\n  \"drop_lng\": 73.0600,\n  \"pickup_time\": \"18:00\",\n  \"drop_time\": \"18:45\",\n  \"days\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]\n}" }, "url": "{{base_url}}/self/requests" } },
+        { "name": "Trips - Today Status", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/trips/today-status" } },
+        { "name": "Notification Preferences - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"new_messages\": true,\n  \"weekly_updates\": true,\n  \"promotions\": false\n}" }, "url": "{{base_url}}/self/notification-preferences" } }
+      ]
+    },
+    {
+      "name": "Driver",
+      "item": [
+        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver User\",\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\"\n}" }, "url": "{{base_url}}/driver/register" } },
+        { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/driver/login" } },
+        { "name": "Auth - Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/logout" } },
+        { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/me" } },
+        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver Updated\"\n}" }, "url": "{{base_url}}/driver/me" } },
+        { "name": "Service Areas - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/service-areas" } },
+        { "name": "Service Areas - Sync", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"area_ids\": [1,2,3]\n}" }, "url": "{{base_url}}/driver/service-areas" } },
+        { "name": "Requests - Available", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/requests/available" } },
+        { "name": "Requests - Accept", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/requests/{{request_id}}/accept" } },
+        { "name": "Requests - Reject", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/requests/{{request_id}}/reject" } },
+        { "name": "Rides - Today", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/today" } },
+        { "name": "Rides - History", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides" } },
+        { "name": "Rides - Mark Pickup", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{ride_id}}/pickup" } },
+        { "name": "Rides - Mark Drop", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{ride_id}}/drop" } },
+        { "name": "Location - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/location/update" } },
+        { "name": "Status - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"on_the_way\"\n}" }, "url": "{{base_url}}/driver/status/update" } },
+        { "name": "Issues - Report", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"delay\",\n  \"reason\": \"Traffic jam\"\n}" }, "url": "{{base_url}}/driver/issues" } },
+        { "name": "Issues - Today", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/issues/today" } }
+      ]
+    }
+  ]
+}
+

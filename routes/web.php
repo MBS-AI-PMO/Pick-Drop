@@ -2,8 +2,12 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\PickDropChargeController;
 use App\Http\Controllers\SchoolRouteController;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
+use App\Models\Vehicle;
+use App\Models\SchoolRoute;
 
 Route::get('/', function () {
     return view('pages.auth.login');
@@ -12,7 +16,14 @@ Route::get('/', function () {
 // Protected Admin Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        $stats = [
+            'vehicles'      => Vehicle::count(),
+            'users'         => User::count(),
+            'routes'        => SchoolRoute::count(),
+            'alerts_today'  => 0, // TODO: replace with real alerts count when available
+        ];
+
+        return view('dashboard', compact('stats'));
     })->name('dashboard');
     
     // PickDrop Domain Routes
@@ -36,6 +47,9 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/routes/{route}', [SchoolRouteController::class, 'destroy'])->name('routes.destroy');
     Route::get('/payments', function () { return view('pickdrop.payments.index'); })->name('payments.index');
     Route::get('/reports', function () { return view('pickdrop.reports.index'); })->name('reports.index');
+    Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
+    Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
+    Route::get('/profile', function () { return view('pages.general.profile'); })->name('general.profile');
 });
 
 // Auth Routes (Public)
