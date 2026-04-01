@@ -79,16 +79,23 @@
       <li class="nav-item nav-category">Finance</li>
 
       <li class="nav-item {{ active_class(['payments', 'payments/*']) }}">
-        <a href="{{ route('payments.index') }}" class="nav-link">
+        <a href="#" class="nav-link">
           <i class="link-icon" data-lucide="credit-card"></i>
           <span class="link-title">Payments</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['charges', 'charges/*']) }}">
+        <a href="{{ route('charges.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="badge-dollar-sign"></i>
+          <span class="link-title">Pick-Drop Charges</span>
         </a>
       </li>
 
       <li class="nav-item nav-category">Analytics</li>
 
       <li class="nav-item {{ active_class(['reports', 'reports/*']) }}">
-        <a href="{{ route('reports.index') }}" class="nav-link">
+        <a href="#" class="nav-link">
           <i class="link-icon" data-lucide="bar-chart-2"></i>
           <span class="link-title">Reports</span>
         </a>

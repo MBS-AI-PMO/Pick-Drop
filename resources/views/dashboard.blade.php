@@ -17,8 +17,8 @@
       <div class="card-body d-flex align-items-center justify-content-between py-3">
         <div>
           <p class="text-secondary fs-13px mb-1">Active Vehicles</p>
-          <h3 class="mb-1 fw-bold">24</h3>
-          <span class="text-success fs-12px"><i data-lucide="arrow-up" class="icon-xs"></i> +2 from yesterday</span>
+          <h3 class="mb-1 fw-bold">{{ number_format($stats['vehicles'] ?? 0) }}</h3>
+          <span class="text-secondary fs-12px">Total registered vehicles</span>
         </div>
         <div class="w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-primary-rgb),0.12);">
           <i data-lucide="bus" class="text-primary"></i>
@@ -30,9 +30,9 @@
     <div class="card">
       <div class="card-body d-flex align-items-center justify-content-between py-3">
         <div>
-          <p class="text-secondary fs-13px mb-1">Total Students</p>
-          <h3 class="mb-1 fw-bold">358</h3>
-          <span class="text-success fs-12px"><i data-lucide="arrow-up" class="icon-xs"></i> +12 from last month</span>
+          <p class="text-secondary fs-13px mb-1">Total Users</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($stats['users'] ?? 0) }}</h3>
+          <span class="text-secondary fs-12px">All registered users</span>
         </div>
         <div class="w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-success-rgb),0.12);">
           <i data-lucide="users" class="text-success"></i>
@@ -44,9 +44,9 @@
     <div class="card">
       <div class="card-body d-flex align-items-center justify-content-between py-3">
         <div>
-          <p class="text-secondary fs-13px mb-1">Active Routes</p>
-          <h3 class="mb-1 fw-bold">18</h3>
-          <span class="text-secondary fs-12px">Same as yesterday</span>
+          <p class="text-secondary fs-13px mb-1">Total Routes</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($stats['routes'] ?? 0) }}</h3>
+          <span class="text-secondary fs-12px">Configured school routes</span>
         </div>
         <div class="w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-info-rgb),0.12);">
           <i data-lucide="map-pin" class="text-info"></i>
@@ -59,8 +59,8 @@
       <div class="card-body d-flex align-items-center justify-content-between py-3">
         <div>
           <p class="text-secondary fs-13px mb-1">Alerts Today</p>
-          <h3 class="mb-1 fw-bold">3</h3>
-          <span class="text-danger fs-12px"><i data-lucide="arrow-up" class="icon-xs"></i> +1 from yesterday</span>
+          <h3 class="mb-1 fw-bold">{{ number_format($stats['alerts_today'] ?? 0) }}</h3>
+          <span class="text-secondary fs-12px">System alerts logged today</span>
         </div>
         <div class="w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-danger-rgb),0.12);">
           <i data-lucide="bell" class="text-danger"></i>
