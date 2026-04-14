@@ -21,6 +21,13 @@
   ],
   "item": [
     {
+      "name": "Ping (Health)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/ping"
+      }
+    },
+    {
       "name": "Parent",
       "item": [
         {
@@ -95,7 +102,7 @@
     {
       "name": "Driver",
       "item": [
-        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver User\",\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\"\n}" }, "url": "{{base_url}}/driver/register" } },
+        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver User\",\n  \"email\": \"driver@example.com\",\n  \"phone\": \"03001234567\",\n  \"home_address\": \"G-10 Islamabad\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/driver/register" } },
         { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/driver/login" } },
         { "name": "Auth - Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/logout" } },
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/me" } },
