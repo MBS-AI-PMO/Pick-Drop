@@ -3,7 +3,7 @@
     "_postman_id": "3a1c1a6c-aecf-4a9f-b69b-0a22db524001",
     "name": "Pick-Drop Mobile APIs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Collection for Parent, Self, and Driver mobile APIs."
+    "description": "Collection for Parent, Self, and Driver mobile APIs.\n\nParent/Self register: a 6-digit email verification code is sent to the given email. Use POST .../email/verify with body {\"code\":\"123456\"} after login. With MAIL_MAILER=log, read the code from storage/logs/laravel.log."
   },
   "variable": [
     { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
@@ -16,10 +16,17 @@
     { "key": "request_id", "value": "1" },
     { "key": "pickup_request_id", "value": "1" },
     { "key": "notification_id", "value": "1" },
-    { "key": "ride_id", "value": "1"
-    }
+    { "key": "ride_id", "value": "1" },
+    { "key": "email_verification_code", "value": "123456" }
   ],
   "item": [
+    {
+      "name": "Ping (Health)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/ping"
+      }
+    },
     {
       "name": "Parent",
       "item": [
@@ -41,7 +48,7 @@
         { "name": "Auth - Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/logout" } },
 
         { "name": "Email Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/email/verify/send" } },
-        { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"token\": \"PASTE_VERIFICATION_TOKEN\"\n}" }, "url": "{{base_url}}/parent/email/verify" } },
+        { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{email_verification_code}}\"\n}" }, "url": "{{base_url}}/parent/email/verify" } },
 
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/me" } },
         { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parent Updated\",\n  \"address\": \"F-11 Islamabad\",\n  \"contact\": \"03111234567\"\n}" }, "url": "{{base_url}}/parent/me" } },
@@ -86,6 +93,8 @@
       "item": [
         { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Self User\",\n  \"email\": \"self@example.com\",\n  \"address\": \"G-11 Islamabad\",\n  \"contact\": \"03009998888\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\",\n  \"type\": \"self\"\n}" }, "url": "{{base_url}}/self/register" } },
         { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"self@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/self/login" } },
+        { "name": "Email Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/email/verify/send" } },
+        { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{email_verification_code}}\"\n}" }, "url": "{{base_url}}/self/email/verify" } },
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/me" } },
         { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"self\",\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"pickup_point\": \"Office\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"drop_point\": \"Home\",\n  \"drop_lat\": 33.7000,\n  \"drop_lng\": 73.0600,\n  \"pickup_time\": \"18:00\",\n  \"drop_time\": \"18:45\",\n  \"days\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]\n}" }, "url": "{{base_url}}/self/requests" } },
         { "name": "Trips - Today Status", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/trips/today-status" } },
@@ -95,7 +104,7 @@
     {
       "name": "Driver",
       "item": [
-        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver User\",\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\",\n  \"password_confirmation\": \"123456\"\n}" }, "url": "{{base_url}}/driver/register" } },
+        { "name": "Auth - Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver User\",\n  \"email\": \"driver@example.com\",\n  \"phone\": \"03001234567\",\n  \"home_address\": \"G-10 Islamabad\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/driver/register" } },
         { "name": "Auth - Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"driver@example.com\",\n  \"password\": \"123456\"\n}" }, "url": "{{base_url}}/driver/login" } },
         { "name": "Auth - Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/logout" } },
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/me" } },

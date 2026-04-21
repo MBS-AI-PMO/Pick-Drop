@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api\ParentSelf;
 
 use App\Http\Controllers\Api\ParentSelf\BaseApiController;
+use App\Mail\EmailVerificationCodeMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -27,24 +28,29 @@ class AuthController extends BaseApiController
                 'type'     => ['required', 'in:parent,self'],
             ]);
 
-            $user = User::create([
-                'name'     => $validated['name'],
-                'email'    => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'role'     => $validated['type'], // store as parent/self in role (adjust if you use another column)
-                'status'   => 'active',
-                'details'  => [
-                    'address' => $validated['address'] ?? null,
-                    'contact' => $validated['contact'] ?? null,
-                ],
-            ]);
+            $user = DB::transaction(function () use ($validated) {
+                $u = User::create([
+                    'name'     => $validated['name'],
+                    'email'    => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                    'role'     => $validated['type'], // store as parent/self in role (adjust if you use another column)
+                    'status'   => 'active',
+                    'details'  => [
+                        'address' => $validated['address'] ?? null,
+                        'contact' => $validated['contact'] ?? null,
+                    ],
+                ]);
+                $this->storeEmailVerificationCodeAndNotify($u);
+
+                return $u;
+            });
 
             $token = $user->createToken('parent-self-api')->plainTextToken;
 
             return $this->successResponse([
                 'user'  => $user,
                 'token' => $token,
-            ], 'Registered successfully', 201);
+            ], 'Registered successfully. A verification code has been sent to your email.', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -158,21 +164,11 @@ class AuthController extends BaseApiController
                 return $this->successResponse(null, 'Email already verified');
             }
 
-            $token = Str::lower(Str::random(64));
+            $this->storeEmailVerificationCodeAndNotify($user);
 
-            DB::table('email_verification_tokens')->insert([
-                'user_id' => $user->id,
-                'token' => $token,
-                'expires_at' => now()->addMinutes(30),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // NOTE: Ideally send email here. For now we return token so mobile can verify in dev.
             return $this->successResponse([
-                'token' => $token,
                 'expires_in_minutes' => 30,
-            ], 'Verification token generated');
+            ], 'Verification code sent to your email');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to send verification');
         }
@@ -182,24 +178,22 @@ class AuthController extends BaseApiController
     {
         try {
             $validated = $request->validate([
-                'token' => ['required', 'string', 'size:64'],
+                'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
             ]);
 
+            $user = $request->user();
+
             $row = DB::table('email_verification_tokens')
-                ->where('token', $validated['token'])
+                ->where('user_id', $user->id)
+                ->where('code', $validated['code'])
                 ->whereNull('used_at')
                 ->first();
 
             if (!$row) {
-                return $this->errorResponse('Invalid token', 422);
+                return $this->errorResponse('Invalid verification code', 422);
             }
             if ($row->expires_at && now()->greaterThan($row->expires_at)) {
-                return $this->errorResponse('Token expired', 422);
-            }
-
-            $user = User::find($row->user_id);
-            if (!$user) {
-                return $this->errorResponse('User not found', 404);
+                return $this->errorResponse('Verification code expired', 422);
             }
 
             if (!$user->email_verified_at) {
@@ -218,6 +212,29 @@ class AuthController extends BaseApiController
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to verify email');
         }
+    }
+
+    /**
+     * Persist a new 6-digit code and email it to the user.
+     */
+    private function storeEmailVerificationCodeAndNotify(User $user): void
+    {
+        DB::table('email_verification_tokens')
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->delete();
+
+        $code = (string) random_int(100000, 999999);
+
+        DB::table('email_verification_tokens')->insert([
+            'user_id' => $user->id,
+            'code' => $code,
+            'expires_at' => now()->addMinutes(30),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Mail::to($user->email)->send(new EmailVerificationCodeMail($code, $user->name));
     }
 }
 

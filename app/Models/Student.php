@@ -44,5 +44,17 @@ class Student extends Model
     {
         return $this->belongsTo(Area::class, 'pickup_area_id');
     }
+
+    /**
+     * Parent API: only the owning parent can resolve a student by id.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        abort_unless(auth('sanctum')->check(), 401);
+
+        return $this->where($field ?? $this->getRouteKeyName(), $value)
+            ->where('parent_id', auth('sanctum')->id())
+            ->firstOrFail();
+    }
 }
 

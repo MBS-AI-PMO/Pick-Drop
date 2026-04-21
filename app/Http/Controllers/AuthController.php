@@ -42,12 +42,18 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:50', 'unique:users,phone'],
+            'home_address' => ['required', 'string', 'max:500'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'details' => [
+                'home_address' => $validated['home_address'],
+            ],
             'password' => $validated['password'], // Will be hashed by User model cast
         ]);
 

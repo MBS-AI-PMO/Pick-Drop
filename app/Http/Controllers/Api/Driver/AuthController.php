@@ -17,16 +17,22 @@ class AuthController extends BaseApiController
         try {
             $validated = $request->validate([
                 'name'     => ['required', 'string', 'max:255'],
-                'phone'    => ['required', 'string', 'max:50', 'unique:users,phone'],
+                'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+                'home_address' => ['required', 'string', 'max:500'],
                 'password' => ['required', 'string', 'min:6'],
+                'phone'    => ['required', 'string', 'max:50', 'unique:users,phone'],
             ]);
 
             // Assuming "driver" is a role/flag on users table; adjust to your schema.
             $user = User::create([
                 'name'     => $validated['name'],
-                'phone'    => $validated['phone'],
+                'email'    => $validated['email'],
                 'password' => Hash::make($validated['password']),
                 'role'     => 'driver',
+                'phone'    => $validated['phone'],
+                'details'  => [
+                    'home_address' => $validated['home_address'],
+                ],
             ]);
 
             $token = $user->createToken('driver-api')->plainTextToken;
@@ -46,12 +52,12 @@ class AuthController extends BaseApiController
     {
         try {
             $validated = $request->validate([
-                'phone'    => ['required', 'string'],
+                'email'    => ['required', 'string', 'email'],
                 'password' => ['required', 'string'],
             ]);
 
             /** @var User|null $user */
-            $user = User::where('phone', $validated['phone'])
+            $user = User::where('email', $validated['email'])
                 ->where('role', 'driver')
                 ->first();
 
