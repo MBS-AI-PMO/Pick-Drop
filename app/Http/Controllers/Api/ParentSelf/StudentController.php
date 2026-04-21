@@ -14,11 +14,13 @@ class StudentController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         try {
-            $students = Student::where('parent_id', $request->user()->id)
+            $students = Student::query()
+                ->where('parent_id', $request->user()->id)
+                ->with(['city', 'pickupArea'])
                 ->orderByDesc('id')
                 ->paginate(20);
 
-            return $this->successResponse($students, 'Students');
+            return $this->successResponse($students, 'Students for this parent');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch students');
         }
@@ -45,6 +47,7 @@ class StudentController extends BaseApiController
                 'parent_id' => $request->user()->id,
                 'status' => 'active',
             ]));
+            $student->load(['city', 'pickupArea']);
 
             return $this->successResponse($student, 'Student created', 201);
         } catch (ValidationException $e) {
@@ -57,9 +60,7 @@ class StudentController extends BaseApiController
     public function show(Request $request, Student $student): JsonResponse
     {
         try {
-            if ($student->parent_id !== $request->user()->id) {
-                return $this->errorResponse('Not found', 404);
-            }
+            $student->load(['city', 'pickupArea']);
 
             return $this->successResponse($student, 'Student detail');
         } catch (Throwable $e) {
@@ -70,10 +71,6 @@ class StudentController extends BaseApiController
     public function update(Request $request, Student $student): JsonResponse
     {
         try {
-            if ($student->parent_id !== $request->user()->id) {
-                return $this->errorResponse('Not found', 404);
-            }
-
             $validated = $request->validate([
                 'name'   => ['sometimes', 'string', 'max:255'],
                 'grade'  => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -91,6 +88,7 @@ class StudentController extends BaseApiController
 
             $student->fill($validated);
             $student->save();
+            $student->load(['city', 'pickupArea']);
 
             return $this->successResponse($student, 'Student updated');
         } catch (ValidationException $e) {
@@ -103,10 +101,6 @@ class StudentController extends BaseApiController
     public function destroy(Request $request, Student $student): JsonResponse
     {
         try {
-            if ($student->parent_id !== $request->user()->id) {
-                return $this->errorResponse('Not found', 404);
-            }
-
             $student->delete();
 
             return $this->successResponse(null, 'Student deleted');

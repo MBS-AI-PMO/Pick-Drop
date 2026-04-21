@@ -51,4 +51,9 @@ class User extends Authenticatable
             'details' => 'array',
         ];
     }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'parent_id');
+    }
 }
