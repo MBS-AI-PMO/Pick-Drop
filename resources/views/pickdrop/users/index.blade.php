@@ -98,7 +98,7 @@
               @endphp
               <span class="badge bg-{{ $roleClass }}-subtle text-{{ $roleClass }}">{{ $user->role }}</span>
             </td>
-            <td class="py-3 text-secondary">{{ $user->details ?: '—' }}</td>
+            <td class="py-3 text-secondary">{{ is_array($user->details) ? json_encode($user->details) : ($user->details ?: '—') }}</td>
             <td class="py-3">
               @if(strtolower($user->status) === 'active')
                 <span class="badge rounded-pill px-3 py-1" style="background:#d1fae5;color:#065f46;">Active</span>
@@ -109,7 +109,7 @@
             <td class="py-3 text-center">
               <div class="d-flex justify-content-center align-items-center gap-2">
                 <button class="btn btn-sm btn-light btn-icon" title="Edit"
-                        onclick='openEditModal(event, @json($user->toArray()))'>
+                        onclick='openEditModal(event, @json($user))'>
                   <i data-lucide="edit-2" class="icon-sm"></i>
                 </button>
                 <form action="{{ route('users.destroy', $user->id) }}" method="POST"
