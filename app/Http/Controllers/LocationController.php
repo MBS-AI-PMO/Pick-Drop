@@ -91,7 +91,7 @@ class LocationController extends Controller
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
-            return redirect()->route('locations.index')->with('success', 'City added successfully!');
+            return redirect()->route('locations.cities.index')->with('success', 'City added successfully!');
         } catch (\Throwable $e) {
             Log::error('Failed to create city', [
                 'data'  => $data,
@@ -177,7 +177,7 @@ class LocationController extends Controller
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
-            return redirect()->route('locations.index')->with('success', 'City updated successfully!');
+            return redirect()->route('locations.cities.index')->with('success', 'City updated successfully!');
         } catch (\Throwable $e) {
             Log::error('Failed to update city', [
                 'city_id' => $city->id,
