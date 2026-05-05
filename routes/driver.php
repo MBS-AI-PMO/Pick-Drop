@@ -3,10 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Driver\AuthController;
 use App\Http\Controllers\Api\Driver\ProfileController;
+use App\Http\Controllers\Api\Driver\AccountController;
 use App\Http\Controllers\Api\Driver\ServiceAreaController;
 use App\Http\Controllers\Api\Driver\RequestController;
 use App\Http\Controllers\Api\Driver\RideController;
 use App\Http\Controllers\Api\Driver\IssueController;
+use App\Http\Controllers\Api\Driver\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,12 +24,16 @@ Route::prefix('driver')->group(function () {
     // Auth
     Route::post('register', [AuthController::class, 'register'])->name('api.driver.register');
     Route::post('login',    [AuthController::class, 'login'])->name('api.driver.login');
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('api.driver.forgot-password');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('api.driver.reset-password');
     Route::post('logout',   [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.driver.logout');
 
     Route::middleware('auth:sanctum')->group(function () {
         // Profile (driver apna profile update karega, vehicle admin handle karega)
         Route::get('me', [ProfileController::class, 'show'])->name('api.driver.me.show');
         Route::put('me', [ProfileController::class, 'update'])->name('api.driver.me.update');
+        Route::put('account/change-password', [AccountController::class, 'changePassword'])->name('api.driver.account.change-password');
+        Route::delete('account', [AccountController::class, 'deleteAccount'])->name('api.driver.account.delete');
 
         // Service areas (cities/areas jahan driver service deta hai)
         Route::get('service-areas',  [ServiceAreaController::class, 'index'])->name('api.driver.service-areas.index');
@@ -51,6 +57,11 @@ Route::prefix('driver')->group(function () {
         // Delay / issue reporting (driver reason submit karega)
         Route::post('issues',          [IssueController::class, 'store'])->name('api.driver.issues.store');        // body: { route_id, type, reason, eta_change, ... }
         Route::get('issues/today',     [IssueController::class, 'today'])->name('api.driver.issues.today');       // optional: aaj ki issues list
+
+        // Notifications
+        Route::get('notifications', [NotificationController::class, 'index'])->name('api.driver.notifications.index');
+        Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('api.driver.notifications.mark-all-read');
+        Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('api.driver.notifications.read');
     });
 });
 
