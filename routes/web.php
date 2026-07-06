@@ -49,7 +49,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports', function () { return view('pickdrop.reports.index'); })->name('reports.index');
     Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
     Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
-    Route::get('/profile', function () { return view('pages.general.profile'); })->name('general.profile');
 });
 
 // Auth Routes (Public)
