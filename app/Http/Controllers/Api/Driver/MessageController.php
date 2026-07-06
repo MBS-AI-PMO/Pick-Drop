@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\ParentSelf;
+namespace App\Http\Controllers\Api\Driver;
 
 use App\Models\DriverMessage;
 use App\Models\PickupRequest;
@@ -15,11 +15,12 @@ class MessageController extends BaseApiController
     public function index(Request $request, PickupRequest $pickupRequest): JsonResponse
     {
         try {
-            if ($pickupRequest->parent_id !== $request->user()->id) {
+            if ((int) $pickupRequest->driver_id !== (int) $request->user()->id) {
                 return $this->errorResponse('Not found', 404);
             }
 
-            $messages = DriverMessage::where('pickup_request_id', $pickupRequest->id)
+            $messages = DriverMessage::with(['sender', 'receiver'])
+                ->where('pickup_request_id', $pickupRequest->id)
                 ->orderBy('id')
                 ->paginate(50);
 
@@ -32,11 +33,10 @@ class MessageController extends BaseApiController
     public function send(Request $request, PickupRequest $pickupRequest): JsonResponse
     {
         try {
-            if ($pickupRequest->parent_id !== $request->user()->id) {
+            $driver = $request->user();
+
+            if ((int) $pickupRequest->driver_id !== (int) $driver->id) {
                 return $this->errorResponse('Not found', 404);
-            }
-            if (!$pickupRequest->driver_id) {
-                return $this->errorResponse('Driver not assigned yet', 422);
             }
 
             $validated = $request->validate([
@@ -45,19 +45,19 @@ class MessageController extends BaseApiController
 
             $msg = DriverMessage::create([
                 'pickup_request_id' => $pickupRequest->id,
-                'sender_id' => $request->user()->id,
-                'receiver_id' => $pickupRequest->driver_id,
+                'sender_id' => $driver->id,
+                'receiver_id' => $pickupRequest->parent_id,
                 'message' => $validated['message'],
             ]);
 
             app(AppNotificationService::class)->notifyNewMessage(
-                (int) $pickupRequest->driver_id,
+                (int) $pickupRequest->parent_id,
                 $pickupRequest->id,
-                $request->user()->name ?? 'Parent',
+                $driver->name ?? 'Driver',
                 $validated['message']
             );
 
-            return $this->successResponse($msg, 'Message sent', 201);
+            return $this->successResponse($msg->load(['sender', 'receiver']), 'Message sent', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -65,4 +65,3 @@ class MessageController extends BaseApiController
         }
     }
 }
-

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Http\Controllers\Controller;
+use App\Models\Area;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 abstract class BaseApiController extends Controller
@@ -40,6 +42,23 @@ abstract class BaseApiController extends Controller
             app()->environment('local') ? $e->getMessage() : $defaultMessage,
             500
         );
+    }
+
+    /**
+     * @param  list<int|string>  $areaIds
+     */
+    protected function assertAreaIdsBelongToCity(int $cityId, array $areaIds): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $areaIds)));
+        if ($ids === []) {
+            return;
+        }
+
+        if (Area::whereIn('id', $ids)->where('city_id', '!=', $cityId)->exists()) {
+            throw ValidationException::withMessages([
+                'service_areas' => ['All service area IDs must belong to the selected city.'],
+            ]);
+        }
     }
 }
 

@@ -72,5 +72,10 @@ class PickupRequest extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
+    public function driverRejections()
+    {
+        return $this->hasMany(DriverPickupRequestRejection::class);
+    }
 }
 

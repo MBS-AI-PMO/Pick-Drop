@@ -17,29 +17,39 @@ class AuthController extends BaseApiController
     {
         try {
             $validated = $request->validate([
-                'name'     => ['required', 'string', 'max:255'],
-                'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-                'home_address' => ['required', 'string', 'max:500'],
-                'password' => ['required', 'string', 'min:6'],
-                'phone'    => ['required', 'string', 'max:50', 'unique:users,phone'],
+                'name'            => ['required', 'string', 'max:255'],
+                'email'           => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+                'home_address'    => ['required', 'string', 'max:500'],
+                'password'        => ['required', 'string', 'min:6'],
+                'phone'           => ['required', 'string', 'max:50', 'unique:users,phone'],
+                'city_id'         => ['required', 'integer', 'exists:cities,id'],
+                'service_areas'   => ['required', 'array', 'min:1'],
+                'service_areas.*' => ['integer', 'exists:areas,id'],
             ]);
 
-            // Assuming "driver" is a role/flag on users table; adjust to your schema.
+            $cityId = (int) $validated['city_id'];
+            $serviceNorm = array_values(array_unique(array_map('intval', $validated['service_areas'])));
+            $this->assertAreaIdsBelongToCity($cityId, $serviceNorm);
+
             $user = User::create([
-                'name'     => $validated['name'],
-                'email'    => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'role'     => 'driver',
-                'phone'    => $validated['phone'],
-                'details'  => [
+                'name'           => $validated['name'],
+                'email'          => $validated['email'],
+                'password'       => $validated['password'],
+                'role'           => 'driver',
+                'phone'          => $validated['phone'],
+                'city_id'        => $cityId,
+                'service_areas'  => $serviceNorm,
+                'details'        => [
                     'home_address' => $validated['home_address'],
                 ],
             ]);
 
+            $user->load('city');
+
             $token = $user->createToken('driver-api')->plainTextToken;
 
             return $this->successResponse([
-                'user'  => $user,
+                'user'  => $user->toDriverApiArray(),
                 'token' => $token,
             ], 'Registered successfully', 201);
         } catch (ValidationException $e) {
@@ -70,7 +80,7 @@ class AuthController extends BaseApiController
             $token = $user->createToken('driver-api')->plainTextToken;
 
             return $this->successResponse([
-                'user'  => $user,
+                'user'  => $user->toDriverApiArray(),
                 'token' => $token,
             ], 'Logged in successfully');
         } catch (ValidationException $e) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\ParentSelf;
 
 use App\Models\IssueReport;
 use App\Models\PickupRequest;
+use App\Services\AppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -49,6 +50,19 @@ class IssueController extends BaseApiController
                 'description' => $validated['description'] ?? null,
                 'status' => 'open',
             ]);
+
+            if (!empty($validated['pickup_request_id']) && isset($pr) && $pr->driver_id) {
+                app(AppNotificationService::class)->notify(
+                    (int) $pr->driver_id,
+                    'issue_reported',
+                    'New issue reported',
+                    sprintf('%s reported an issue: %s', $request->user()->name ?? 'Parent', $validated['subject']),
+                    [
+                        'pickup_request_id' => $pr->id,
+                        'issue_id' => $issue->id,
+                    ]
+                );
+            }
 
             return $this->successResponse($issue, 'Issue reported', 201);
         } catch (ValidationException $e) {
