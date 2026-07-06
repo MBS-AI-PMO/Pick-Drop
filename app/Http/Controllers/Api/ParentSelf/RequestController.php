@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\ParentSelf;
 use App\Http\Controllers\Api\ParentSelf\BaseApiController;
 use App\Models\PickupRequest;
 use App\Models\Student;
+use App\Services\AppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -80,6 +81,10 @@ class RequestController extends BaseApiController
                 'status' => 'pending',
             ]);
 
+            $notifier = app(AppNotificationService::class);
+            $notifier->notifyParentRequestSubmitted($req);
+            $notifier->notifyDriversOfNewPickupRequest($req);
+
             return $this->successResponse($req, 'Request created', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
@@ -149,6 +154,8 @@ class RequestController extends BaseApiController
             $pickupRequest->fill($validated);
             $pickupRequest->save();
 
+            app(AppNotificationService::class)->notifyParentRequestUpdated($pickupRequest);
+
             return $this->successResponse($pickupRequest, 'Request updated');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
@@ -174,6 +181,8 @@ class RequestController extends BaseApiController
             $pickupRequest->status = 'cancelled';
             $pickupRequest->cancelled_at = now();
             $pickupRequest->save();
+
+            app(AppNotificationService::class)->notifyPickupRequestCancelled($pickupRequest);
 
             return $this->successResponse(null, 'Request cancelled');
         } catch (Throwable $e) {

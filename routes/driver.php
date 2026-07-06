@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\Driver\RequestController;
 use App\Http\Controllers\Api\Driver\RideController;
 use App\Http\Controllers\Api\Driver\IssueController;
 use App\Http\Controllers\Api\Driver\NotificationController;
+use App\Http\Controllers\Api\Driver\MessageController;
+use App\Http\Controllers\Api\ParentSelf\LocationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,15 +23,17 @@ use App\Http\Controllers\Api\Driver\NotificationController;
 
 Route::prefix('driver')->group(function () {
 
-    // Auth
+    // Auth (register: city_id, service_areas[], home_address, ...)
     Route::post('register', [AuthController::class, 'register'])->name('api.driver.register');
     Route::post('login',    [AuthController::class, 'login'])->name('api.driver.login');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('api.driver.forgot-password');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('api.driver.reset-password');
     Route::post('logout',   [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.driver.logout');
+    Route::get('cities', [LocationController::class, 'cities'])->name('api.driver.cities.index');
+    Route::get('cities/{city}/areas', [LocationController::class, 'areas'])->name('api.driver.cities.areas');
 
     Route::middleware('auth:sanctum')->group(function () {
-        // Profile (driver apna profile update karega, vehicle admin handle karega)
+        // Profile (city_id, service_areas[], home_address, name, phone)
         Route::get('me', [ProfileController::class, 'show'])->name('api.driver.me.show');
         Route::put('me', [ProfileController::class, 'update'])->name('api.driver.me.update');
         Route::put('account/change-password', [AccountController::class, 'changePassword'])->name('api.driver.account.change-password');
@@ -37,12 +41,18 @@ Route::prefix('driver')->group(function () {
 
         // Service areas (cities/areas jahan driver service deta hai)
         Route::get('service-areas',  [ServiceAreaController::class, 'index'])->name('api.driver.service-areas.index');
-        Route::post('service-areas', [ServiceAreaController::class, 'sync'])->name('api.driver.service-areas.sync'); // body: { "area_ids": [1,2,3] }
+        Route::post('service-areas', [ServiceAreaController::class, 'sync'])->name('api.driver.service-areas.sync'); // body: area_ids[] or service_areas[]
 
         // Parent/Self requests
         Route::get('requests/available', [RequestController::class, 'available'])->name('api.driver.requests.available');
-        Route::post('requests/{request}/accept', [RequestController::class, 'accept'])->name('api.driver.requests.accept');
-        Route::post('requests/{request}/reject', [RequestController::class, 'reject'])->name('api.driver.requests.reject');
+        Route::get('requests/accepted', [RequestController::class, 'accepted'])->name('api.driver.requests.accepted');
+        Route::post('requests/{pickupRequest}/accept', [RequestController::class, 'accept'])->name('api.driver.requests.accept');
+        Route::post('requests/{pickupRequest}/reject', [RequestController::class, 'reject'])->name('api.driver.requests.reject');
+        Route::post('requests/{pickupRequest}/status', [RequestController::class, 'updateStatus'])->name('api.driver.requests.status');
+
+        // Messaging with parent/self (per accepted pickup request)
+        Route::get('requests/{pickupRequest}/messages', [MessageController::class, 'index'])->name('api.driver.requests.messages.index');
+        Route::post('requests/{pickupRequest}/messages', [MessageController::class, 'send'])->name('api.driver.requests.messages.send');
 
         // Assigned students / rides (daily pick-drop management)
         Route::get('rides/today',          [RideController::class, 'today'])->name('api.driver.rides.today');        // aaj ke sab students / stops
