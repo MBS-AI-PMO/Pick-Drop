@@ -177,16 +177,27 @@ body {
                 >
               </div>
               <div class="mb-4 micro-anim">
-                <label for="userPassword" class="form-label fw-medium">Password</label>
-                <input
-                    type="password"
-                    class="form-control"
-                    id="userPassword"
-                    name="password"
-                    autocomplete="current-password"
-                    placeholder="••••••••"
-                    required
-                >
+                  <label for="userPassword" class="form-label fw-medium">Password</label>
+              
+                  <div class="input-group">
+                      <input
+                          type="password"
+                          class="form-control"
+                          id="userPassword"
+                          name="password"
+                          autocomplete="current-password"
+                          placeholder="••••••••"
+                          required
+                      >
+              
+                      <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          id="togglePassword"
+                      >
+                          <i data-lucide="eye" id="passwordIcon"></i>
+                      </button>
+                  </div>
               </div>
               <div class="mb-4 d-flex justify-content-between align-items-center micro-anim">
                 <div class="form-check">
@@ -274,6 +285,25 @@ document.addEventListener("DOMContentLoaded", function () {
             customClass: { popup: 'rounded-4' }
         });
     @endif
+    const passwordField = document.getElementById('userPassword');
+const togglePassword = document.getElementById('togglePassword');
+const passwordIcon = document.getElementById('passwordIcon');
+
+togglePassword.addEventListener('click', function () {
+
+    const type = passwordField.getAttribute('type') === 'password'
+        ? 'text'
+        : 'password';
+
+    passwordField.setAttribute('type', type);
+
+    passwordIcon.setAttribute(
+        'data-lucide',
+        type === 'password' ? 'eye' : 'eye-off'
+    );
+
+    lucide.createIcons();
+});
 });
 </script>
 @endpush
