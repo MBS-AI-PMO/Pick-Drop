@@ -7,6 +7,9 @@ use App\Http\Controllers\SchoolRouteController;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
 use App\Models\Vehicle;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Auth\Events\PasswordReset;
 use App\Models\SchoolRoute;
 
 Route::get('/', function () {
@@ -57,6 +60,8 @@ Route::group(['prefix' => 'auth'], function(){
     Route::get('login', function () { return view('pages.auth.login'); })->name('auth.login');
     Route::get('register', function () { return view('pages.auth.register'); })->name('auth.register');
     Route::get('forgot-password', function () { return view('pages.auth.forgot-password'); })->name('auth.forgot-password');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])
+    ->name('password.update');
 
     // Auth form submissions
     Route::post('login', [AuthController::class, 'login'])
@@ -68,6 +73,8 @@ Route::group(['prefix' => 'auth'], function(){
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
         ->name('auth.forgot-password.submit');
 });
+Route::get('reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])
+    ->name('password.reset');
 
 Route::get('/clear-cache', function() {
     Artisan::call('cache:clear');
@@ -78,4 +85,3 @@ Route::get('/clear-cache', function() {
 Route::any('/{page?}',function(){
     return View::make('pages.error.404');
 })->where('page','.*');
-

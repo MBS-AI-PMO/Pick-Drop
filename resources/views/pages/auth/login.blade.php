@@ -221,7 +221,7 @@ body {
                 </button>
               </div>
               
-              <p class="mt-4 text-center text-secondary micro-anim">Don't have an account? <a href="{{ route('auth.register') }}" class="text-primary-custom">Sign up</a></p>
+              {{-- <p class="mt-4 text-center text-secondary micro-anim">Don't have an account? <a href="{{ route('auth.register') }}" class="text-primary-custom">Sign up</a></p> --}}
             </form>
           </div>
         </div>

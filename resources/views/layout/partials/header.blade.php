@@ -11,7 +11,12 @@
         <div class="input-group-text">
           <i data-lucide="search"></i>
         </div>
-        <input type="text" class="form-control" id="navbarForm" placeholder="Search here...">
+    <input
+    type="text"
+    class="form-control"
+    id="navbarForm"
+    placeholder="Search menu..."
+    autocomplete="off">
       </div>
     </form>
 
@@ -80,18 +85,29 @@
       {{-- Profile --}}
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <div class="w-30px h-30px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:13px;">A</div>
-          <span class="d-none d-md-inline-block fw-semibold" style="font-size:14px;">Admin</span>
+          <div class="w-30px h-30px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:13px;">
+    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+</div>
+          <span class="d-none d-md-inline-block fw-semibold" style="font-size:14px;">
+    {{ auth()->user()->name }}
+</span>
         </a>
         <div class="dropdown-menu p-0" aria-labelledby="profileDropdown">
           <div class="d-flex flex-column align-items-center border-bottom px-5 py-3">
             <div class="mb-2">
-              <div class="w-60px h-60px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:22px;">A</div>
+             <div class="w-60px h-60px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:22px;">
+    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+</div>
             </div>
-            <div class="text-center">
-              <p class="fs-16px fw-bolder mb-0">Admin</p>
-              <p class="fs-12px text-secondary">admin@pickdrop.com</p>
-            </div>
+<div class="text-center">
+    <p class="fs-16px fw-bolder mb-0">
+        {{ Auth::user()->name }}
+    </p>
+
+    <p class="fs-12px text-secondary">
+        {{ Auth::user()->email }}
+    </p>
+</div>
           </div>
           <ul class="list-unstyled p-1">
             <li>
