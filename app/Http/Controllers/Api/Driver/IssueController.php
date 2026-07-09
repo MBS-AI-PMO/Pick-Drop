@@ -14,7 +14,7 @@ class IssueController extends BaseApiController
     {
         try {
             $validated = $request->validate([
-                'route_id'    => ['required', 'integer'],
+                'route_id'    => ['', 'integer'],
                 'type'        => ['required', 'string', 'max:50'], // e.g. delay, breakdown
                 'reason'      => ['nullable', 'string', 'max:1000'],
                 'eta_change'  => ['nullable', 'integer'], // minutes
