@@ -13,6 +13,17 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
+
+            $table->foreignId('user_id')
+                  ->nullable()
+                  ->constrained()
+                  ->nullOnDelete();
+
+            $table->string('title');
+            $table->text('message');
+            $table->string('type')->nullable(); // user, vehicle, city, driver, booking etc.
+            $table->boolean('is_read')->default(false);
+
             $table->timestamps();
         });
     }
