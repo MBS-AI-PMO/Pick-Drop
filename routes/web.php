@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 use App\Models\SchoolRoute;
+use App\Http\Controllers\NotificationController;
+
 
 Route::get('/', function () {
     return view('pages.auth.login');
@@ -53,6 +55,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
     Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
     Route::get('/profile', function () { return view('pages.general.profile'); })->name('general.profile');
+    Route::get('/notifications', [NotificationController::class,'index'])
+    ->name('notifications.index');
+    Route::get('/notifications/clear', [NotificationController::class, 'clear'])
+    ->name('notifications.clear');
 });
 
 // Auth Routes (Public)
@@ -85,3 +91,5 @@ Route::get('/clear-cache', function() {
 Route::any('/{page?}',function(){
     return View::make('pages.error.404');
 })->where('page','.*');
+Route::get('/notifications', [NotificationController::class,'index'])
+    ->name('notifications.index');

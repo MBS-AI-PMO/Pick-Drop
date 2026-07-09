@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -52,14 +53,19 @@ class UserController extends Controller
         ]);
 
         try {
-            User::create([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => Hash::make($request->password),
-                'role'     => $request->role,
-                'status'   => $request->status ?? 'Active',
-                'details'  => $request->details,
-            ]);
+            $user = User::create([
+    'name'     => $request->name,
+    'email'    => $request->email,
+    'password' => Hash::make($request->password),
+    'role'     => $request->role,
+    'status'   => $request->status ?? 'Active',
+    'details'  => $request->details,
+]);
+Notification::create([
+    'title' => 'New User',
+    'message' => $user->name . ' has been added.',
+    'type' => 'success',
+]);
 
             return redirect()->route('users.index')->with('success', 'User added successfully!');
         } catch (\Throwable $e) {
@@ -92,6 +98,11 @@ class UserController extends Controller
 
         try {
             $user->update($data);
+            Notification::create([
+    'title' => 'User Updated',
+    'message' => $user->name . ' profile has been updated.',
+    'type' => 'info',
+]);
 
             return redirect()->route('users.index')->with('success', 'User updated successfully!');
         } catch (\Throwable $e) {
@@ -110,6 +121,11 @@ class UserController extends Controller
     {
         try {
             $user->delete();
+            Notification::create([
+    'title' => 'User Deleted',
+    'message' => $user->name . ' has been deleted.',
+    'type' => 'danger',
+]);
             return redirect()->route('users.index')->with('success', 'User deleted successfully!');
         } catch (\Throwable $e) {
             Log::error('Failed to delete user', [

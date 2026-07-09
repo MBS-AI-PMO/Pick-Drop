@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Driver;
 
 use App\Http\Controllers\Api\Driver\BaseApiController;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmailVerificationCodeMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +33,7 @@ class AuthController extends BaseApiController
             $serviceNorm = array_values(array_unique(array_map('intval', $validated['service_areas'])));
             $this->assertAreaIdsBelongToCity($cityId, $serviceNorm);
 
+            $otp = rand(100000, 999999);
             $user = User::create([
                 'name'           => $validated['name'],
                 'email'          => $validated['email'],
@@ -39,6 +42,7 @@ class AuthController extends BaseApiController
                 'phone'          => $validated['phone'],
                 'city_id'        => $cityId,
                 'service_areas'  => $serviceNorm,
+                  'otp'            => $otp,
                 'details'        => [
                     'home_address' => $validated['home_address'],
                 ],
@@ -46,12 +50,16 @@ class AuthController extends BaseApiController
 
             $user->load('city');
 
+            Mail::to($user->email)->send(
+    new EmailVerificationCodeMail($otp, $user->name)
+);
             $token = $user->createToken('driver-api')->plainTextToken;
 
-            return $this->successResponse([
-                'user'  => $user->toDriverApiArray(),
-                'token' => $token,
-            ], 'Registered successfully', 201);
+             return $this->successResponse([
+    'user'  => $user->toDriverApiArray(),
+    'token' => $token,
+    'email_verification_required' => true,
+], 'Registered successfully. Verification code has been sent to your email.', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -156,5 +164,39 @@ class AuthController extends BaseApiController
             return $this->handleException($e, 'Unable to reset password');
         }
     }
+ public function verifyOtp(Request $request): JsonResponse
+{
+    try {
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'otp'   => ['required', 'digits:6'],
+        ]);
+
+        $user = User::where('email', $validated['email'])
+                    ->where('otp', $validated['otp'])
+                    ->first();
+
+        if (!$user) {
+            return $this->errorResponse('Invalid verification code.', 422);
+        }
+
+        $user->update([
+            'otp' => null,
+            'email_verified_at' => now(),
+        ]);
+
+        return $this->successResponse([], 'Email verified successfully.');
+
+    } catch (ValidationException $e) {
+
+        return $this->errorResponse('Validation failed', 422, $e->errors());
+
+    } catch (Throwable $e) {
+
+        return $this->handleException($e, 'Unable to verify email');
+
+    }
+}
 }
 

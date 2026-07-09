@@ -12,15 +12,19 @@ class EmailVerificationCodeMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(
-        public string $code,
-        public string $userName,
-    ) {}
+    public string $code;
+    public string $userName;
+
+    public function __construct(string $code, string $userName)
+    {
+        $this->code = $code;
+        $this->userName = $userName;
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('Pick-Drop: Email verification code'),
+            subject: 'Verify Your Email Address'
         );
     }
 
@@ -28,6 +32,10 @@ class EmailVerificationCodeMail extends Mailable
     {
         return new Content(
             view: 'mail.email-verification-code',
+            with: [
+                'code' => $this->code,
+                'userName' => $this->userName,
+            ],
         );
     }
 }

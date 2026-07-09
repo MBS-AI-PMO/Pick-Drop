@@ -45,39 +45,53 @@
         <div class="dropdown-menu p-0" aria-labelledby="notificationDropdown">
           <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
             <p class="mb-0 fw-bold">Alerts</p>
-            <a href="javascript:;" class="text-secondary">Clear all</a>
+            <a href="{{ route('notifications.clear') }}"
+   class="text-secondary"
+   onclick="return confirm('Clear all notifications?')">
+    Clear all
+</a>
           </div>
-          <div class="p-1">
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-danger rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="alert-triangle"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Vehicle Breakdown - Bus #2415</p>
-                <p class="fs-12px text-secondary">10 mins ago</p>
-              </div>
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-warning rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="clock"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Route Delay - Route #1002</p>
-                <p class="fs-12px text-secondary">26 mins ago</p>
-              </div>
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-info rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="wifi-off"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>GPS Signal Lost - Bus #2410</p>
-                <p class="fs-12px text-secondary">1 hour ago</p>
-              </div>
-            </a>
-          </div>
+@php
+$notifications = \App\Models\Notification::latest()->take(3)->get();
+@endphp
+
+<div class="p-1">
+
+    @forelse($notifications as $notification)
+
+    <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
+
+        <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
+            <i class="icon-sm text-white" data-lucide="bell"></i>
+        </div>
+
+        <div class="flex-grow-1 me-2">
+            <p class="mb-0">{{ $notification->title }}</p>
+
+            <p class="fs-12px text-secondary mb-0">
+                {{ \Illuminate\Support\Str::limit($notification->message,40) }}
+            </p>
+
+            <small class="text-muted">
+                {{ $notification->created_at->diffForHumans() }}
+            </small>
+        </div>
+
+    </a>
+
+    @empty
+
+    <div class="text-center py-4 text-secondary">
+        No notifications found.
+    </div>
+
+    @endforelse
+
+</div>
           <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-            <a href="javascript:;">View all alerts</a>
+           <a href="{{ route('notifications.index') }}">
+    View All
+</a>
           </div>
         </div>
       </li>
