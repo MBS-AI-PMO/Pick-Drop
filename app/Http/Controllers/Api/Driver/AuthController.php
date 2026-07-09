@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
+
 class AuthController extends BaseApiController
 {
     public function register(Request $request): JsonResponse
@@ -66,7 +67,7 @@ class AuthController extends BaseApiController
             return $this->handleException($e, 'Unable to register driver');
         }
     }
-
+ 
     public function login(Request $request): JsonResponse
     {
         try {
@@ -83,6 +84,13 @@ class AuthController extends BaseApiController
             if (!$user || !Hash::check($validated['password'], $user->password)) {
                 return $this->errorResponse('Invalid credentials', 401);
             }
+            if (is_null($user->email_verified_at)) {
+    return response()->json([
+        'success' => false,
+        'message' => 'Please verify your email address before logging in.',
+        'redirect_to' => 'verify-email'
+    ], 403);
+}
 
             $user->tokens()->delete();
             $token = $user->createToken('driver-api')->plainTextToken;
@@ -97,6 +105,43 @@ class AuthController extends BaseApiController
             return $this->handleException($e, 'Unable to login driver');
         }
     }
+    public function resendOtp(Request $request): JsonResponse
+{
+    try {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $validated['email'])
+            ->where('role', 'driver')
+            ->first();
+
+        if (!$user) {
+            return $this->errorResponse('User not found.', 404);
+        }
+
+        if ($user->email_verified_at) {
+            return $this->errorResponse('Email is already verified.', 422);
+        }
+
+        // New 6-digit OTP
+        $otp = rand(100000, 999999);
+
+        $user->update([
+            'otp' => $otp,
+        ]);
+
+        Mail::to($user->email)->send(
+            new EmailVerificationCodeMail($otp, $user->name)
+        );
+
+        return $this->successResponse([], 'A new verification code has been sent to your email.');
+    } catch (ValidationException $e) {
+        return $this->errorResponse('Validation failed', 422, $e->errors());
+    } catch (Throwable $e) {
+        return $this->handleException($e, 'Unable to resend OTP');
+    }
+}
 
     public function logout(Request $request): JsonResponse
     {
