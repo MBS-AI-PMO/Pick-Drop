@@ -11,7 +11,12 @@
         <div class="input-group-text">
           <i data-lucide="search"></i>
         </div>
-        <input type="text" class="form-control" id="navbarForm" placeholder="Search here...">
+    <input
+    type="text"
+    class="form-control"
+    id="navbarForm"
+    placeholder="Search menu..."
+    autocomplete="off">
       </div>
     </form>
 
@@ -40,39 +45,53 @@
         <div class="dropdown-menu p-0" aria-labelledby="notificationDropdown">
           <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
             <p class="mb-0 fw-bold">Alerts</p>
-            <a href="javascript:;" class="text-secondary">Clear all</a>
+            <a href="{{ route('notifications.clear') }}"
+   class="text-secondary"
+   onclick="return confirm('Clear all notifications?')">
+    Clear all
+</a>
           </div>
-          <div class="p-1">
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-danger rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="alert-triangle"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Vehicle Breakdown - Bus #2415</p>
-                <p class="fs-12px text-secondary">10 mins ago</p>
-              </div>
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-warning rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="clock"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Route Delay - Route #1002</p>
-                <p class="fs-12px text-secondary">26 mins ago</p>
-              </div>
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-info rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="wifi-off"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>GPS Signal Lost - Bus #2410</p>
-                <p class="fs-12px text-secondary">1 hour ago</p>
-              </div>
-            </a>
-          </div>
+@php
+$notifications = \App\Models\Notification::latest()->take(3)->get();
+@endphp
+
+<div class="p-1">
+
+    @forelse($notifications as $notification)
+
+    <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
+
+        <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
+            <i class="icon-sm text-white" data-lucide="bell"></i>
+        </div>
+
+        <div class="flex-grow-1 me-2">
+            <p class="mb-0">{{ $notification->title }}</p>
+
+            <p class="fs-12px text-secondary mb-0">
+                {{ \Illuminate\Support\Str::limit($notification->message,40) }}
+            </p>
+
+            <small class="text-muted">
+                {{ $notification->created_at->diffForHumans() }}
+            </small>
+        </div>
+
+    </a>
+
+    @empty
+
+    <div class="text-center py-4 text-secondary">
+        No notifications found.
+    </div>
+
+    @endforelse
+
+</div>
           <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-            <a href="javascript:;">View all alerts</a>
+           <a href="{{ route('notifications.index') }}">
+    View All
+</a>
           </div>
         </div>
       </li>
@@ -80,18 +99,29 @@
       {{-- Profile --}}
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <div class="w-30px h-30px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:13px;">A</div>
-          <span class="d-none d-md-inline-block fw-semibold" style="font-size:14px;">Admin</span>
+          <div class="w-30px h-30px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:13px;">
+    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+</div>
+          <span class="d-none d-md-inline-block fw-semibold" style="font-size:14px;">
+    {{ auth()->user()->name }}
+</span>
         </a>
         <div class="dropdown-menu p-0" aria-labelledby="profileDropdown">
           <div class="d-flex flex-column align-items-center border-bottom px-5 py-3">
             <div class="mb-2">
-              <div class="w-60px h-60px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:22px;">A</div>
+             <div class="w-60px h-60px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:22px;">
+    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+</div>
             </div>
-            <div class="text-center">
-              <p class="fs-16px fw-bolder mb-0">Admin</p>
-              <p class="fs-12px text-secondary">admin@pickdrop.com</p>
-            </div>
+<div class="text-center">
+    <p class="fs-16px fw-bolder mb-0">
+        {{ Auth::user()->name }}
+    </p>
+
+    <p class="fs-12px text-secondary">
+        {{ Auth::user()->email }}
+    </p>
+</div>
           </div>
           <ul class="list-unstyled p-1">
             <li>

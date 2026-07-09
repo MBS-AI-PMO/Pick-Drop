@@ -104,6 +104,64 @@ Author: PickDrop Team
 
   @stack('style')
 </head>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const input = document.getElementById('navbarForm');
+
+    if (!input) return;
+
+    input.addEventListener('keydown', function (e) {
+
+        if (e.key !== 'Enter') return;
+
+        e.preventDefault();
+
+        const keyword = this.value.trim().toLowerCase();
+
+        const routes = {
+            'dashboard': "{{ route('dashboard') }}",
+
+            'user': "{{ route('users.index') }}",
+            'users': "{{ route('users.index') }}",
+
+            'vehicle': "{{ route('vehicles.index') }}",
+            'vehicles': "{{ route('vehicles.index') }}",
+
+            'vehicle category': "{{ route('vehicle-categories.index') }}",
+            'categories': "{{ route('vehicle-categories.index') }}",
+
+            'city': "{{ route('locations.cities.index') }}",
+            'cities': "{{ route('locations.cities.index') }}",
+
+            'area': "{{ route('locations.areas.index') }}",
+            'areas': "{{ route('locations.areas.index') }}",
+
+            'route': "{{ route('routes.index') }}",
+            'routes': "{{ route('routes.index') }}",
+
+            'charges': "{{ route('charges.index') }}",
+
+            'payments': "{{ route('payments.index') }}",
+
+            'reports': "{{ route('reports.index') }}",
+
+            'profile': "{{ route('general.profile') }}"
+        };
+
+        if (routes[keyword]) {
+
+            window.location.href = routes[keyword];
+
+            return;
+        }
+
+        alert('No matching menu found.');
+
+    });
+
+});
+</script>
 <body data-base-url="{{route('dashboard')}}">
 
   <script>
