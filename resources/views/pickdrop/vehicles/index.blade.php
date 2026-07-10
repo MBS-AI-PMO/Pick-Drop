@@ -106,6 +106,35 @@
             </td>
             <td class="py-3 text-center">
               <div class="d-flex justify-content-center align-items-center gap-2">
+@if($vehicle->driver_id)
+
+<form action="{{ route('vehicles.unassign', $vehicle->id) }}"
+      method="POST"
+      class="d-inline">
+    @csrf
+    <button type="submit"
+            class="btn btn-sm btn-warning btn-icon"
+            title="Unassign Driver"
+            onclick="return confirm('Unassign this driver?')">
+        <i data-lucide="user-minus" class="icon-sm"></i>
+    </button>
+</form>
+
+@else
+
+<button
+    type="button"
+    class="btn btn-sm btn-success btn-icon"
+    title="Assign Driver"
+    onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
+        "type_name"   => optional($vehicle->category)->vehicle_name,
+        "capacity_val"=> optional($vehicle->category)->passenger_capacity,
+        "driver_name" => optional($vehicle->driver)->name
+    ])))'>
+    <i data-lucide="user-plus" class="icon-sm"></i>
+</button>
+
+@endif
                 <button class="btn btn-sm btn-light btn-icon" title="View / Edit"
                   onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
                     "type_name"   => optional($vehicle->category)->vehicle_name,
@@ -114,6 +143,7 @@
                   ])))'>
                   <i data-lucide="eye" class="icon-sm"></i>
                 </button>
+
                 <form action="{{ route('vehicles.destroy', $vehicle->id) }}" method="POST"
                       class="d-inline" onsubmit="confirmDelete(event, this)">
                   @csrf
@@ -393,8 +423,10 @@
       badge.style.background = '#f3f4f6'; badge.style.color = '#6b7280';
     }
 
-    document.getElementById('deleteVehicleForm').action = `/vehicles/${vehicle.id}`;
-    document.getElementById('editVehicleForm').action   = `/vehicles/${vehicle.id}`;
+    const appUrl = "{{ config('app.url') }}";
+
+    document.getElementById('deleteVehicleForm').action = `${appUrl}/vehicles/${vehicle.id}`;
+    document.getElementById('editVehicleForm').action   = `${appUrl}/vehicles/${vehicle.id}`;
 
     document.getElementById('vEditName').value    = vehicle.name          || '';
     document.getElementById('vEditPlate').value   = vehicle.license_plate || '';

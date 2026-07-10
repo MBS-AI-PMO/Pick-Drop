@@ -33,7 +33,12 @@ class VehicleController extends Controller
             $types = VehicleCategory::select('id', 'vehicle_name', 'passenger_capacity')->get();
 
             // Drivers
-            $drivers = User::where('role', 'driver')->get();
+ $drivers = User::where('role', 'driver')
+    ->where(function ($query) {
+        $query->whereDoesntHave('vehicle')
+              ->orWhereHas('vehicle');
+    })
+    ->get();
 
             return view('pickdrop.vehicles.index', compact('vehicles', 'types', 'drivers'));
         } catch (\Throwable $e) {
@@ -44,6 +49,24 @@ class VehicleController extends Controller
             return redirect()->back()->with('error', 'Failed to load vehicles: ' . $e->getMessage());
         }
     }
+    public function unassign(Vehicle $vehicle)
+{
+    try {
+
+        $vehicle->update([
+            'driver_id' => null,
+        ]);
+
+        return redirect()->route('vehicles.index')
+            ->with('success', 'Driver unassigned successfully.');
+
+    } catch (\Throwable $e) {
+
+        return redirect()->back()
+            ->with('error', 'Unable to unassign driver.');
+
+    }
+}
 
     public function store(Request $request)
     {
@@ -57,6 +80,19 @@ class VehicleController extends Controller
         ]);
         
         try {
+            if ($request->filled('driver_id')) {
+
+    $alreadyAssigned = Vehicle::where('driver_id', $request->driver_id)->exists();
+
+    if ($alreadyAssigned) {
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'This driver is already assigned to another vehicle.');
+    }
+}
+if ($request->status == 'Maintenance' && $request->filled('driver_id')) {
+    return back()->withInput()->with('error', 'Cannot assign a driver to a vehicle under maintenance.');
+}
             Vehicle::create([
                 'name' => $request->string('name'),
                 'license_plate' => $request->string('license_plate'),
@@ -93,6 +129,21 @@ class VehicleController extends Controller
         ]);
 
         try {
+            if ($request->filled('driver_id')) {
+
+    $alreadyAssigned = Vehicle::where('driver_id', $request->driver_id)
+        ->where('id', '!=', $vehicle->id)
+        ->exists();
+
+    if ($alreadyAssigned) {
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'This driver is already assigned to another vehicle.');
+    }
+}
+if ($request->status == 'Maintenance' && $request->filled('driver_id')) {
+    return back()->withInput()->with('error', 'Cannot assign a driver to a vehicle under maintenance.');
+}
             $vehicle->update([
                 'name' => $request->string('name'),
                 'license_plate' => $request->string('license_plate'),

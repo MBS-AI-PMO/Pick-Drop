@@ -57,6 +57,10 @@ class User extends Authenticatable
             'service_areas' => 'array',
         ];
     }
+    public function vehicle()
+{
+    return $this->hasOne(Vehicle::class, 'driver_id');
+}
 
     public function students()
     {
