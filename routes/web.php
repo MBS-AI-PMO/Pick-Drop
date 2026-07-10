@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\PickDropChargeController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\SchoolRouteController;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 use App\Models\SchoolRoute;
+
 use App\Http\Controllers\NotificationController;
 
 
@@ -59,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
     ->name('notifications.index');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
     ->name('notifications.clear');
+    Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
+    ->name('vehicles.unassign');
 });
 
 // Auth Routes (Public)

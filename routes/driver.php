@@ -31,8 +31,8 @@ Route::prefix('driver')->group(function () {
     Route::post('logout',   [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.driver.logout');
     Route::get('cities', [LocationController::class, 'cities'])->name('api.driver.cities.index');
     Route::get('cities/{city}/areas', [LocationController::class, 'areas'])->name('api.driver.cities.areas');
-    Route::post('/verifylemail', [AuthController::class, 'verifyOtp']); 
-    Route::post('/resend/otp', [AuthController::class, 'resendOtp'])->name('api.driver.verify.otp');
+    Route::post('/verify-email', [AuthController::class, 'verifyOtp']); 
+    Route::post('/resend/otp', [AuthController::class, 'resendOtp']);
 
     Route::middleware('auth:sanctum')->group(function () {
         // Profile (city_id, service_areas[], home_address, name, phone)
