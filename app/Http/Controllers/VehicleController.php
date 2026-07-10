@@ -33,10 +33,15 @@ class VehicleController extends Controller
             $types = VehicleCategory::select('id', 'vehicle_name', 'passenger_capacity')->get();
 
             // Drivers
-$drivers = User::where('role', 'driver')
-    ->whereDoesntHave('vehicle')
-    ->get();
+$assignedDriverIds = Vehicle::whereNotNull('driver_id')
+    ->pluck('driver_id');
 
+$drivers = User::where('role', 'driver')
+    ->where(function ($query) use ($assignedDriverIds) {
+        $query->whereNotIn('id', $assignedDriverIds)
+              ->orWhereHas('vehicle');
+    })
+    ->get();
             return view('pickdrop.vehicles.index', compact('vehicles', 'types', 'drivers'));
         } catch (\Throwable $e) {
             Log::error('Failed to load vehicles index', [
