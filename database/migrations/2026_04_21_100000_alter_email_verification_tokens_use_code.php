@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::table('email_verification_tokens', function (Blueprint $table) {
             $table->dropUnique(['token']);
         });
+        
 
         Schema::table('email_verification_tokens', function (Blueprint $table) {
             $table->dropColumn('token');
