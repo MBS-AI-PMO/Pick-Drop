@@ -11,14 +11,14 @@
   <div>
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-1">
-        <li class="breadcrumb-item"><a href="#" class="text-decoration-none text-secondary">Route Management</a></li>
+        <li class="breadcrumb-item"><a href="{{ route('routes.index') }}" class="text-decoration-none text-secondary">Route Management</a></li>
         <li class="breadcrumb-item active">Create Route</li>
       </ol>
     </nav>
     <h4 class="mb-1">Create New Route</h4>
     <p class="text-secondary mb-0">Define a new transportation route with stops and assignments</p>
   </div>
-  <a href="#" class="btn btn-light">
+  <a href="{{ route('routes.index') }}" class="btn btn-light">
     <i data-lucide="arrow-left" class="icon-sm me-1"></i> Back to Routes
   </a>
 </div>
@@ -98,9 +98,10 @@
             <div class="col-12">
               <label class="form-label fw-semibold">Final Destination <span class="text-danger">*</span></label>
               <input type="text" name="destination" id="destinationAddress" class="form-control mb-2"
-                     placeholder="Search destination address..." value="{{ old('destination') }}" required>
-              <small class="text-muted d-block mb-2">Type to search from map suggestions, or manually enter destination text.</small>
+                     placeholder="Search destination address..." value="{{ old('destination') }}" required autocomplete="off">
+              <small class="text-muted d-block mb-2">Type to search from map suggestions, click the map, or drag the marker.</small>
               <div id="destinationMap" class="border rounded" style="height: 260px;"></div>
+              <div id="destinationMapStatus" class="text-danger fs-13px mt-2 d-none"></div>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Destination Latitude <span class="text-danger">*</span></label>
@@ -130,7 +131,6 @@
           <h6 class="mb-0 fw-bold">Route Preview</h6>
         </div>
         <div class="card-body">
-          {{-- Mini Map Placeholder --}}
           <div class="rounded-3 d-flex flex-column align-items-center justify-content-center text-center mb-3"
             style="height:180px; background:linear-gradient(135deg,#e8f0fe 0%,#f0f4ff 100%); position:relative;">
             <svg width="100%" height="100%" style="position:absolute;top:0;left:0;opacity:0.2;">
@@ -153,7 +153,6 @@
             <p class="text-secondary fs-12px mt-2 mb-0" style="position:relative;z-index:1;">Route Map Preview</p>
           </div>
 
-          {{-- Summary Info --}}
           <div class="d-flex flex-column gap-2">
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Total Stops</span>
@@ -184,7 +183,7 @@
           <button type="reset" class="btn btn-light w-100">
             <i data-lucide="rotate-ccw" class="icon-sm me-1"></i> Reset Form
           </button>
-          <a href="#" class="btn btn-light w-100 text-danger">
+          <a href="{{ route('routes.index') }}" class="btn btn-light w-100 text-danger">
             <i data-lucide="x" class="icon-sm me-1"></i> Cancel
           </a>
         </div>
@@ -196,11 +195,20 @@
 
 @endsection
 
+@php $googleMapsApiKey = config('services.google.maps_api_key'); @endphp
+
 @push('plugin-scripts')
-@php $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', ''); @endphp
+<script src="{{ asset('build/plugins/jquery/jquery.min.js') }}"></script>
 <script src="{{ asset('build/plugins/select2/select2.min.js') }}"></script>
 @if($googleMapsApiKey)
-<script src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapsApiKey }}&libraries=places&language=en&region=PK" async defer></script>
+<script>
+  window.initRouteDestinationMap = function () {
+    if (typeof window.onGoogleMapsReady === 'function') {
+      window.onGoogleMapsReady();
+    }
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapsApiKey }}&libraries=places&language=en&region=PK&callback=initRouteDestinationMap&loading=async"></script>
 @endif
 @endpush
 
@@ -210,6 +218,8 @@
     return [
       'id' => $city->id,
       'name' => $city->name,
+      'latitude' => $city->latitude,
+      'longitude' => $city->longitude,
       'areas' => $city->areas->map(function ($area) {
         return [
           'id' => $area->id,
@@ -222,46 +232,8 @@
   })->values();
 @endphp
 <script>
-  @if(session('success'))
-  Swal.fire({
-    icon: 'success',
-    title: 'Success',
-    text: "{{ session('success') }}",
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true
-  });
-  @endif
-
-  @if(session('error'))
-  Swal.fire({
-    icon: 'error',
-    title: 'Error',
-    text: "{{ session('error') }}",
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 4500,
-    timerProgressBar: true
-  });
-  @endif
-
-  @if($errors->any())
-  Swal.fire({
-    icon: 'error',
-    title: 'Validation Error',
-    html: `{!! implode('<br>', $errors->all()) !!}`,
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 5500,
-    timerProgressBar: true
-  });
-  @endif
-
   const citiesWithAreas = @json($citiesWithAreasJson);
+  const hasGoogleMapsKey = @json((bool) $googleMapsApiKey);
 
   const citySelect = document.getElementById('routeCitySelect');
   const areaSelect = document.getElementById('routeAreaSelect');
@@ -270,6 +242,7 @@
   const destinationLat = document.getElementById('destinationLat');
   const destinationLng = document.getElementById('destinationLng');
   const destinationAddress = document.getElementById('destinationAddress');
+  const mapStatusEl = document.getElementById('destinationMapStatus');
 
   let destinationMap;
   let destinationMarker;
@@ -277,6 +250,12 @@
   let destinationAutocomplete;
   let destinationSearchDebounce;
   let select2FallbackLoading = false;
+
+  function showMapStatus(message) {
+    if (!mapStatusEl) return;
+    mapStatusEl.textContent = message || '';
+    mapStatusEl.classList.toggle('d-none', !message);
+  }
 
   function loadSelect2Fallback(callback) {
     if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
@@ -286,24 +265,43 @@
     if (select2FallbackLoading) return;
     select2FallbackLoading = true;
 
-    if (!document.getElementById('routeAreaSelect2FallbackCss')) {
-      const link = document.createElement('link');
-      link.id = 'routeAreaSelect2FallbackCss';
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css';
-      document.head.appendChild(link);
+    function ensureJquery(next) {
+      if (window.jQuery) {
+        next();
+        return;
+      }
+      const jq = document.createElement('script');
+      jq.src = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
+      jq.onload = next;
+      document.body.appendChild(jq);
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
-    script.onload = function () {
-      select2FallbackLoading = false;
-      callback?.();
-    };
-    script.onerror = function () {
-      select2FallbackLoading = false;
-    };
-    document.body.appendChild(script);
+    ensureJquery(function () {
+      if (!document.getElementById('routeAreaSelect2FallbackCss')) {
+        const link = document.createElement('link');
+        link.id = 'routeAreaSelect2FallbackCss';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css';
+        document.head.appendChild(link);
+      }
+
+      if (window.jQuery.fn.select2) {
+        select2FallbackLoading = false;
+        callback?.();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
+      script.onload = function () {
+        select2FallbackLoading = false;
+        callback?.();
+      };
+      script.onerror = function () {
+        select2FallbackLoading = false;
+      };
+      document.body.appendChild(script);
+    });
   }
 
   function initRouteAreaSelect2() {
@@ -327,9 +325,13 @@
     });
   }
 
-  function getSelectedCityAreas() {
+  function getSelectedCity() {
     const selectedCityId = citySelect.value;
-    const city = citiesWithAreas.find((item) => String(item.id) === String(selectedCityId));
+    return citiesWithAreas.find((item) => String(item.id) === String(selectedCityId)) || null;
+  }
+
+  function getSelectedCityAreas() {
+    const city = getSelectedCity();
     return city ? city.areas : [];
   }
 
@@ -388,9 +390,15 @@
 
   function initDestinationMap() {
     if (destinationMap || typeof google === 'undefined' || !google.maps) return;
-    destinationMap = new google.maps.Map(document.getElementById('destinationMap'), {
+    const mapEl = document.getElementById('destinationMap');
+    if (!mapEl) return;
+
+    destinationMap = new google.maps.Map(mapEl, {
       center: { lat: 24.8607, lng: 67.0011 },
-      zoom: 11
+      zoom: 11,
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: false
     });
     destinationGeocoder = new google.maps.Geocoder();
     destinationMap.addListener('click', function (event) {
@@ -415,16 +423,37 @@
         destinationAddress.value = place.formatted_address || destinationAddress.value;
       });
     }
+
+    showMapStatus('');
+    restoreDestinationOnMap();
+  }
+
+  function restoreDestinationOnMap() {
+    if (!destinationMap) return;
+    if (destinationLat.value && destinationLng.value) {
+      setDestinationCoordinates(destinationLat.value, destinationLng.value, true);
+      return;
+    }
+    if (destinationAddress.value) {
+      searchDestinationFromAddress();
+    }
   }
 
   function ensureDestinationMapReady() {
     if (destinationMap) return;
+    if (!hasGoogleMapsKey) {
+      showMapStatus('Google Maps API key is missing. Add GOOGLE_MAPS_API_KEY to your .env and clear config cache.');
+      return;
+    }
     let attempts = 0;
     const timer = setInterval(() => {
       attempts++;
       initDestinationMap();
-      if (destinationMap || attempts >= 20) {
+      if (destinationMap || attempts >= 40) {
         clearInterval(timer);
+        if (!destinationMap) {
+          showMapStatus('Google Maps failed to load. Check API key, billing, and that Maps JavaScript API + Places API are enabled.');
+        }
       }
     }, 250);
   }
@@ -450,6 +479,11 @@
 
   citySelect?.addEventListener('change', function () {
     populateAreas();
+    const city = getSelectedCity();
+    if (city?.latitude && city?.longitude && destinationMap) {
+      destinationMap.setCenter({ lat: Number(city.latitude), lng: Number(city.longitude) });
+      destinationMap.setZoom(11);
+    }
   });
 
   allowMultiArea?.addEventListener('change', function () {
@@ -498,17 +532,14 @@
     setDestinationCoordinates(destinationLat.value, destinationLng.value, false);
   });
 
+  window.onGoogleMapsReady = function () {
+    initDestinationMap();
+  };
+
   document.addEventListener('DOMContentLoaded', function () {
     areaSelect.multiple = !!allowMultiArea?.checked;
     populateAreas(@json(old('area_id')), @json(old('area_ids', [])));
     ensureDestinationMapReady();
-    setTimeout(() => {
-      if (destinationLat.value && destinationLng.value) {
-        setDestinationCoordinates(destinationLat.value, destinationLng.value, true);
-      } else if (destinationAddress.value) {
-        searchDestinationFromAddress();
-      }
-    }, 700);
   });
 </script>
 @endpush

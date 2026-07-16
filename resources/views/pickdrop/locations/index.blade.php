@@ -332,7 +332,7 @@
 
 @push('plugin-scripts')
 @php
-  $googleMapsApiKey = env('GOOGLE_MAPS_API_KEY', '');
+  $googleMapsApiKey = config('services.google.maps_api_key');
 @endphp
 @if($googleMapsApiKey)
 <script src="https://maps.googleapis.com/maps/api/js?key={{ $googleMapsApiKey }}&libraries=places&language=en&region=PK" async defer></script>
