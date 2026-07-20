@@ -28,6 +28,19 @@
           </div>
         </div>
 
+        <div class="col-12 col-md-3">
+    <select class="form-select" name="status" onchange="this.form.submit()">
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+    </select>
+</div>
+
+<div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">
+        Filter
+    </button>
+</div>
         {{-- Spacer --}}
         <div class="col"></div>
 

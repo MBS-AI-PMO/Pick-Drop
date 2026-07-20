@@ -79,6 +79,7 @@ class SchoolRouteController extends Controller
 
     public function store(Request $request)
     {
+        dd($request->all());
         $data = $request->validate([
             'city_id'                 => 'required|exists:cities,id',
             'area_id'                 => 'nullable|exists:areas,id',
