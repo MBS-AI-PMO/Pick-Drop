@@ -14,6 +14,8 @@ use Illuminate\Auth\Events\PasswordReset;
 use App\Models\SchoolRoute;
 
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\DriverVerificationController;
+use App\Http\Controllers\VehicleVerificationController;
 
 
 Route::get('/', function () {
@@ -35,6 +37,16 @@ Route::middleware(['auth'])->group(function () {
     
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+    Route::get('/driver-verifications', [DriverVerificationController::class, 'index'])->name('driver-verifications.index');
+    Route::get('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'show'])->name('driver-verifications.show');
+    Route::post('/driver-verifications/{driverVerification}/approve', [DriverVerificationController::class, 'approve'])->name('driver-verifications.approve');
+    Route::post('/driver-verifications/{driverVerification}/reject', [DriverVerificationController::class, 'reject'])->name('driver-verifications.reject');
+    Route::get('/driver-verifications/{driverVerification}/document/{field}', [DriverVerificationController::class, 'document'])->name('driver-verifications.document');
+    Route::get('/vehicle-verifications', [VehicleVerificationController::class, 'index'])->name('vehicle-verifications.index');
+    Route::get('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'show'])->name('vehicle-verifications.show');
+    Route::post('/vehicle-verifications/{vehicleVerification}/approve', [VehicleVerificationController::class, 'approve'])->name('vehicle-verifications.approve');
+    Route::post('/vehicle-verifications/{vehicleVerification}/reject', [VehicleVerificationController::class, 'reject'])->name('vehicle-verifications.reject');
+    Route::get('/vehicle-verifications/{vehicleVerification}/document/{field}', [VehicleVerificationController::class, 'document'])->name('vehicle-verifications.document');
     Route::resource('vehicles', \App\Http\Controllers\VehicleController::class)->except(['create', 'show', 'edit']);
     Route::resource('vehicle-categories', \App\Http\Controllers\VehicleCategoryController::class)->except(['create', 'show', 'edit']);
     Route::get('/locations/cities', [LocationController::class, 'citiesIndex'])->name('locations.cities.index');

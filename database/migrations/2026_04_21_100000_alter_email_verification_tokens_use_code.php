@@ -8,12 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('email_verification_tokens', function (Blueprint $table) {
-            $table->dropUnique(['token']);
-        });
+        if (Schema::hasColumn('email_verification_tokens', 'code')) {
+            return;
+        }
+
+        if (Schema::hasColumn('email_verification_tokens', 'token')) {
+            Schema::table('email_verification_tokens', function (Blueprint $table) {
+                $table->dropUnique(['token']);
+            });
+
+            Schema::table('email_verification_tokens', function (Blueprint $table) {
+                $table->dropColumn('token');
+            });
+        }
 
         Schema::table('email_verification_tokens', function (Blueprint $table) {
-            $table->dropColumn('token');
             $table->string('code', 6);
             $table->index(['user_id', 'code']);
         });

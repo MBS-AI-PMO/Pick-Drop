@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\Driver\RideController;
 use App\Http\Controllers\Api\Driver\IssueController;
 use App\Http\Controllers\Api\Driver\NotificationController;
 use App\Http\Controllers\Api\Driver\MessageController;
+use App\Http\Controllers\Api\Driver\VerificationController;
+use App\Http\Controllers\Api\Driver\VehicleVerificationController;
 use App\Http\Controllers\Api\ParentSelf\LocationController;
 
 /*
@@ -23,7 +25,7 @@ use App\Http\Controllers\Api\ParentSelf\LocationController;
 
 Route::prefix('driver')->group(function () {
 
-    // Auth (register: city_id, service_areas[], home_address, ...)
+    // Step 1 Auth: name, phone, email, password, referral_code (optional)
     Route::post('register', [AuthController::class, 'register'])->name('api.driver.register');
     Route::post('login',    [AuthController::class, 'login'])->name('api.driver.login');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('api.driver.forgot-password');
@@ -31,19 +33,27 @@ Route::prefix('driver')->group(function () {
     Route::post('logout',   [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.driver.logout');
     Route::get('cities', [LocationController::class, 'cities'])->name('api.driver.cities.index');
     Route::get('cities/{city}/areas', [LocationController::class, 'areas'])->name('api.driver.cities.areas');
-    Route::post('/verify-email', [AuthController::class, 'verifyOtp']); 
+    Route::post('/verify-email', [AuthController::class, 'verifyOtp']);
     Route::post('/resend/otp', [AuthController::class, 'resendOtp']);
 
     Route::middleware('auth:sanctum')->group(function () {
+        // Step 2: Driver Verification (KYC) — no vehicle info
+        Route::get('verification', [VerificationController::class, 'show'])->name('api.driver.verification.show');
+        Route::post('verification', [VerificationController::class, 'store'])->name('api.driver.verification.store');
+
+        // Step 3: Vehicle verification — car details and documents
+        Route::get('vehicle-verification', [VehicleVerificationController::class, 'show'])->name('api.driver.vehicle-verification.show');
+        Route::post('vehicle-verification', [VehicleVerificationController::class, 'store'])->name('api.driver.vehicle-verification.store');
+
         // Profile (city_id, service_areas[], home_address, name, phone)
         Route::get('me', [ProfileController::class, 'show'])->name('api.driver.me.show');
         Route::put('me', [ProfileController::class, 'update'])->name('api.driver.me.update');
         Route::put('account/change-password', [AccountController::class, 'changePassword'])->name('api.driver.account.change-password');
         Route::delete('account', [AccountController::class, 'deleteAccount'])->name('api.driver.account.delete');
 
-        // Service areas (cities/areas jahan driver service deta hai)
+        // Optional later update of service areas (selected during KYC personal info)
         Route::get('service-areas',  [ServiceAreaController::class, 'index'])->name('api.driver.service-areas.index');
-        Route::post('service-areas', [ServiceAreaController::class, 'sync'])->name('api.driver.service-areas.sync'); // body: area_ids[] or service_areas[]
+        Route::post('service-areas', [ServiceAreaController::class, 'sync'])->name('api.driver.service-areas.sync');
 
         // Parent/Self requests
         Route::get('requests/available', [RequestController::class, 'available'])->name('api.driver.requests.available');
