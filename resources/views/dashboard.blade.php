@@ -70,7 +70,7 @@
   </div>
 </div>
 
-{{-- Live Fleet Tracking --}}
+<!-- {{-- Live Fleet Tracking --}}
 <div class="row g-3 mb-4">
   <div class="col-12">
     <div class="card">
@@ -131,7 +131,7 @@
       </div>
     </div>
   </div>
-</div>
+</div> -->
 
 {{-- Active Trips + Recent Alerts --}}
 <div class="row g-3 mb-4">
