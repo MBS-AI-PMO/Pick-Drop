@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('driver_pickup_request_rejections')) {
+            return;
+        }
+
      Schema::create('driver_pickup_request_rejections', function (Blueprint $table) {
         $table->id();
 

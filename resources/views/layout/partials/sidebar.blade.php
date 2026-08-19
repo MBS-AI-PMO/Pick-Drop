@@ -27,6 +27,20 @@
         </a>
       </li>
 
+      <li class="nav-item {{ active_class(['driver-verifications', 'driver-verifications/*']) }}">
+        <a href="{{ route('driver-verifications.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="badge-check"></i>
+          <span class="link-title">Driver KYC</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['vehicle-verifications', 'vehicle-verifications/*']) }}">
+        <a href="{{ route('vehicle-verifications.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="car-front"></i>
+          <span class="link-title">Vehicle Verification</span>
+        </a>
+      </li>
+
       <li class="nav-item {{ request()->is('locations*') ? 'active' : '' }}">
         <a class="nav-link {{ request()->is('locations*') ? 'active' : '' }}"
            data-bs-toggle="collapse" href="#locations-nav" role="button"

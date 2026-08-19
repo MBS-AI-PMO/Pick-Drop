@@ -11,6 +11,10 @@ return new class extends Migration
      */
    public function up(): void
 {
+    if (Schema::hasColumn('users', 'otp')) {
+        return;
+    }
+
     Schema::table('users', function (Blueprint $table) {
         $table->string('otp', 6)->nullable()->after('email_verified_at');
     });
