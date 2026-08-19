@@ -36,62 +36,72 @@
 
       {{-- Notifications --}}
       <li class="nav-item dropdown">
+        @php
+          $notifications = \App\Models\Notification::latest()->take(4)->get();
+          $unreadNotificationsCount = \App\Models\Notification::where('is_read', false)->count();
+        @endphp
         <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <i data-lucide="bell"></i>
-          <div class="indicator">
-            <div class="circle"></div>
-          </div>
+          @if($unreadNotificationsCount > 0)
+            <div class="indicator">
+              <div class="circle"></div>
+            </div>
+          @endif
         </a>
-        <div class="dropdown-menu p-0" aria-labelledby="notificationDropdown">
-          <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
-            <p class="mb-0 fw-bold">Alerts</p>
-            <a href="{{ route('notifications.clear') }}"
-   class="text-secondary"
-   onclick="return confirm('Clear all notifications?')">
-    Clear all
-</a>
+        <div class="dropdown-menu notification-dropdown p-0" aria-labelledby="notificationDropdown">
+          <div class="notification-dropdown__header">
+            <h6 class="notification-dropdown__title mb-0">Alerts</h6>
+            <div class="d-flex align-items-center gap-2">
+              @if($unreadNotificationsCount > 0)
+                <span class="notification-count-badge">{{ $unreadNotificationsCount }} new</span>
+              @endif
+              <a href="{{ route('notifications.clear') }}"
+                class="notification-clear-link"
+                onclick="return confirm('Clear all notifications?')">
+                Clear all
+              </a>
+            </div>
           </div>
-@php
-$notifications = \App\Models\Notification::latest()->take(3)->get();
-@endphp
 
-<div class="p-1">
+          <div class="notification-dropdown__body">
+            @forelse($notifications as $notification)
+              @php
+                $notificationType = strtolower($notification->type ?? 'info');
+                $notificationIcon = $notificationType === 'success' ? 'check-circle' : ($notificationType === 'warning' ? 'alert-triangle' : 'bell');
+              @endphp
 
-    @forelse($notifications as $notification)
+              <a href="{{ route('notifications.index') }}" class="notification-dropdown__item {{ $notification->is_read ? '' : 'is-unread' }}">
+                <span class="notification-dropdown__icon notification-dropdown__icon--{{ $notificationType }}">
+                  <i class="icon-sm" data-lucide="{{ $notificationIcon }}"></i>
+                </span>
 
-    <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
+                <span class="notification-dropdown__content">
+                  <span class="notification-dropdown__item-title">{{ $notification->title }}</span>
+                  <span class="notification-dropdown__message">
+                    {{ \Illuminate\Support\Str::limit($notification->message, 48) }}
+                  </span>
+                  <span class="notification-dropdown__time">
+                    <i data-lucide="clock" class="icon-xs"></i>
+                    {{ $notification->created_at->diffForHumans() }}
+                  </span>
+                </span>
+              </a>
+            @empty
+              <div class="notification-empty-state">
+                <span class="notification-empty-state__icon">
+                  <i data-lucide="bell-off"></i>
+                </span>
+                <p class="mb-1 fw-semibold">No alerts yet</p>
+                <span>You are all caught up.</span>
+              </div>
+            @endforelse
+          </div>
 
-        <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-            <i class="icon-sm text-white" data-lucide="bell"></i>
-        </div>
-
-        <div class="flex-grow-1 me-2">
-            <p class="mb-0">{{ $notification->title }}</p>
-
-            <p class="fs-12px text-secondary mb-0">
-                {{ \Illuminate\Support\Str::limit($notification->message,40) }}
-            </p>
-
-            <small class="text-muted">
-                {{ $notification->created_at->diffForHumans() }}
-            </small>
-        </div>
-
-    </a>
-
-    @empty
-
-    <div class="text-center py-4 text-secondary">
-        No notifications found.
-    </div>
-
-    @endforelse
-
-</div>
-          <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-           <a href="{{ route('notifications.index') }}">
-    View All
-</a>
+          <div class="notification-dropdown__footer">
+            <a href="{{ route('notifications.index') }}" class="notification-view-all">
+              View history
+              <i data-lucide="arrow-right" class="icon-xs"></i>
+            </a>
           </div>
         </div>
       </li>

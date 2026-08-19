@@ -32,6 +32,115 @@
   const body = document.body;
   const sidebar = document.querySelector('.sidebar');
   const sidebarBody = document.querySelector('.sidebar .sidebar-body');
+  const sidebarStorageKey = 'pickdrop-sidebar-state';
+  const sidebarDesktopQuery = window.matchMedia('(min-width: 992px)');
+  const sidebarMainToggler = document.querySelector('.sidebar .sidebar-toggler');
+  let sidebarHoverBadge = null;
+
+  if (sidebar) {
+    sidebarHoverBadge = document.createElement('div');
+    sidebarHoverBadge.className = 'sidebar-hover-badge';
+    sidebarHoverBadge.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(sidebarHoverBadge);
+  }
+
+  const getSidebarState = function() {
+    try {
+      return window.localStorage.getItem(sidebarStorageKey);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const setSidebarState = function(value) {
+    try {
+      window.localStorage.setItem(sidebarStorageKey, value);
+    } catch (error) {
+      return;
+    }
+  };
+
+  const syncSidebarToggler = function() {
+    if (sidebarMainToggler) {
+      sidebarMainToggler.classList.toggle('active', sidebarDesktopQuery.matches && body.classList.contains('sidebar-folded'));
+    }
+  };
+
+  const hideSidebarBadge = function() {
+    if (sidebarHoverBadge) {
+      sidebarHoverBadge.classList.remove('is-visible');
+    }
+  };
+
+  const applySidebarState = function() {
+    if (sidebarDesktopQuery.matches) {
+      body.classList.remove('sidebar-open', 'open-sidebar-folded');
+      if (getSidebarState() === 'folded') {
+        body.classList.add('sidebar-folded');
+      } else {
+        body.classList.remove('sidebar-folded');
+      }
+    } else {
+      body.classList.remove('sidebar-folded', 'open-sidebar-folded');
+    }
+    syncSidebarToggler();
+    hideSidebarBadge();
+  };
+
+  const getSidebarLinkLabel = function(link) {
+    const title = link.querySelector('.link-title');
+    return (title ? title.textContent : link.textContent).trim();
+  };
+
+  const showSidebarBadge = function(link) {
+    if (!sidebarHoverBadge || !sidebarDesktopQuery.matches || !body.classList.contains('sidebar-folded')) {
+      return;
+    }
+
+    const label = getSidebarLinkLabel(link);
+
+    if (!label) {
+      hideSidebarBadge();
+      return;
+    }
+
+    const linkRect = link.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+
+    sidebarHoverBadge.textContent = label;
+    sidebarHoverBadge.style.left = `${sidebarRect.right + 10}px`;
+    sidebarHoverBadge.style.top = `${linkRect.top + (linkRect.height / 2)}px`;
+    sidebarHoverBadge.classList.add('is-visible');
+  };
+
+  const pageScrollIndicator = document.createElement('div');
+  pageScrollIndicator.className = 'page-scroll-indicator';
+  pageScrollIndicator.setAttribute('aria-hidden', 'true');
+  pageScrollIndicator.innerHTML = '<span></span>';
+  document.body.appendChild(pageScrollIndicator);
+
+  const updatePageScrollIndicator = function() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const thumb = pageScrollIndicator.querySelector('span');
+
+    if (!thumb || scrollHeight <= 12) {
+      pageScrollIndicator.classList.remove('is-visible');
+      return;
+    }
+
+    const trackHeight = pageScrollIndicator.offsetHeight;
+    const thumbHeight = thumb.offsetHeight;
+    const maxMove = Math.max(trackHeight - thumbHeight, 0);
+    const progress = Math.min(Math.max(scrollTop / scrollHeight, 0), 1);
+
+    thumb.style.transform = `translateY(${progress * maxMove}px)`;
+    pageScrollIndicator.classList.add('is-visible');
+  };
+
+  window.addEventListener('scroll', updatePageScrollIndicator, { passive: true });
+  window.addEventListener('resize', updatePageScrollIndicator);
+  updatePageScrollIndicator();
 
 
   // Initializing bootstrap tooltip
@@ -68,20 +177,24 @@
 
       toggler.addEventListener('click', function(e) {
         e.preventDefault();
-        document.querySelector('.sidebar .sidebar-toggler').classList.toggle('active');
-        if (window.matchMedia('(min-width: 992px)').matches) {
+        if (sidebarDesktopQuery.matches) {
           body.classList.toggle('sidebar-folded');
-        } else if (window.matchMedia('(max-width: 991px)').matches) {
+          body.classList.remove('open-sidebar-folded');
+          setSidebarState(body.classList.contains('sidebar-folded') ? 'folded' : 'expanded');
+        } else {
           body.classList.toggle('sidebar-open');
         }
+        syncSidebarToggler();
+        hideSidebarBadge();
       });
 
     });
 
-    // To avoid layout issues, remove body and toggler classes on window resize.
+    applySidebarState();
+
+    // Keep desktop collapse and mobile drawer states separated on resize.
     window.addEventListener('resize', function(event) {
-      body.classList.remove('sidebar-folded', 'sidebar-open');
-      document.querySelector('.sidebar .sidebar-toggler').classList.remove('active');
+      applySidebarState();
     }, true);
 
   }
@@ -104,17 +217,43 @@
 
 
 
-  // Open & fold sidebar-folded on mouse enter and leave
+  // Keep folded sidebar icon-only until the user opens it from the toggler.
   if (sidebarBody) {
     sidebarBody.addEventListener('mouseenter', function () {
-      if (body.classList.contains('sidebar-folded')) {
-        body.classList.add('open-sidebar-folded');
-      }
+      body.classList.remove('open-sidebar-folded');
     });
 
     sidebarBody.addEventListener('mouseleave', function () {
-      if (body.classList.contains('sidebar-folded')) {
-        body.classList.remove('open-sidebar-folded');
+      body.classList.remove('open-sidebar-folded');
+      hideSidebarBadge();
+    });
+  }
+
+  if (sidebar) {
+    sidebar.addEventListener('mouseover', function(e) {
+      const link = e.target.closest('.nav-link');
+
+      if (link && sidebar.contains(link)) {
+        showSidebarBadge(link);
+      }
+    });
+
+    sidebar.addEventListener('mouseout', function(e) {
+      const link = e.target.closest('.nav-link');
+
+      if (link && (!e.relatedTarget || !link.contains(e.relatedTarget))) {
+        hideSidebarBadge();
+      }
+    });
+
+    sidebar.addEventListener('click', function(e) {
+      const foldedGroupToggle = e.target.closest('.nav-link[data-bs-toggle="collapse"]');
+
+      if (foldedGroupToggle && sidebarDesktopQuery.matches && body.classList.contains('sidebar-folded')) {
+        body.classList.remove('sidebar-folded', 'open-sidebar-folded');
+        setSidebarState('expanded');
+        syncSidebarToggler();
+        hideSidebarBadge();
       }
     });
   }

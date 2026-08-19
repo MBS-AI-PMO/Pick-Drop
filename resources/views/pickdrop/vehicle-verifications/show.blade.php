@@ -140,7 +140,7 @@
             @elseif($verification->status === 'approved')
               <span class="badge bg-success">Approved</span>
             @else
-              <span class="badge bg-danger">Rejected</span>
+              <span class="badge bg-danger">Declined</span>
             @endif
           </div>
         </div>
@@ -157,44 +157,61 @@
         @endif
         @if($verification->rejection_reason)
           <div class="alert alert-warning mb-0">
-            <strong>Rejection reason:</strong><br>
+            <strong>Decline reason:</strong><br>
             {{ $verification->rejection_reason }}
           </div>
         @endif
       </div>
     </div>
 
-    @if($verification->status !== 'approved')
-      <div class="card">
-        <div class="card-header">
-          <h6 class="mb-0">Admin Actions</h6>
-        </div>
-        <div class="card-body">
-          @if($verification->status === 'pending' || $verification->status === 'rejected')
-            <form method="POST" action="{{ route('vehicle-verifications.approve', $verification) }}" class="mb-3">
-              @csrf
-              <button type="submit" class="btn btn-success w-100" onclick="return confirm('Approve this vehicle verification?')">
-                Approve Vehicle
-              </button>
-            </form>
-          @endif
-
-          @if($verification->status === 'pending')
-            <form method="POST" action="{{ route('vehicle-verifications.reject', $verification) }}">
-              @csrf
-              <label class="form-label">Rejection Reason</label>
-              <textarea name="rejection_reason" class="form-control mb-2" rows="3" required placeholder="Explain why this vehicle submission was rejected...">{{ old('rejection_reason') }}</textarea>
-              @error('rejection_reason')
-                <div class="text-danger small mb-2">{{ $message }}</div>
-              @enderror
-              <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Reject this vehicle verification?')">
-                Reject Vehicle
-              </button>
-            </form>
-          @endif
-        </div>
+    <div class="card verification-action-card">
+      <div class="card-header">
+        <h6 class="mb-0">Admin Actions</h6>
       </div>
-    @endif
+      <div class="card-body">
+        <div class="verification-action-grid mb-3">
+          <form method="POST" action="{{ route('vehicle-verifications.status', $verification) }}">
+            @csrf
+            <input type="hidden" name="status" value="approved">
+            <button type="submit" class="btn btn-success w-100"
+                    {{ $verification->status === 'approved' ? 'disabled' : '' }}
+                    onclick="return confirm('Accept this vehicle verification?')">
+              <i data-lucide="check" class="icon-xs"></i>
+              Accept
+            </button>
+          </form>
+
+          <form method="POST" action="{{ route('vehicle-verifications.status', $verification) }}">
+            @csrf
+            <input type="hidden" name="status" value="pending">
+            <button type="submit" class="btn btn-outline-secondary w-100"
+                    {{ $verification->status === 'pending' ? 'disabled' : '' }}
+                    onclick="return confirm('Move this vehicle verification back to pending?')">
+              <i data-lucide="clock" class="icon-xs"></i>
+              Pending
+            </button>
+          </form>
+        </div>
+
+        <form method="POST" action="{{ route('vehicle-verifications.status', $verification) }}">
+          @csrf
+          <input type="hidden" name="status" value="rejected">
+          <label class="form-label">Decline Reason</label>
+          <textarea name="rejection_reason" class="form-control mb-2" rows="3"
+                    {{ $verification->status === 'rejected' ? 'disabled' : 'required' }}
+                    placeholder="Explain why this vehicle submission was declined...">{{ old('rejection_reason') }}</textarea>
+          @error('rejection_reason')
+            <div class="text-danger small mb-2">{{ $message }}</div>
+          @enderror
+          <button type="submit" class="btn btn-outline-danger w-100"
+                  {{ $verification->status === 'rejected' ? 'disabled' : '' }}
+                  onclick="return confirm('Decline this vehicle verification?')">
+            <i data-lucide="x" class="icon-xs"></i>
+            Decline
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

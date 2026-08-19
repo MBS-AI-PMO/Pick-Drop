@@ -122,15 +122,15 @@
     </div>
   </div>
   {{-- Pagination --}}
-  <div class="card-footer d-flex justify-content-between align-items-center py-3">
-    <small class="text-secondary">Showing 1–5 of 24 invoices</small>
-    <nav>
-      <ul class="pagination pagination-sm mb-0">
-        <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+  <div class="card-footer app-pagination-footer">
+    <small class="app-pagination-summary">Showing 1 to 5 of 24 invoices</small>
+    <nav class="app-pagination-nav" aria-label="Payment pagination">
+      <ul class="pagination mb-0">
+        <li class="page-item disabled"><a class="page-link" href="#" aria-label="Previous">&lsaquo;</a></li>
         <li class="page-item active"><a class="page-link" href="#">1</a></li>
         <li class="page-item"><a class="page-link" href="#">2</a></li>
         <li class="page-item"><a class="page-link" href="#">3</a></li>
-        <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        <li class="page-item"><a class="page-link" href="#" aria-label="Next">&rsaquo;</a></li>
       </ul>
     </nav>
   </div>

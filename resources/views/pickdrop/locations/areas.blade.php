@@ -110,11 +110,11 @@
     </div>
   </div>
   @if($areas->hasPages())
-    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-      <small class="text-muted">
-        Showing {{ $areas->firstItem() }}–{{ $areas->lastItem() }} of {{ $areas->total() }} areas
+    <div class="card-footer bg-transparent app-pagination-footer">
+      <small class="app-pagination-summary">
+        Showing {{ $areas->firstItem() }} to {{ $areas->lastItem() }} of {{ $areas->total() }} areas
       </small>
-      <div>{{ $areas->links('pagination::bootstrap-5') }}</div>
+      <div class="app-pagination-controls">{{ $areas->links('pagination::bootstrap-5') }}</div>
     </div>
   @endif
 </div>

@@ -173,11 +173,11 @@
 
   {{-- Pagination Footer --}}
   @if($vehicles->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $vehicles->firstItem() }}–{{ $vehicles->lastItem() }} of {{ $vehicles->total() }} vehicles
+  <div class="card-footer bg-transparent app-pagination-footer">
+    <small class="app-pagination-summary">
+      Showing {{ $vehicles->firstItem() }} to {{ $vehicles->lastItem() }} of {{ $vehicles->total() }} vehicles
     </small>
-    <div>
+    <div class="app-pagination-controls">
       {{ $vehicles->links('pagination::bootstrap-5') }}
     </div>
   </div>

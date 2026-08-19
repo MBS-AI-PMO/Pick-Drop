@@ -5,13 +5,11 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\PickDropChargeController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\SchoolRouteController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
-use App\Models\User;
-use App\Models\Vehicle;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
-use App\Models\SchoolRoute;
 
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DriverVerificationController;
@@ -24,26 +22,19 @@ Route::get('/', function () {
 
 // Protected Admin Routes
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        $stats = [
-            'vehicles'      => Vehicle::count(),
-            'users'         => User::count(),
-            'routes'        => SchoolRoute::count(),
-            'alerts_today'  => 0, // TODO: replace with real alerts count when available
-        ];
-
-        return view('dashboard', compact('stats'));
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
     Route::get('/driver-verifications', [DriverVerificationController::class, 'index'])->name('driver-verifications.index');
     Route::get('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'show'])->name('driver-verifications.show');
+    Route::post('/driver-verifications/{driverVerification}/status', [DriverVerificationController::class, 'updateStatus'])->name('driver-verifications.status');
     Route::post('/driver-verifications/{driverVerification}/approve', [DriverVerificationController::class, 'approve'])->name('driver-verifications.approve');
     Route::post('/driver-verifications/{driverVerification}/reject', [DriverVerificationController::class, 'reject'])->name('driver-verifications.reject');
     Route::get('/driver-verifications/{driverVerification}/document/{field}', [DriverVerificationController::class, 'document'])->name('driver-verifications.document');
     Route::get('/vehicle-verifications', [VehicleVerificationController::class, 'index'])->name('vehicle-verifications.index');
     Route::get('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'show'])->name('vehicle-verifications.show');
+    Route::post('/vehicle-verifications/{vehicleVerification}/status', [VehicleVerificationController::class, 'updateStatus'])->name('vehicle-verifications.status');
     Route::post('/vehicle-verifications/{vehicleVerification}/approve', [VehicleVerificationController::class, 'approve'])->name('vehicle-verifications.approve');
     Route::post('/vehicle-verifications/{vehicleVerification}/reject', [VehicleVerificationController::class, 'reject'])->name('vehicle-verifications.reject');
     Route::get('/vehicle-verifications/{vehicleVerification}/document/{field}', [VehicleVerificationController::class, 'document'])->name('vehicle-verifications.document');

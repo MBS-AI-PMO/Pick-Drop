@@ -49,57 +49,74 @@ Author: PickDrop Team
 
   <!-- Global Custom Styling for Pick-Drop -->
   <style>
+    :root {
+        --pd-surface: #ffffff;
+        --pd-muted-surface: #f7f9fc;
+        --pd-border: #e6ebf2;
+        --pd-text: #1f2937;
+        --pd-muted: #697586;
+        --pd-primary: #3f6fd9;
+        --pd-primary-dark: #244a9b;
+        --pd-sidebar: #ffffff;
+        --pd-sidebar-soft: #eef4ff;
+        --pd-sidebar-text: #405066;
+    }
     body {
         font-family: 'Inter', sans-serif;
+        color: var(--pd-text);
+        background: var(--pd-muted-surface);
     }
     h1, h2, h3, h4, h5, h6, .navbar-brand, .sidebar-brand, .card-title, .fw-bold {
         font-family: 'Outfit', sans-serif;
     }
     .sidebar .sidebar-header .sidebar-brand {
         font-weight: 800;
-        font-size: 26px;
-        color: #1d3557;
+        font-size: 18px;
+        color: #1f2937;
         text-decoration: none;
         display: inline-block;
+        letter-spacing: 0;
     }
     .sidebar .sidebar-header .sidebar-brand span {
-        color: #e63946;
+        color: var(--pd-primary);
     }
     [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand {
-        color: #f1faee;
+        color: #ffffff;
     }
     [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand span {
-        color: #ff4d6d;
+        color: #93b4ff;
     }
     .btn-primary {
-    background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
-    border: none;
-    box-shadow: 0 4px 10px rgba(29, 53, 87, 0.25);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.btn-primary:hover{
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(29, 53, 87, 0.35);
-}
+        background: var(--pd-primary);
+        border-color: var(--pd-primary);
+        box-shadow: 0 8px 18px rgba(63, 111, 217, 0.18);
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+    }
+    .btn-primary:hover{
+        background: var(--pd-primary-dark);
+        border-color: var(--pd-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(63, 111, 217, 0.24);
+    }
     .card {
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0,0,0,0.02);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 8px;
+        box-shadow: 0 8px 22px rgba(16, 24, 40, 0.04);
+        border: 1px solid var(--pd-border);
+        transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
     }
     [data-bs-theme="dark"] .card {
-        border-color: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.08);
         background: #1e2129;
     }
     .badge {
-        border-radius: 8px;
-        padding: 0.4em 0.8em;
-        font-weight: 500;
+        border-radius: 999px;
+        padding: 0.38em 0.72em;
+        font-weight: 700;
     }
     .rounded-circle {
         border-radius: 50% !important;
     }
-    .bg-primary-subtle, .bg-primary.bg-opacity-10 { background-color: rgba(230, 57, 70, 0.1) !important; color: #e63946 !important;}
+    .bg-primary-subtle, .bg-primary.bg-opacity-10 { background-color: rgba(63, 111, 217, 0.1) !important; color: var(--pd-primary) !important;}
   </style>
 
   @stack('style')

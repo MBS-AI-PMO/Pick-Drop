@@ -146,11 +146,11 @@
 
   {{-- Pagination Footer --}}
   @if($cities->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $cities->firstItem() }}–{{ $cities->lastItem() }} of {{ $cities->total() }} cities
+  <div class="card-footer bg-transparent app-pagination-footer">
+    <small class="app-pagination-summary">
+      Showing {{ $cities->firstItem() }} to {{ $cities->lastItem() }} of {{ $cities->total() }} cities
     </small>
-    <div>
+    <div class="app-pagination-controls">
       {{ $cities->links('pagination::bootstrap-5') }}
     </div>
   </div>
@@ -632,4 +632,3 @@
   .pac-container { z-index: 2000 !important; }
 </style>
 @endpush
-

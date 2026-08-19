@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\DriverVerification;
+use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -56,81 +58,107 @@ class DriverVerificationController extends Controller
 
     public function approve(Request $request, DriverVerification $driverVerification)
     {
-        try {
-            if ($driverVerification->status === DriverVerification::STATUS_APPROVED) {
-                return redirect()->back()->with('error', 'This verification is already approved.');
-            }
+        $request->merge(['status' => DriverVerification::STATUS_APPROVED]);
 
-            $driverVerification->update([
-                'status' => DriverVerification::STATUS_APPROVED,
-                'rejection_reason' => null,
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-            ]);
-
-            $driverVerification->user?->update([
-                'status' => 'Pending',
-                'city_id' => $driverVerification->city_id,
-            ]);
-
-            Notification::create([
-                'title' => 'Driver KYC Approved',
-                'message' => ($driverVerification->user?->name ?? $driverVerification->full_name) . ' KYC has been approved and is ready for vehicle verification.',
-                'type' => 'success',
-            ]);
-
-            return redirect()
-                ->route('driver-verifications.show', $driverVerification)
-                ->with('success', 'Driver verification approved successfully.');
-        } catch (\Throwable $e) {
-            Log::error('Failed to approve driver verification', [
-                'id' => $driverVerification->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with('error', 'Failed to approve: ' . $e->getMessage());
-        }
+        return $this->updateStatus($request, $driverVerification);
     }
 
     public function reject(Request $request, DriverVerification $driverVerification)
     {
-        $request->validate([
-            'rejection_reason' => ['required', 'string', 'max:1000'],
+        $request->merge(['status' => DriverVerification::STATUS_REJECTED]);
+
+        return $this->updateStatus($request, $driverVerification);
+    }
+
+    public function updateStatus(Request $request, DriverVerification $driverVerification)
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,approved,rejected'],
+            'rejection_reason' => ['nullable', 'required_if:status,rejected', 'string', 'max:1000'],
         ]);
 
         try {
-            if ($driverVerification->status === DriverVerification::STATUS_APPROVED) {
-                return redirect()->back()->with('error', 'Approved verification cannot be rejected. Contact support if needed.');
-            }
+            $status = $validated['status'];
+            $previousStatus = $driverVerification->status;
 
             $driverVerification->update([
-                'status' => DriverVerification::STATUS_REJECTED,
-                'rejection_reason' => $request->rejection_reason,
+                'status' => $status,
+                'rejection_reason' => $status === DriverVerification::STATUS_REJECTED
+                    ? $validated['rejection_reason']
+                    : null,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
             ]);
 
-            $driverVerification->user?->update([
-                'status' => 'Pending',
-            ]);
+            $driverVerification->user?->update($this->userStatusPayload($driverVerification, $status));
 
-            Notification::create([
-                'title' => 'Driver KYC Rejected',
-                'message' => $driverVerification->full_name . ' verification was rejected.',
-                'type' => 'warning',
-            ]);
+            if ($status !== DriverVerification::STATUS_APPROVED) {
+                Vehicle::where('driver_id', $driverVerification->user_id)->update([
+                    'status' => 'Inactive',
+                ]);
+            } elseif (DriverVehicleVerification::where('user_id', $driverVerification->user_id)
+                ->where('status', DriverVehicleVerification::STATUS_APPROVED)
+                ->exists()) {
+                Vehicle::where('driver_id', $driverVerification->user_id)->update([
+                    'status' => 'Active',
+                ]);
+            }
+
+            $this->notifyStatusChange($driverVerification, $status, $previousStatus);
 
             return redirect()
                 ->route('driver-verifications.show', $driverVerification)
-                ->with('success', 'Driver verification rejected.');
+                ->with('success', 'Driver verification status updated successfully.');
         } catch (\Throwable $e) {
-            Log::error('Failed to reject driver verification', [
+            Log::error('Failed to update driver verification status', [
                 'id' => $driverVerification->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return redirect()->back()->with('error', 'Failed to reject: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update status: ' . $e->getMessage());
         }
+    }
+
+    private function userStatusPayload(DriverVerification $driverVerification, string $status): array
+    {
+        if ($status === DriverVerification::STATUS_APPROVED) {
+            return [
+                'status' => 'Pending',
+                'city_id' => $driverVerification->city_id,
+            ];
+        }
+
+        return [
+            'status' => 'Pending',
+        ];
+    }
+
+    private function notifyStatusChange(DriverVerification $driverVerification, string $status, string $previousStatus): void
+    {
+        if ($status === $previousStatus) {
+            return;
+        }
+
+        $driverName = $driverVerification->user?->name ?? $driverVerification->full_name;
+        $payload = match ($status) {
+            DriverVerification::STATUS_APPROVED => [
+                'title' => 'Driver KYC Approved',
+                'message' => $driverName . ' KYC has been approved and is ready for vehicle verification.',
+                'type' => 'success',
+            ],
+            DriverVerification::STATUS_REJECTED => [
+                'title' => 'Driver KYC Declined',
+                'message' => $driverName . ' verification was declined.',
+                'type' => 'warning',
+            ],
+            default => [
+                'title' => 'Driver KYC Pending',
+                'message' => $driverName . ' verification status was moved back to pending.',
+                'type' => 'info',
+            ],
+        };
+
+        Notification::create($payload);
     }
 
     public function document(DriverVerification $driverVerification, string $field)

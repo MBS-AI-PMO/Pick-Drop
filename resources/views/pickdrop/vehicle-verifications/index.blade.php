@@ -23,7 +23,7 @@
             <option value="">All Statuses</option>
             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
-            <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+            <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Declined</option>
           </select>
         </div>
         <div class="col-auto">
@@ -74,12 +74,13 @@
                 @elseif($item->status === 'approved')
                   <span class="badge bg-success">Approved</span>
                 @else
-                  <span class="badge bg-danger">Rejected</span>
+                  <span class="badge bg-danger">Declined</span>
                 @endif
               </td>
               <td class="text-center">
-                <a href="{{ route('vehicle-verifications.show', $item) }}" class="btn btn-sm btn-outline-primary">
-                  Review
+                <a href="{{ route('vehicle-verifications.show', $item) }}" class="btn btn-sm btn-outline-primary verification-detail-btn">
+                  <i data-lucide="eye" class="icon-xs"></i>
+                  Details
                 </a>
               </td>
             </tr>
@@ -93,8 +94,13 @@
     </div>
   </div>
   @if($verifications->hasPages())
-    <div class="card-footer">
-      {{ $verifications->links() }}
+    <div class="card-footer bg-transparent app-pagination-footer">
+      <small class="app-pagination-summary">
+        Showing {{ $verifications->firstItem() }} to {{ $verifications->lastItem() }} of {{ $verifications->total() }} vehicle verifications
+      </small>
+      <div class="app-pagination-controls">
+        {{ $verifications->links('pagination::bootstrap-5') }}
+      </div>
     </div>
   @endif
 </div>

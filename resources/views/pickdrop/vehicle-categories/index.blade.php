@@ -124,11 +124,11 @@
 
   {{-- Pagination Footer --}}
   @if($categories->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $categories->firstItem() }}–{{ $categories->lastItem() }} of {{ $categories->total() }} categories
+  <div class="card-footer bg-transparent app-pagination-footer">
+    <small class="app-pagination-summary">
+      Showing {{ $categories->firstItem() }} to {{ $categories->lastItem() }} of {{ $categories->total() }} categories
     </small>
-    <div>
+    <div class="app-pagination-controls">
       {{ $categories->links('pagination::bootstrap-5') }}
     </div>
   </div>

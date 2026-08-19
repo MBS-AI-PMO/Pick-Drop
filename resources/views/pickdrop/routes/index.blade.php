@@ -177,11 +177,11 @@
 
 {{-- Pagination Footer --}}
 @if($routes->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $routes->firstItem() }}–{{ $routes->lastItem() }} of {{ $routes->total() }} routes
+  <div class="card-footer bg-transparent app-pagination-footer">
+    <small class="app-pagination-summary">
+      Showing {{ $routes->firstItem() }} to {{ $routes->lastItem() }} of {{ $routes->total() }} routes
     </small>
-    <div>
+    <div class="app-pagination-controls">
       {{ $routes->links('pagination::bootstrap-5') }}
     </div>
   </div>

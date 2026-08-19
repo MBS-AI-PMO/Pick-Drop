@@ -22,8 +22,24 @@
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   }
 
-  const setTheme = theme => {
+  const setTheme = (theme, animate = false) => {
+    if (animate) {
+      document.documentElement.classList.remove('theme-transitioning')
+      document.documentElement.setAttribute('data-theme-transition-target', theme)
+
+      window.requestAnimationFrame(() => {
+        document.documentElement.classList.add('theme-transitioning')
+      })
+    }
+
     document.documentElement.setAttribute('data-bs-theme', theme)
+
+    if (animate) {
+      window.setTimeout(() => {
+        document.documentElement.classList.remove('theme-transitioning')
+        document.documentElement.removeAttribute('data-theme-transition-target')
+      }, 720)
+    }
   }
 
   setTheme(getPreferredTheme())
@@ -70,7 +86,7 @@
       themeSwitcher.addEventListener('change', function() {
         const theme = this.checked ? 'dark' : 'light'
         setStoredTheme(theme)
-        setTheme(theme)
+        setTheme(theme, true)
         showActiveTheme(theme)
       })
     }
