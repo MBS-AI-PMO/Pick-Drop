@@ -40,6 +40,7 @@ class ProfileController extends BaseApiController
             if (array_key_exists('city_id', $validated)
                 && !array_key_exists('service_areas', $validated)) {
                 $newCityId = (int) $validated['city_id'];
+                $this->assertCityIsActive($newCityId);
                 $existing = $user->service_areas ?? [];
                 if ($existing !== []) {
                     if (Area::whereIn('id', $existing)->where('city_id', '!=', $newCityId)->exists()) {

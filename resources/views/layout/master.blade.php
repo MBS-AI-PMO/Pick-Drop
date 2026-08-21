@@ -58,8 +58,8 @@ Author: PickDrop Team
         --pd-primary: #3f6fd9;
         --pd-primary-dark: #244a9b;
         --pd-sidebar: #ffffff;
-        --pd-sidebar-soft: #eef4ff;
-        --pd-sidebar-text: #405066;
+        --pd-sidebar-soft: #fff5f5;
+        --pd-sidebar-text: #1d3557;
     }
     body {
         font-family: 'Inter', sans-serif;
@@ -69,22 +69,157 @@ Author: PickDrop Team
     h1, h2, h3, h4, h5, h6, .navbar-brand, .sidebar-brand, .card-title, .fw-bold {
         font-family: 'Outfit', sans-serif;
     }
-    .sidebar .sidebar-header .sidebar-brand {
+
+    nav.sidebar,
+    nav.sidebar .sidebar-header,
+    nav.sidebar .sidebar-body {
+        background: #ffffff !important;
+        border-color: #eef1f6 !important;
+        box-shadow: none !important;
+    }
+    nav.sidebar {
+        background: #ffffff !important;
+        box-shadow: 8px 0 28px rgba(29, 53, 87, 0.04) !important;
+        border-right: 1px solid #eef1f6 !important;
+    }
+    nav.sidebar .sidebar-header {
+        height: 72px;
+        padding: 0 22px;
+        border-bottom: 1px solid #eef1f6 !important;
+    }
+    nav.sidebar .sidebar-header .sidebar-brand {
         font-weight: 800;
-        font-size: 18px;
-        color: #1f2937;
+        font-size: 22px;
+        color: #1d3557 !important;
         text-decoration: none;
         display: inline-block;
         letter-spacing: 0;
+        margin-bottom: 0;
+        padding: 4px 0;
     }
-    .sidebar .sidebar-header .sidebar-brand span {
-        color: var(--pd-primary);
+    nav.sidebar .sidebar-header .sidebar-brand span {
+        color: #e63946 !important;
+        font-weight: 800;
+        margin-left: 4px;
     }
-    [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand {
-        color: #ffffff;
+    nav.sidebar .sidebar-header .sidebar-toggler span {
+        background: #8a96a8 !important;
     }
-    [data-bs-theme="dark"] .sidebar .sidebar-header .sidebar-brand span {
-        color: #93b4ff;
+    nav.sidebar .sidebar-body {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #eef1f6 !important;
+    }
+    nav.sidebar .sidebar-body .nav {
+        flex: 1;
+        padding: 22px 14px 22px !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item.nav-category {
+        height: auto !important;
+        margin: 18px 12px 8px !important;
+        color: #9aa6b8 !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.14em !important;
+        text-transform: uppercase;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item.nav-category:first-child {
+        margin-top: 0 !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 42px !important;
+        padding: 0 12px !important;
+        border-radius: 10px !important;
+        color: #1d3557 !important;
+        font-size: 13.5px;
+        font-weight: 600;
+        background: transparent !important;
+        box-shadow: none !important;
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link .link-icon {
+        position: static !important;
+        width: 18px !important;
+        height: 18px !important;
+        flex: 0 0 18px;
+        color: inherit !important;
+        fill: none !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link .link-title {
+        margin-left: 0 !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link .link-arrow {
+        margin-left: auto;
+        opacity: 0.55;
+    }
+    nav.sidebar .sidebar-body .nav > .nav-item > .nav-link:hover,
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link:hover {
+        color: #e63946 !important;
+        background: #fff5f5 !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item.active > .nav-link,
+    nav.sidebar .sidebar-body .nav .nav-item > .nav-link.active,
+    nav.sidebar .sidebar-body .nav .nav-item .nav-link[aria-expanded="true"] {
+        color: #e63946 !important;
+        background: #fff1f2 !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item.active > .nav-link::before,
+    nav.sidebar .sidebar-body .nav .nav-item > .nav-link.active::before {
+        display: none !important;
+    }
+    nav.sidebar .sidebar-body .nav.sub-menu {
+        padding: 4px 0 8px 16px !important;
+        margin-left: 18px;
+        border-left: 1px solid #edf1f7;
+    }
+    nav.sidebar .sidebar-body .nav.sub-menu .nav-link {
+        height: 34px !important;
+        color: #5b6b82 !important;
+        font-size: 12.5px;
+        font-weight: 500;
+        background: transparent !important;
+    }
+    nav.sidebar .sidebar-body .nav.sub-menu .nav-link:hover,
+    nav.sidebar .sidebar-body .nav.sub-menu .nav-link.active {
+        color: #e63946 !important;
+        background: #fff5f5 !important;
+    }
+    nav.sidebar .sidebar-body .nav.sub-menu .nav-link::before {
+        display: none !important;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item-logout {
+        margin-top: auto;
+        padding-top: 14px;
+        border-top: 1px solid #eef1f6;
+    }
+    nav.sidebar .sidebar-body .nav .nav-item-logout .nav-link:hover {
+        color: #e63946 !important;
+        background: #fff5f5 !important;
+    }
+    @media (min-width: 992px) {
+        body.sidebar-folded nav.sidebar .sidebar-brand,
+        body.sidebar-folded nav.sidebar .link-title,
+        body.sidebar-folded nav.sidebar .link-arrow,
+        body.sidebar-folded nav.sidebar .nav-category,
+        body.sidebar-folded nav.sidebar .collapse,
+        body.sidebar-folded nav.sidebar .sub-menu {
+            display: none !important;
+        }
+        body.sidebar-folded nav.sidebar .sidebar-body .nav > .nav-item > .nav-link {
+            justify-content: center;
+            width: 42px;
+            margin: 0 auto;
+        }
+        body.sidebar-folded nav.sidebar .sidebar-body .nav > .nav-item.active > .nav-link,
+        body.sidebar-folded nav.sidebar .sidebar-body .nav > .nav-item > .nav-link.active,
+        body.sidebar-folded nav.sidebar .sidebar-body .nav > .nav-item > .nav-link:hover {
+            color: #e63946 !important;
+            background: #fff1f2 !important;
+        }
     }
     .btn-primary {
         background: var(--pd-primary);

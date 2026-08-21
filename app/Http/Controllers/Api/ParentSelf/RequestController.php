@@ -62,6 +62,8 @@ class RequestController extends BaseApiController
                 }
             }
 
+            $this->assertAreaBelongsToCity((int) $validated['city_id'], (int) $validated['area_id'], 'area_id');
+
             $req = PickupRequest::create([
                 'type' => $validated['type'],
                 'parent_id' => $request->user()->id,
@@ -152,6 +154,13 @@ class RequestController extends BaseApiController
             }
 
             $pickupRequest->fill($validated);
+
+            $this->assertAreaBelongsToCity(
+                (int) $pickupRequest->city_id,
+                (int) $pickupRequest->area_id,
+                'area_id'
+            );
+
             $pickupRequest->save();
 
             app(AppNotificationService::class)->notifyParentRequestUpdated($pickupRequest);

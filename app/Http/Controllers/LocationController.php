@@ -33,6 +33,10 @@ class LocationController extends Controller
                 });
             }
 
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
             $cities = $query->paginate(10)->withQueryString();
 
             return view('pickdrop.locations.index', compact('cities'));

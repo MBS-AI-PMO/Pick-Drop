@@ -25,22 +25,24 @@ class ServiceAreaController extends BaseApiController
                 'city_id' => ['nullable', 'integer', 'exists:cities,id'],
             ])->validate();
 
-            $cityId = isset($validated['city_id'])
-                ? (int) $validated['city_id']
-                : $user->driverCityId();
+            $requestedCityId = isset($validated['city_id']) ? (int) $validated['city_id'] : null;
+            if ($requestedCityId) {
+                $this->assertCityIsActive($requestedCityId);
+            }
 
-            $cities = City::where('status', 'Active')
-                ->select('id', 'name', 'latitude', 'longitude', 'status')
-                ->orderBy('name')
-                ->get();
+            $cityId = $requestedCityId ?: $user->driverCityId();
+
+            $cities = City::dropdownWithAreas();
 
             $city = $cityId
-                ? City::select('id', 'name', 'latitude', 'longitude', 'status')->find($cityId)
+                ? City::query()->active()->select('id', 'name', 'latitude', 'longitude', 'status')->find($cityId)
                 : null;
 
-            $availableAreas = $cityId
-                ? Area::where('city_id', $cityId)
-                    ->where('status', 'Active')
+            // Areas only after a city is chosen — never mix areas from other cities.
+            $availableAreas = $city
+                ? Area::query()
+                    ->active()
+                    ->where('city_id', $city->id)
                     ->orderBy('name')
                     ->get()
                 : collect();
@@ -56,15 +58,16 @@ class ServiceAreaController extends BaseApiController
 
             return $this->successResponse([
                 'cities' => $cities,
-                'city_id' => $cityId,
+                'city_id' => $city?->id,
                 'city' => $city,
                 'available_areas' => $availableAreas,
                 'selected_area_ids' => $selectedIdsForCity,
                 'service_areas' => $selectedAreas,
+                'select_city_first' => $city === null,
                 'service_areas_setup' => $user->hasServiceAreas(),
                 'onboarding_complete' => $user->isOnboardingComplete(),
                 'next_step' => $user->driverNextStep(),
-            ], 'Service areas');
+            ], $city ? 'Service areas' : 'Select a city first to load its areas');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {

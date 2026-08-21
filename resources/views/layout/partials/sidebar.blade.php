@@ -1,6 +1,6 @@
 <nav class="sidebar">
   <div class="sidebar-header">
-    <a href="{{ route('dashboard') }}" class=" sidebar-brand brand-logo mb-2">Pick<span style="font-weight: 800;">Drop</span></a>
+    <a href="{{ route('dashboard') }}" class="sidebar-brand brand-logo">Pick<span>Drop</span></a>
     <div class="sidebar-toggler not-active">
       <span></span>
       <span></span>
@@ -117,7 +117,7 @@
 
       <li class="nav-item nav-category">Account</li>
 
-      <li class="nav-item">
+      <li class="nav-item nav-item-logout">
         <a href="{{ route('auth.login') }}" class="nav-link">
           <i class="link-icon" data-lucide="log-out"></i>
           <span class="link-title">Logout</span>

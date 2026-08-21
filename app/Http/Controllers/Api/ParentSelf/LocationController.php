@@ -9,28 +9,37 @@ use Throwable;
 
 class LocationController extends BaseApiController
 {
+    /**
+     * City dropdown: multiple cities. App selected city ki `areas` array use kare.
+     */
     public function cities(): JsonResponse
     {
         try {
-            $cities = City::select('id', 'name')->orderBy('name')->get();
-
-            return $this->successResponse($cities, 'Cities');
+            return $this->successResponse(City::dropdownWithAreas(), 'Cities');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch cities');
         }
     }
 
-    public function areas(int $cityId): JsonResponse
+    /**
+     * Step 2: areas of the selected city only.
+     */
+    public function areas(City $city): JsonResponse
     {
         try {
-            $city = City::with(['areas' => function ($q) {
-                $q->select('id', 'city_id', 'name');
-            }])->findOrFail($cityId);
+            if (strcasecmp((string) $city->status, 'Active') !== 0) {
+                return $this->errorResponse('Selected city is not available.', 404);
+            }
 
-            return $this->successResponse($city->areas, 'Areas');
+            $areas = $city->areas()
+                ->active()
+                ->select('id', 'city_id', 'name', 'latitude', 'longitude', 'status')
+                ->orderBy('name')
+                ->get();
+
+            return $this->successResponse($areas, 'Areas');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch areas');
         }
     }
 }
-

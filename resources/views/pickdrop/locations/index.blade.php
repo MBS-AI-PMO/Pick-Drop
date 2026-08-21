@@ -31,8 +31,8 @@
         <div class="col-12 col-md-3">
     <select class="form-select" name="status" onchange="this.form.submit()">
         <option value="">All Status</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
+        <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
+        <option value="Inactive" {{ request('status') === 'Inactive' ? 'selected' : '' }}>Inactive</option>
     </select>
 </div>
 
@@ -106,6 +106,11 @@
                   @endforeach
                 </div>
               @endif
+              <div class="mt-1">
+                <a href="{{ route('locations.areas.index', ['city_id' => $city->id]) }}" class="small text-decoration-none">
+                  View areas
+                </a>
+              </div>
             </td>
             <td class="py-3 text-center">
               <div class="d-flex justify-content-center align-items-center gap-2">

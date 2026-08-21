@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api\ParentSelf;
 
 use App\Http\Controllers\Controller;
+use App\Support\ValidatesCityAreas;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
 abstract class BaseApiController extends Controller
 {
+    use ValidatesCityAreas;
+
     protected function successResponse(mixed $data = null, string $message = 'OK', int $code = 200): JsonResponse
     {
         return response()->json([

@@ -43,6 +43,18 @@ class StudentController extends BaseApiController
                 'dropoff_time' => ['nullable', 'date_format:H:i'],
             ]);
 
+            if (!empty($validated['city_id']) && !empty($validated['pickup_area_id'])) {
+                $this->assertAreaBelongsToCity(
+                    (int) $validated['city_id'],
+                    (int) $validated['pickup_area_id'],
+                    'pickup_area_id'
+                );
+            } elseif (!empty($validated['pickup_area_id']) && empty($validated['city_id'])) {
+                throw ValidationException::withMessages([
+                    'city_id' => ['Select a city first, then choose an area of that city.'],
+                ]);
+            }
+
             $student = Student::create(array_merge($validated, [
                 'parent_id' => $request->user()->id,
                 'status' => 'active',
@@ -87,6 +99,18 @@ class StudentController extends BaseApiController
             ]);
 
             $student->fill($validated);
+
+            $cityId = (int) ($student->city_id ?? 0);
+            $areaId = (int) ($student->pickup_area_id ?? 0);
+            if ($areaId > 0 && $cityId === 0) {
+                throw ValidationException::withMessages([
+                    'city_id' => ['Select a city first, then choose an area of that city.'],
+                ]);
+            }
+            if ($cityId > 0 && $areaId > 0) {
+                $this->assertAreaBelongsToCity($cityId, $areaId, 'pickup_area_id');
+            }
+
             $student->save();
             $student->load(['city', 'pickupArea']);
 

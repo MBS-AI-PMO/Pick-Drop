@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
     <h4 class="mb-1">Areas Management</h4>
-    <p class="text-secondary mb-0">Manage all areas separately</p>
+    <p class="text-secondary mb-0">Select a city first, then manage only that city's areas</p>
   </div>
 </div>
 
@@ -101,7 +101,7 @@
             <tr>
               <td colspan="6" class="text-center py-5">
                 <h6 class="text-secondary mb-1">No Areas Found</h6>
-                <p class="text-muted small mb-0">Add your first area to get started.</p>
+                <p class="text-muted small mb-0">Select a city first, then add an area for that city.</p>
               </td>
             </tr>
           @endforelse
@@ -135,34 +135,35 @@
             <div class="col-12">
               <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
               <select name="city_id" id="areaCityId" class="form-select" required>
-                <option value="">Select city</option>
+                <option value="">Select city first</option>
                 @foreach($cities as $city)
                   <option value="{{ $city->id }}" data-lat="{{ $city->latitude }}" data-lng="{{ $city->longitude }}">
                     {{ $city->name }}
                   </option>
                 @endforeach
               </select>
+              <small class="text-muted">Area list and map unlock after a city is selected.</small>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Area Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" id="areaName" class="form-control" required>
+              <input type="text" name="name" id="areaName" class="form-control" required disabled>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Search from Map</label>
               <div class="input-group">
-                <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map...">
-                <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn">Search</button>
+                <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map..." disabled>
+                <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn" disabled>Search</button>
               </div>
               <div id="areaMapSearchResults" class="list-group mt-2 d-none"></div>
             </div>
             <div class="col-12"><div id="areaPickerMap" class="border rounded"></div></div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Latitude</label>
-              <input type="number" step="0.0000001" name="latitude" id="areaLat" class="form-control" required>
+              <input type="number" step="0.0000001" name="latitude" id="areaLat" class="form-control" required disabled>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Longitude</label>
-              <input type="number" step="0.0000001" name="longitude" id="areaLng" class="form-control" required>
+              <input type="number" step="0.0000001" name="longitude" id="areaLng" class="form-control" required disabled>
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Status</label>
@@ -215,7 +216,10 @@
     });
     areaGeocoder = new google.maps.Geocoder();
     mapReady = true;
-    areaMap.addListener('click', function (e) { setAreaCoordinates(e.latLng.lat(), e.latLng.lng(), true); });
+    areaMap.addListener('click', function (e) {
+      if (!areaCityEl?.value) return;
+      setAreaCoordinates(e.latLng.lat(), e.latLng.lng(), true);
+    });
 
     if (mapSearchEl && google.maps.places) {
       areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
@@ -256,17 +260,38 @@
     }
   }
 
+  const areaNameEl = document.getElementById('areaName');
+  const areaSubmitBtn = document.getElementById('areaSubmitBtn');
+  const preselectedCityId = @json(request('city_id'));
+
+  function setAreaFieldsEnabled(enabled) {
+    [areaNameEl, mapSearchEl, mapSearchBtn, areaLatEl, areaLngEl].forEach((el) => {
+      if (el) el.disabled = !enabled;
+    });
+    if (areaSubmitBtn) areaSubmitBtn.disabled = !enabled;
+  }
+
+  function applyCityContextFromSelect() {
+    const selected = areaCityEl?.options[areaCityEl.selectedIndex];
+    const citySelected = !!(areaCityEl && areaCityEl.value);
+    const lat = selected?.dataset?.lat;
+    const lng = selected?.dataset?.lng;
+    activeCityContext = citySelected && lat && lng ? { latitude: lat, longitude: lng } : null;
+    setAreaFieldsEnabled(citySelected);
+    if (citySelected) focusMapToCityContext();
+  }
+
   function openAddAreaModal() {
     document.getElementById('areaModalLabel').textContent = 'Add Area';
     document.getElementById('areaForm').action = '{{ route('locations.areas.store') }}';
     document.getElementById('areaFormMethod').value = 'POST';
-    areaCityEl.value = '';
-    document.getElementById('areaName').value = '';
+    areaCityEl.value = preselectedCityId || '';
+    areaNameEl.value = '';
     areaLatEl.value = '';
     areaLngEl.value = '';
     document.getElementById('areaStatus').value = 'Active';
-    document.getElementById('areaSubmitBtn').textContent = 'Add Area';
-    activeCityContext = null;
+    areaSubmitBtn.textContent = 'Add Area';
+    applyCityContextFromSelect();
     areaModal.show();
   }
 
@@ -280,11 +305,7 @@
     areaLngEl.value = area.longitude ?? '';
     document.getElementById('areaStatus').value = area.status || 'Active';
     document.getElementById('areaSubmitBtn').textContent = 'Save Changes';
-    const selectedOption = areaCityEl.options[areaCityEl.selectedIndex];
-    activeCityContext = selectedOption ? {
-      latitude: selectedOption.dataset.lat || null,
-      longitude: selectedOption.dataset.lng || null
-    } : null;
+    applyCityContextFromSelect();
     areaModal.show();
     if (area.latitude && area.longitude) setAreaCoordinates(area.latitude, area.longitude, true);
   }
@@ -310,6 +331,7 @@
 
   function searchOnMap() {
     if (!mapReady || !areaGeocoder || !mapSearchEl) return;
+    if (!areaCityEl?.value) return;
     const query = mapSearchEl.value.trim();
     if (query.length < 2) return;
     mapSearchBtn.disabled = true;
@@ -337,13 +359,7 @@
   mapSearchBtn?.addEventListener('click', searchOnMap);
   mapSearchEl?.addEventListener('input', scheduleMapSearch);
   mapSearchEl?.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); searchOnMap(); } });
-  areaCityEl?.addEventListener('change', function () {
-    const selected = areaCityEl.options[areaCityEl.selectedIndex];
-    const lat = selected?.dataset?.lat;
-    const lng = selected?.dataset?.lng;
-    activeCityContext = lat && lng ? { latitude: lat, longitude: lng } : null;
-    focusMapToCityContext();
-  });
+  areaCityEl?.addEventListener('change', applyCityContextFromSelect);
   document.getElementById('areaModal')?.addEventListener('shown.bs.modal', function () {
     initAreaMap();
     setTimeout(() => {
