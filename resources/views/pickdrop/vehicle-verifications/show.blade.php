@@ -138,7 +138,7 @@
             @if($verification->status === 'pending')
               <span class="badge bg-warning text-dark">Pending Approval</span>
             @elseif($verification->status === 'approved')
-              <span class="badge bg-success">Approved</span>
+              <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
             @else
               <span class="badge bg-danger">Declined</span>
             @endif
@@ -173,7 +173,7 @@
           <form method="POST" action="{{ route('vehicle-verifications.status', $verification) }}">
             @csrf
             <input type="hidden" name="status" value="approved">
-            <button type="submit" class="btn btn-success w-100"
+            <button type="submit" class="btn btn-primary w-100"
                     {{ $verification->status === 'approved' ? 'disabled' : '' }}
                     onclick="return confirm('Accept this vehicle verification?')">
               <i data-lucide="check" class="icon-xs"></i>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\User;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +28,7 @@ class VehicleController extends Controller
                 $query->where('status', $request->status);
             }
 
-            $vehicles = $query->paginate(10)->withQueryString();
+            $vehicles = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             // Vehicle types with capacity
             $types = VehicleCategory::select('id', 'vehicle_name', 'passenger_capacity')->get();

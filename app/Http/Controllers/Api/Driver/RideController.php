@@ -3,9 +3,16 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Http\Controllers\Api\Driver\BaseApiController;
+use App\Models\PickupRequest;
+use App\Models\PickupRequestStop;
+use App\Services\AppNotificationService;
+use App\Services\ShiftStopService;
+use App\Support\AppPagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class RideController extends BaseApiController
@@ -13,10 +20,27 @@ class RideController extends BaseApiController
     public function today(Request $request): JsonResponse
     {
         try {
-            // TODO: Replace with real "today's rides" query
-            $rides = [];
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
 
-            return $this->successResponse($rides, "Today's rides");
+            $stops = app(ShiftStopService::class)->todayForDriver($driver);
+            $payload = $stops->map(fn (PickupRequestStop $stop) => $stop->toApiArray())->values();
+
+            return $this->successResponse([
+                'date' => Carbon::now()->toDateString(),
+                'weekday' => strtolower(Carbon::now()->englishDayOfWeek),
+                'summary' => [
+                    'total' => $payload->count(),
+                    'pending' => $payload->where('status', PickupRequestStop::STATUS_PENDING)->count(),
+                    'done' => $payload->where('status', PickupRequestStop::STATUS_DONE)->count(),
+                    'pickups' => $payload->where('type', PickupRequestStop::TYPE_PICKUP)->count(),
+                    'drops' => $payload->where('type', PickupRequestStop::TYPE_DROP)->count(),
+                ],
+                'stops' => $payload,
+            ], "Today's rides");
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch today rides');
         }
@@ -25,8 +49,20 @@ class RideController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         try {
-            // TODO: Replace with history query / pagination
-            $rides = [];
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $rides = PickupRequest::with(['parent', 'student', 'city', 'area', 'dropArea', 'stops.area'])
+                ->where('driver_id', $driver->id)
+                ->whereIn('status', ['dropped', 'completed'])
+                ->latest('completed_at')
+                ->latest('id')
+                ->paginate(AppPagination::PER_PAGE);
+
+            $rides->getCollection()->transform(fn (PickupRequest $row) => $row->toApiArray('driver'));
 
             return $this->successResponse($rides, 'Rides history');
         } catch (Throwable $e) {
@@ -36,39 +72,27 @@ class RideController extends BaseApiController
 
     public function markPickup(Request $request, int $rideId): JsonResponse
     {
-        try {
-            // TODO: mark specific student/stop pickup done
-
-            return $this->successResponse([
-                'ride_id' => $rideId,
-            ], 'Pickup marked as done');
-        } catch (Throwable $e) {
-            return $this->handleException($e, 'Unable to mark pickup');
-        }
+        return $this->markStop($request, $rideId, 'pickup');
     }
 
     public function markDrop(Request $request, int $rideId): JsonResponse
     {
-        try {
-            // TODO: mark drop done
-
-            return $this->successResponse([
-                'ride_id' => $rideId,
-            ], 'Drop marked as done');
-        } catch (Throwable $e) {
-            return $this->handleException($e, 'Unable to mark drop');
-        }
+        return $this->markStop($request, $rideId, 'drop');
     }
 
     public function updateLocation(Request $request): JsonResponse
     {
         try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
             $validated = $request->validate([
                 'lat' => ['required', 'numeric', 'between:-90,90'],
                 'lng' => ['required', 'numeric', 'between:-180,180'],
             ]);
-
-            // TODO: Persist driver current location (e.g., in drivers table or separate table)
 
             return $this->successResponse($validated, 'Location updated');
         } catch (ValidationException $e) {
@@ -81,11 +105,15 @@ class RideController extends BaseApiController
     public function updateStatus(Request $request): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'status' => ['required', 'string'], // e.g. on_the_way, picked_all, dropped_all
-            ]);
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
 
-            // TODO: Save driver/route status
+            $validated = $request->validate([
+                'status' => ['required', 'string'],
+            ]);
 
             return $this->successResponse($validated, 'Status updated');
         } catch (ValidationException $e) {
@@ -94,5 +122,39 @@ class RideController extends BaseApiController
             return $this->handleException($e, 'Unable to update status');
         }
     }
-}
 
+    private function markStop(Request $request, int $stopId, string $action): JsonResponse
+    {
+        try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $stop = PickupRequestStop::query()
+                ->with(['pickupRequest', 'area'])
+                ->find($stopId);
+
+            if (!$stop || (int) $stop->pickupRequest?->driver_id !== (int) $driver->id) {
+                return $this->errorResponse('Not found', 404);
+            }
+
+            $updated = app(ShiftStopService::class)->completeStop($stop, $action);
+            $shift = $updated->pickupRequest?->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'stops.area']);
+
+            if ($shift) {
+                app(AppNotificationService::class)->notifyStopCompleted($shift, $updated);
+            }
+
+            return $this->successResponse([
+                'stop' => $updated->toApiArray(),
+                'request' => $shift?->toApiArray('driver'),
+            ], $action === 'drop' ? 'Drop marked as done' : 'Pickup marked as done');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to mark ' . $action);
+        }
+    }
+}

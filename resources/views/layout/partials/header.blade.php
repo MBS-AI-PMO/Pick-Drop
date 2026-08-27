@@ -8,7 +8,7 @@
 
     <form class="search-form">
       <div class="input-group">
-        <div class="input-group-text">
+        <div class="input-group-text border-0 bg-transparent">
           <i data-lucide="search"></i>
         </div>
     <input

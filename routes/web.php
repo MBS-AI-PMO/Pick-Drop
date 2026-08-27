@@ -14,6 +14,12 @@ use Illuminate\Auth\Events\PasswordReset;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DriverVerificationController;
 use App\Http\Controllers\VehicleVerificationController;
+use App\Http\Controllers\ParentSelfVerificationController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentSettingController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PickupRequestController;
 
 
 Route::get('/', function () {
@@ -32,6 +38,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/driver-verifications/{driverVerification}/approve', [DriverVerificationController::class, 'approve'])->name('driver-verifications.approve');
     Route::post('/driver-verifications/{driverVerification}/reject', [DriverVerificationController::class, 'reject'])->name('driver-verifications.reject');
     Route::get('/driver-verifications/{driverVerification}/document/{field}', [DriverVerificationController::class, 'document'])->name('driver-verifications.document');
+    Route::get('/pickup-requests', [PickupRequestController::class, 'index'])->name('pickup-requests.index');
+    Route::get('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'show'])->name('pickup-requests.show');
+    Route::post('/pickup-requests/{pickupRequest}/driver-payout', [PickupRequestController::class, 'markDriverPaid'])->name('pickup-requests.driver-payout');
+    Route::get('/parent-self-verifications', [ParentSelfVerificationController::class, 'index'])->name('parent-self-verifications.index');
+    Route::get('/parent-self-verifications/{parentSelfVerification}', [ParentSelfVerificationController::class, 'show'])->name('parent-self-verifications.show');
+    Route::post('/parent-self-verifications/{parentSelfVerification}/status', [ParentSelfVerificationController::class, 'updateStatus'])->name('parent-self-verifications.status');
+    Route::post('/parent-self-verifications/{parentSelfVerification}/approve', [ParentSelfVerificationController::class, 'approve'])->name('parent-self-verifications.approve');
+    Route::post('/parent-self-verifications/{parentSelfVerification}/reject', [ParentSelfVerificationController::class, 'reject'])->name('parent-self-verifications.reject');
+    Route::get('/parent-self-verifications/{parentSelfVerification}/document/{field}', [ParentSelfVerificationController::class, 'document'])->name('parent-self-verifications.document');
     Route::get('/vehicle-verifications', [VehicleVerificationController::class, 'index'])->name('vehicle-verifications.index');
     Route::get('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'show'])->name('vehicle-verifications.show');
     Route::post('/vehicle-verifications/{vehicleVerification}/status', [VehicleVerificationController::class, 'updateStatus'])->name('vehicle-verifications.status');
@@ -55,11 +70,32 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/routes/{route}/edit', [SchoolRouteController::class, 'edit'])->name('routes.edit');
     Route::put('/routes/{route}', [SchoolRouteController::class, 'update'])->name('routes.update');
     Route::delete('/routes/{route}', [SchoolRouteController::class, 'destroy'])->name('routes.destroy');
-    Route::get('/payments', function () { return view('pickdrop.payments.index'); })->name('payments.index');
-    Route::get('/reports', function () { return view('pickdrop.reports.index'); })->name('reports.index');
+    Route::get('/payments', [InvoiceController::class, 'index'])->name('payments.index');
+    Route::post('/payments/invoices', [InvoiceController::class, 'store'])->name('payments.store');
+    Route::get('/payments/export', [InvoiceController::class, 'export'])->name('payments.export');
+    Route::get('/payments/settings', [PaymentSettingController::class, 'edit'])->name('payments.settings');
+    Route::put('/payments/settings', [PaymentSettingController::class, 'update'])->name('payments.settings.update');
+    Route::get('/payments/invoices/{invoice}', [InvoiceController::class, 'show'])->name('payments.show');
+    Route::get('/payments/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('payments.print');
+    Route::post('/payments/invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('payments.send');
+    Route::post('/payments/invoices/{invoice}/pay', [InvoiceController::class, 'recordPayment'])->name('payments.record');
+    Route::post('/payments/invoices/{invoice}/stripe', [InvoiceController::class, 'stripeCheckout'])->name('payments.stripe');
+    Route::post('/payments/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('payments.cancel');
+    Route::delete('/payments/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('payments.destroy');
+    Route::delete('/payments/payments/{payment}', [InvoiceController::class, 'destroyPayment'])->name('payments.payments.destroy');
+    Route::post('/payments/payments/{payment}/confirm-bank', [InvoiceController::class, 'confirmBank'])->name('payments.confirm-bank');
+    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [\App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
     Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
     Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
-    Route::get('/profile', function () { return view('pages.general.profile'); })->name('general.profile');
+    Route::get('/profile', [ProfileController::class, 'index'])->name('general.profile');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::middleware('super.admin')->group(function () {
+        Route::post('/profile/admins', [ProfileController::class, 'storeAdmin'])->name('profile.admins.store');
+        Route::put('/profile/admins/{user}', [ProfileController::class, 'updateAdmin'])->name('profile.admins.update');
+        Route::delete('/profile/admins/{user}', [ProfileController::class, 'destroyAdmin'])->name('profile.admins.destroy');
+    });
     Route::get('/notifications', [NotificationController::class,'index'])
     ->name('notifications.index');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
@@ -89,14 +125,19 @@ Route::group(['prefix' => 'auth'], function(){
 Route::get('reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])
     ->name('password.reset');
 
+Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
+Route::get('/payments/stripe/complete', [InvoiceController::class, 'stripeComplete'])->name('payments.stripe.complete');
+Route::get('/payments/stripe/cancel/{invoice}', [InvoiceController::class, 'stripeCancel'])->name('payments.stripe.cancel');
+
 Route::get('/clear-cache', function() {
     Artisan::call('cache:clear');
     return "Cache is cleared";
 })->name('clear-cache');
 
-// 404 for undefined routes
-Route::any('/{page?}',function(){
+// HTML 404 for unknown admin pages only. Do not use Route::any() here —
+// it intercepts API POSTs and returns "CSRF token mismatch" instead of JSON.
+Route::get('/{page?}', function () {
     return View::make('pages.error.404');
-})->where('page','.*');
+})->where('page', '^(?!api/).*$');
 Route::get('/notifications', [NotificationController::class,'index'])
     ->name('notifications.index');

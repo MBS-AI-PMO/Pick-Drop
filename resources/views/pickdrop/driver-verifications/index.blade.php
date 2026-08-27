@@ -69,16 +69,17 @@
                 @if($item->status === 'pending')
                   <span class="badge bg-warning text-dark">Pending</span>
                 @elseif($item->status === 'approved')
-                  <span class="badge bg-success">Approved</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
                 @else
                   <span class="badge bg-danger">Declined</span>
                 @endif
               </td>
               <td class="text-center">
-                <a href="{{ route('driver-verifications.show', $item) }}" class="btn btn-sm btn-outline-primary verification-detail-btn">
-                  <i data-lucide="eye" class="icon-xs"></i>
-                  Details
-                </a>
+                <div class="action-btns">
+                  <a href="{{ route('driver-verifications.show', $item) }}" class="action-btn action-btn-view" title="View">
+                    <i data-lucide="eye"></i>
+                  </a>
+                </div>
               </td>
             </tr>
           @empty
@@ -90,16 +91,7 @@
       </table>
     </div>
   </div>
-  @if($verifications->hasPages())
-    <div class="card-footer bg-transparent app-pagination-footer">
-      <small class="app-pagination-summary">
-        Showing {{ $verifications->firstItem() }} to {{ $verifications->lastItem() }} of {{ $verifications->total() }} driver verifications
-      </small>
-      <div class="app-pagination-controls">
-        {{ $verifications->links('pagination::bootstrap-5') }}
-      </div>
-    </div>
-  @endif
+  <x-app-pagination :paginator="$verifications" label="driver verifications" />
 </div>
 
 @endsection

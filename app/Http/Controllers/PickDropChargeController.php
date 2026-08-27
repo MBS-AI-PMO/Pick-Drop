@@ -15,6 +15,7 @@ class PickDropChargeController extends Controller
                 ['id' => 1],
                 [
                     'per_km_rate' => 0,
+                    'driver_monthly_rate' => 0,
                     'currency' => 'PKR',
                     'is_active' => true,
                 ]
@@ -34,6 +35,7 @@ class PickDropChargeController extends Controller
     {
         $request->validate([
             'per_km_rate' => ['required', 'numeric', 'min:0'],
+            'driver_monthly_rate' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'max:10'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -41,11 +43,12 @@ class PickDropChargeController extends Controller
         try {
             $charge = PickDropCharge::firstOrCreate(
                 ['id' => 1],
-                ['per_km_rate' => 0, 'currency' => 'PKR', 'is_active' => true]
+                ['per_km_rate' => 0, 'driver_monthly_rate' => 0, 'currency' => 'PKR', 'is_active' => true]
             );
 
             $charge->update([
                 'per_km_rate' => $request->input('per_km_rate'),
+                'driver_monthly_rate' => $request->input('driver_monthly_rate'),
                 'currency' => strtoupper($request->input('currency', 'PKR')),
                 'is_active' => $request->boolean('is_active'),
             ]);

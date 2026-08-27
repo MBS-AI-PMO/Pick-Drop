@@ -12,6 +12,9 @@ use App\Http\Controllers\Api\ParentSelf\IssueController;
 use App\Http\Controllers\Api\ParentSelf\NotificationController;
 use App\Http\Controllers\Api\ParentSelf\NotificationPreferenceController;
 use App\Http\Controllers\Api\ParentSelf\MessageController;
+use App\Http\Controllers\Api\ParentSelf\VerificationController;
+use App\Http\Controllers\Api\ParentSelf\CommuteProfileController;
+use App\Http\Controllers\Api\ParentSelf\InvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +35,15 @@ Route::prefix('parent')->group(function () {
         // Email verify (token-based for now)
         Route::post('email/verify/send', [AuthController::class, 'sendEmailVerification'])->name('api.parent.email.verify.send');
         Route::post('email/verify', [AuthController::class, 'verifyEmail'])->name('api.parent.email.verify');
+
+        Route::get('verification', [VerificationController::class, 'show'])->name('api.parent.verification.show');
+        Route::post('verification', [VerificationController::class, 'store'])->name('api.parent.verification.store');
+
+        Route::get('payment-methods', [InvoiceController::class, 'methods'])->name('api.parent.payment-methods');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('api.parent.invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.parent.invoices.show');
+        Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.parent.invoices.pay.stripe');
+        Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.parent.invoices.pay.bank');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.parent.me.show');
@@ -97,6 +109,18 @@ Route::prefix('self')->group(function () {
         // Email verify (token-based for now)
         Route::post('email/verify/send', [AuthController::class, 'sendEmailVerification'])->name('api.self.email.verify.send');
         Route::post('email/verify', [AuthController::class, 'verifyEmail'])->name('api.self.email.verify');
+
+        Route::get('verification', [VerificationController::class, 'show'])->name('api.self.verification.show');
+        Route::post('verification', [VerificationController::class, 'store'])->name('api.self.verification.store');
+
+        Route::get('commute-profile', [CommuteProfileController::class, 'show'])->name('api.self.commute-profile.show');
+        Route::post('commute-profile', [CommuteProfileController::class, 'store'])->name('api.self.commute-profile.store');
+
+        Route::get('payment-methods', [InvoiceController::class, 'methods'])->name('api.self.payment-methods');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('api.self.invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.self.invoices.show');
+        Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.self.invoices.pay.stripe');
+        Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.self.invoices.pay.bank');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.self.me.show');

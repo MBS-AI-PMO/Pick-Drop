@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Notification;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = User::where('role', '!=', 'Admin');
+            $query = User::whereNotIn('role', ['Admin', 'Super Admin']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -29,7 +30,7 @@ class UserController extends Controller
                 $query->where('role', $request->role);
             }
 
-            $users = $query->paginate(10)->withQueryString();
+            $users = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.users.index', compact('users'));
         } catch (\Throwable $e) {
@@ -47,7 +48,7 @@ class UserController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role'     => 'required|string',
+            'role'     => ['required', 'in:Driver,Parent,Student'],
             'status'   => 'nullable|string',
             'details'  => 'nullable|string',
         ]);
@@ -82,10 +83,13 @@ Notification::create([
 
     public function update(Request $request, User $user)
     {
+        if ($user->isPanelAdmin()) {
+            return redirect()->route('users.index')->with('error', 'Admin accounts cannot be updated from here.');
+        }
         $request->validate([
             'name'    => 'required|string|max:255',
             'email'   => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role'    => 'required|string',
+            'role'    => ['required', 'in:Driver,Parent,Student'],
             'status'  => 'nullable|string',
             'details' => 'nullable|string',
         ]);
@@ -119,6 +123,9 @@ Notification::create([
 
     public function destroy(User $user)
     {
+        if ($user->isPanelAdmin()) {
+            return redirect()->route('users.index')->with('error', 'Admin accounts cannot be deleted from here.');
+        }
         try {
             $user->delete();
             Notification::create([

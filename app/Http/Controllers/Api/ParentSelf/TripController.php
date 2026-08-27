@@ -15,7 +15,7 @@ class TripController extends BaseApiController
             $trips = PickupRequest::with(['student', 'city', 'area', 'driver', 'vehicle'])
                 ->where('parent_id', $request->user()->id)
                 ->orderByDesc('id')
-                ->paginate(20);
+                ->paginate(\App\Support\AppPagination::PER_PAGE);
 
             return $this->successResponse($trips, 'Recent trips');
         } catch (Throwable $e) {

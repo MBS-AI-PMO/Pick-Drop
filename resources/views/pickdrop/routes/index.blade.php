@@ -84,6 +84,26 @@
         <tbody id="routesTableBody">
 
           @forelse($routes as $route)
+          @php
+            $routeViewData = [
+              'id' => $route->id,
+              'code' => $route->code ?? ('#R-'.$route->id),
+              'name' => $route->name,
+              'destination' => $route->destination,
+              'city' => $route->city->name ?? '—',
+              'area' => $route->area->name ?? '—',
+              'vehicle' => $route->vehicle
+                ? $route->vehicle->name.' ('.$route->vehicle->license_plate.')'
+                : '—',
+              'timing' => ($route->start_time && $route->end_time)
+                ? \Carbon\Carbon::parse($route->start_time)->format('g:i A').' – '.\Carbon\Carbon::parse($route->end_time)->format('g:i A')
+                : '—',
+              'shift' => $route->shift ? ucfirst($route->shift) : '—',
+              'stops_count' => $route->stops_count,
+              'description' => $route->description,
+              'edit_url' => route('routes.edit', $route),
+            ];
+          @endphp
           <tr>
             <td class="ps-4 py-3 text-muted">{{ $routes->firstItem() + $loop->index }}</td>
             <td class="ps-2">
@@ -142,16 +162,20 @@
               @endif
             </td>
             <td class="text-end pe-4">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <a href="{{ route('routes.edit', $route) }}" class="btn btn-sm btn-success px-3">
-                  <i data-lucide="edit-2" class="icon-xs me-1"></i> Edit
+              <div class="action-btns">
+                <button type="button" class="action-btn action-btn-view" title="View"
+                        onclick='openViewRouteModal(@json($routeViewData))'>
+                  <i data-lucide="eye"></i>
+                </button>
+                <a href="{{ route('routes.edit', $route) }}" class="action-btn action-btn-edit" title="Edit">
+                  <i data-lucide="edit-2"></i>
                 </a>
-                <form action="{{ route('routes.destroy', $route) }}" method="POST" class="d-inline m-0 p-0"
+                <form action="{{ route('routes.destroy', $route) }}" method="POST"
                       onsubmit="confirmRouteDelete(event, this)">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-light text-danger" title="Delete">
-                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                  <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                    <i data-lucide="trash-2"></i>
                   </button>
                 </form>
               </div>
@@ -173,20 +197,71 @@
       </table>
     </div>
   </div>
+  <x-app-pagination :paginator="$routes" label="routes" />
 </div>
 
-{{-- Pagination Footer --}}
-@if($routes->hasPages())
-  <div class="card-footer bg-transparent app-pagination-footer">
-    <small class="app-pagination-summary">
-      Showing {{ $routes->firstItem() }} to {{ $routes->lastItem() }} of {{ $routes->total() }} routes
-    </small>
-    <div class="app-pagination-controls">
-      {{ $routes->links('pagination::bootstrap-5') }}
+
+{{-- ========== VIEW ROUTE MODAL ========== --}}
+<div class="modal fade" id="viewRouteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Route Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="row g-3">
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Code</p>
+            <p class="fw-semibold mb-0" id="viewRouteCode">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Name</p>
+            <p class="fw-semibold mb-0" id="viewRouteName">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">City</p>
+            <p class="fw-semibold mb-0" id="viewRouteCity">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Area</p>
+            <p class="fw-semibold mb-0" id="viewRouteArea">—</p>
+          </div>
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Destination</p>
+            <p class="fw-semibold mb-0" id="viewRouteDestination">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Vehicle</p>
+            <p class="fw-semibold mb-0" id="viewRouteVehicle">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Timing</p>
+            <p class="fw-semibold mb-0" id="viewRouteTiming">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Shift</p>
+            <p class="fw-semibold mb-0" id="viewRouteShift">—</p>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary small mb-1">Stops</p>
+            <p class="fw-semibold mb-0" id="viewRouteStops">—</p>
+          </div>
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Description</p>
+            <p class="fw-semibold mb-0" id="viewRouteDescription">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+        <a href="#" id="viewRouteEditBtn" class="btn btn-primary">
+          <i data-lucide="edit-2" class="icon-sm me-1"></i> Edit
+        </a>
+      </div>
     </div>
   </div>
-@endif
-
+</div>
 
 {{-- ========== VIEW STOPS MODAL (READ-ONLY, STOPS MANAGED VIA MOBILE APP) ========== --}}
 <div class="modal fade" id="viewStopsModal" tabindex="-1" aria-hidden="true">
@@ -240,6 +315,22 @@
     routeSearch.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') document.getElementById('routeFilterForm').submit();
     });
+  }
+
+  function openViewRouteModal(route) {
+    document.getElementById('viewRouteCode').textContent = route.code || '—';
+    document.getElementById('viewRouteName').textContent = route.name || '—';
+    document.getElementById('viewRouteCity').textContent = route.city || '—';
+    document.getElementById('viewRouteArea').textContent = route.area || '—';
+    document.getElementById('viewRouteDestination').textContent = route.destination || '—';
+    document.getElementById('viewRouteVehicle').textContent = route.vehicle || '—';
+    document.getElementById('viewRouteTiming').textContent = route.timing || '—';
+    document.getElementById('viewRouteShift').textContent = route.shift || '—';
+    document.getElementById('viewRouteStops').textContent = (route.stops_count ?? 0) + ' Stops';
+    document.getElementById('viewRouteDescription').textContent = route.description || '—';
+    document.getElementById('viewRouteEditBtn').href = route.edit_url || '#';
+    new bootstrap.Modal(document.getElementById('viewRouteModal')).show();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   function confirmRouteDelete(event, form) {

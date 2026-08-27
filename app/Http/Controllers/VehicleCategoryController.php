@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\VehicleCategory;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +23,7 @@ class VehicleCategoryController extends Controller
                 $query->where('status', $request->status);
             }
 
-            $categories = $query->paginate(10)->withQueryString();
+            $categories = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.vehicle-categories.index', compact('categories'));
         } catch (\Throwable $e) {

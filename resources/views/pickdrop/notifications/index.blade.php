@@ -78,16 +78,7 @@
             </table>
         </div>
 
-        @if($notifications->hasPages())
-            <div class="notification-pagination">
-                <small class="app-pagination-summary">
-                    Showing {{ $notifications->firstItem() }} to {{ $notifications->lastItem() }} of {{ $notifications->total() }} notifications
-                </small>
-                <div class="app-pagination-controls">
-                    {{ $notifications->links('pagination::bootstrap-5') }}
-                </div>
-            </div>
-        @endif
+        <x-app-pagination :paginator="$notifications" label="notifications" class="notification-pagination" />
     </div>
 </div>
 

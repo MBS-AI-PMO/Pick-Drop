@@ -12,7 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+        ]);
+        $middleware->validateCsrfTokens(except: [
+            'stripe/webhook',
+            'api/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

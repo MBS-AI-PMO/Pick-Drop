@@ -34,6 +34,13 @@
         </a>
       </li>
 
+      <li class="nav-item {{ active_class(['parent-self-verifications', 'parent-self-verifications/*']) }}">
+        <a href="{{ route('parent-self-verifications.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="user-round-check"></i>
+          <span class="link-title">Parent / Self KYC</span>
+        </a>
+      </li>
+
       <li class="nav-item {{ active_class(['vehicle-verifications', 'vehicle-verifications/*']) }}">
         <a href="{{ route('vehicle-verifications.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="car-front"></i>
@@ -41,7 +48,7 @@
         </a>
       </li>
 
-      <li class="nav-item {{ request()->is('locations*') ? 'active' : '' }}">
+      <li class="nav-item has-sub {{ request()->is('locations*') ? 'active' : '' }}">
         <a class="nav-link {{ request()->is('locations*') ? 'active' : '' }}"
            data-bs-toggle="collapse" href="#locations-nav" role="button"
            aria-expanded="{{ request()->is('locations*') ? 'true' : 'false' }}"
@@ -62,7 +69,7 @@
         </div>
       </li>
 
-      <li class="nav-item {{ request()->is('vehicles*') || request()->is('vehicle-categories*') ? 'active' : '' }}">
+      <li class="nav-item has-sub {{ request()->is('vehicles*') || request()->is('vehicle-categories*') ? 'active' : '' }}">
         <a class="nav-link {{ request()->is('vehicles*') || request()->is('vehicle-categories*') ? 'active' : '' }}"
            data-bs-toggle="collapse" href="#vehicles-nav" role="button"
            aria-expanded="{{ request()->is('vehicles*') || request()->is('vehicle-categories*') ? 'true' : 'false' }}"
@@ -83,6 +90,13 @@
         </div>
       </li>
 
+      <li class="nav-item {{ active_class(['pickup-requests', 'pickup-requests/*']) }}">
+        <a href="{{ route('pickup-requests.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="clipboard-list"></i>
+          <span class="link-title">Pickup Requests</span>
+        </a>
+      </li>
+
       <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">
         <a href="{{ route('routes.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="map-pin"></i>
@@ -92,11 +106,25 @@
 
       <li class="nav-item nav-category">Finance</li>
 
-      <li class="nav-item {{ active_class(['payments', 'payments/*']) }}">
-        <a href="#" class="nav-link">
+      <li class="nav-item has-sub {{ request()->is('payments*') ? 'active' : '' }}">
+        <a class="nav-link {{ request()->is('payments*') ? 'active' : '' }}"
+           data-bs-toggle="collapse" href="#payments-nav" role="button"
+           aria-expanded="{{ request()->is('payments*') ? 'true' : 'false' }}"
+           aria-controls="payments-nav">
           <i class="link-icon" data-lucide="credit-card"></i>
           <span class="link-title">Payments</span>
+          <i class="link-arrow" data-lucide="chevron-down"></i>
         </a>
+        <div class="collapse {{ request()->is('payments*') ? 'show' : '' }}" id="payments-nav">
+          <ul class="nav sub-menu">
+            <li class="nav-item">
+              <a href="{{ route('payments.index') }}" class="nav-link {{ request()->is('payments') || request()->is('payments/invoices*') ? 'active' : '' }}">Invoices</a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ route('payments.settings') }}" class="nav-link {{ request()->is('payments/settings') ? 'active' : '' }}">Bank account</a>
+            </li>
+          </ul>
+        </div>
       </li>
 
       <li class="nav-item {{ active_class(['charges', 'charges/*']) }}">
@@ -109,7 +137,7 @@
       <li class="nav-item nav-category">Analytics</li>
 
       <li class="nav-item {{ active_class(['reports', 'reports/*']) }}">
-        <a href="#" class="nav-link">
+        <a href="{{ route('reports.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="bar-chart-2"></i>
           <span class="link-title">Reports</span>
         </a>

@@ -17,7 +17,7 @@ class IssueController extends BaseApiController
         try {
             $issues = IssueReport::where('user_id', $request->user()->id)
                 ->orderByDesc('id')
-                ->paginate(20);
+                ->paginate(\App\Support\AppPagination::PER_PAGE);
 
             return $this->successResponse($issues, 'Issues');
         } catch (Throwable $e) {

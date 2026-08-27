@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -19,22 +20,25 @@ class AuthController extends BaseApiController
     public function register(Request $request): JsonResponse
     {
         try {
+            $accountType = $this->expectedAccountType($request);
+
             $validated = $request->validate([
                 'name'     => ['required', 'string', 'max:255'],
                 'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
                 'address'  => ['nullable', 'string', 'max:500'],
-                'contact'  => ['nullable', 'string', 'max:50'],
+                'contact'  => ['nullable', 'string', 'max:50', 'unique:users,phone'],
                 'password' => ['required', 'string', 'min:6', 'confirmed'],
-                'type'     => ['required', 'in:parent,self'],
+                'type'     => ['required', Rule::in([$accountType])],
             ]);
 
-            $user = DB::transaction(function () use ($validated) {
+            $user = DB::transaction(function () use ($validated, $accountType) {
                 $u = User::create([
                     'name'     => $validated['name'],
                     'email'    => $validated['email'],
-                    'password' => Hash::make($validated['password']),
-                    'role'     => $validated['type'], // store as parent/self in role (adjust if you use another column)
-                    'status'   => 'active',
+                    'phone'    => $validated['contact'] ?? null,
+                    'password' => $validated['password'],
+                    'role'     => $accountType,
+                    'status'   => 'Pending',
                     'details'  => [
                         'address' => $validated['address'] ?? null,
                         'contact' => $validated['contact'] ?? null,
@@ -48,8 +52,11 @@ class AuthController extends BaseApiController
             $token = $user->createToken('parent-self-api')->plainTextToken;
 
             return $this->successResponse([
-                'user'  => $user,
+                'user'  => $user->toParentSelfApiArray(),
                 'token' => $token,
+                'email_verification_required' => true,
+                'kyc_required' => true,
+                'next_step' => 'verify_email',
             ], 'Registered successfully. A verification code has been sent to your email.', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
@@ -61,13 +68,17 @@ class AuthController extends BaseApiController
     public function login(Request $request): JsonResponse
     {
         try {
+            $accountType = $this->expectedAccountType($request);
+
             $validated = $request->validate([
                 'email'    => ['required', 'string', 'email'],
                 'password' => ['required', 'string'],
             ]);
 
             /** @var User|null $user */
-            $user = User::where('email', $validated['email'])->first();
+            $user = User::where('email', $validated['email'])
+                ->where('role', $accountType)
+                ->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
                 return $this->errorResponse('Invalid credentials', 401);
@@ -76,9 +87,21 @@ class AuthController extends BaseApiController
             $user->tokens()->delete();
             $token = $user->createToken('parent-self-api')->plainTextToken;
 
+            if (is_null($user->email_verified_at)) {
+                return $this->successResponse([
+                    'user' => $user->toParentSelfApiArray(),
+                    'token' => $token,
+                    'email_verification_required' => true,
+                    'kyc_status' => $user->parentSelfKycStatus(),
+                    'next_step' => 'verify_email',
+                ], 'Logged in. Please verify your email address before continuing.');
+            }
+
             return $this->successResponse([
-                'user'  => $user,
+                'user'  => $user->toParentSelfApiArray(),
                 'token' => $token,
+                'kyc_status' => $user->parentSelfKycStatus(),
+                'next_step' => $user->parentSelfNextStep(),
             ], 'Logged in successfully');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
@@ -159,15 +182,22 @@ class AuthController extends BaseApiController
     {
         try {
             $user = $request->user();
+            $accountDenied = $this->denyUnlessAccountType($user, $request);
+            if ($accountDenied) {
+                return $accountDenied;
+            }
 
             if ($user->email_verified_at) {
-                return $this->successResponse(null, 'Email already verified');
+                return $this->successResponse([
+                    'next_step' => $user->parentSelfNextStep(),
+                ], 'Email already verified');
             }
 
             $this->storeEmailVerificationCodeAndNotify($user);
 
             return $this->successResponse([
                 'expires_in_minutes' => 30,
+                'next_step' => 'verify_email',
             ], 'Verification code sent to your email');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to send verification');
@@ -182,6 +212,10 @@ class AuthController extends BaseApiController
             ]);
 
             $user = $request->user();
+            $accountDenied = $this->denyUnlessAccountType($user, $request);
+            if ($accountDenied) {
+                return $accountDenied;
+            }
 
             $row = DB::table('email_verification_tokens')
                 ->where('user_id', $user->id)
@@ -206,7 +240,13 @@ class AuthController extends BaseApiController
                 'updated_at' => now(),
             ]);
 
-            return $this->successResponse($user, 'Email verified successfully');
+            $user = $user->fresh();
+
+            return $this->successResponse([
+                'user' => $user->toParentSelfApiArray(),
+                'kyc_required' => $user->parentSelfKycStatus() !== 'approved',
+                'next_step' => $user->parentSelfNextStep(),
+            ], 'Email verified successfully. Please complete identity verification.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -237,4 +277,3 @@ class AuthController extends BaseApiController
         Mail::to($user->email)->send(new EmailVerificationCodeMail($code, $user->name));
     }
 }
-

@@ -85,22 +85,27 @@
               <td class="py-3 text-secondary">{{ $category->passenger_capacity }} Seats</td>
               <td class="py-3">
                 @if($category->status == 1)
-                  <span class="badge rounded-pill px-3 py-1" style="background:#d1fae5;color:#065f46;">Active</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
                 @else
                   <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">Inactive</span>
                 @endif
               </td>
               <td class="py-3 text-center">
-                <div class="d-flex justify-content-center align-items-center gap-2">
-                  <button class="btn btn-sm btn-light btn-icon" onclick='openEditModal(@json($category))'>
-                    <i data-lucide="edit-2" class="icon-sm"></i>
+                <div class="action-btns">
+                  <button type="button" class="action-btn action-btn-view" title="View"
+                          onclick='openViewModal(@json($category))'>
+                    <i data-lucide="eye"></i>
+                  </button>
+                  <button type="button" class="action-btn action-btn-edit" title="Edit"
+                          onclick='openEditModal(@json($category))'>
+                    <i data-lucide="edit-2"></i>
                   </button>
                   <form action="{{ route('vehicle-categories.destroy', $category->id) }}" method="POST"
-                        class="d-inline" onsubmit="confirmDelete(event, this)">
+                        onsubmit="confirmDelete(event, this)">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-danger btn-icon">
-                      <i data-lucide="trash-2" class="icon-sm"></i>
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                      <i data-lucide="trash-2"></i>
                     </button>
                   </form>
                 </div>
@@ -122,17 +127,7 @@
     </div>
   </div>
 
-  {{-- Pagination Footer --}}
-  @if($categories->hasPages())
-  <div class="card-footer bg-transparent app-pagination-footer">
-    <small class="app-pagination-summary">
-      Showing {{ $categories->firstItem() }} to {{ $categories->lastItem() }} of {{ $categories->total() }} categories
-    </small>
-    <div class="app-pagination-controls">
-      {{ $categories->links('pagination::bootstrap-5') }}
-    </div>
-  </div>
-  @endif
+  <x-app-pagination :paginator="$categories" label="categories" />
 </div>
 
 {{-- ========== ADD MODAL ========== --}}
@@ -208,6 +203,36 @@
   </div>
 </div>
 
+<div class="modal fade" id="viewCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Category Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="row g-3">
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Vehicle Name</p>
+            <p class="fw-semibold mb-0" id="viewCategoryName">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Passenger Capacity</p>
+            <p class="fw-semibold mb-0" id="viewCategoryCapacity">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Status</p>
+            <p class="fw-semibold mb-0" id="viewCategoryStatus">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('custom-scripts')
@@ -235,6 +260,15 @@
   });
 
   const editModal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
+
+  function openViewModal(category) {
+    document.getElementById('viewCategoryName').textContent = category.vehicle_name || '—';
+    document.getElementById('viewCategoryCapacity').textContent = category.passenger_capacity
+      ? category.passenger_capacity + ' Seats'
+      : '—';
+    document.getElementById('viewCategoryStatus').textContent = Number(category.status) === 1 ? 'Active' : 'Inactive';
+    new bootstrap.Modal(document.getElementById('viewCategoryModal')).show();
+  }
 
   function openEditModal(category) {
     document.getElementById('edit_vehicle_name').value      = category.vehicle_name;

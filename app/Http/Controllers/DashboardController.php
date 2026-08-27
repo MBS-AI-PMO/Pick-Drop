@@ -16,12 +16,18 @@ class DashboardController extends Controller
     {
         $activeTripStatuses = ['accepted', 'picked_up', 'dropped'];
 
-        $activeTrips = PickupRequest::with(['driver', 'vehicle.category', 'student'])
+        $activeTrips = PickupRequest::with(['driver', 'vehicle.category', 'student', 'parent'])
             ->whereIn('status', $activeTripStatuses)
             ->latest()
             ->take(5)
             ->get()
             ->map(fn (PickupRequest $trip) => $this->formatTrip($trip));
+
+        $pendingRequests = PickupRequest::with(['parent', 'city', 'area'])
+            ->where('status', 'pending')
+            ->latest()
+            ->take(5)
+            ->get();
 
         $recentAlerts = Notification::latest()
             ->take(3)
@@ -51,7 +57,7 @@ class DashboardController extends Controller
         $stats = [
             'vehicles' => Vehicle::where('status', 'Active')->count(),
             'users' => User::count(),
-            'routes' => SchoolRoute::count(),
+            'pending_requests' => PickupRequest::where('status', 'pending')->count(),
             'alerts_today' => Notification::whereDate('created_at', today())->count()
                 + IssueReport::whereDate('created_at', today())->count(),
         ];
@@ -67,6 +73,8 @@ class DashboardController extends Controller
             'stats' => $stats,
             'activeTrips' => $activeTrips,
             'activeTripsCount' => PickupRequest::whereIn('status', $activeTripStatuses)->count(),
+            'pendingRequests' => $pendingRequests,
+            'pendingRequestsCount' => PickupRequest::where('status', 'pending')->count(),
             'recentAlerts' => $recentAlerts,
             'recentAlertsCount' => Notification::where('is_read', false)->count(),
             'todaySchedule' => $todaySchedule,
@@ -83,19 +91,6 @@ class DashboardController extends Controller
             default => 0,
         };
 
-        $statusLabel = match ($trip->status) {
-            'accepted' => 'Accepted',
-            'picked_up' => 'Picked Up',
-            'dropped' => 'Dropped',
-            default => ucfirst(str_replace('_', ' ', $trip->status)),
-        };
-
-        $statusClass = match ($trip->status) {
-            'dropped' => 'bg-success-subtle text-success',
-            'picked_up' => 'bg-primary-subtle text-primary',
-            default => 'bg-info-subtle text-info',
-        };
-
         $progressClass = match ($trip->status) {
             'dropped' => 'bg-success',
             'picked_up' => 'bg-primary',
@@ -103,18 +98,19 @@ class DashboardController extends Controller
         };
 
         return [
-            'route_title' => 'Request #' . $trip->id,
-            'route_subtitle' => ucfirst($trip->type) . ' Pickup',
+            'id' => $trip->id,
+            'route_title' => $trip->requesterName(),
+            'route_subtitle' => $trip->typeLabel() . ' · Request #' . $trip->id,
             'driver_name' => $trip->driver?->name ?? 'Unassigned',
-            'driver_id' => $trip->driver ? 'ID: ' . $trip->driver->id : 'ID: N/A',
+            'driver_id' => $trip->driver ? 'ID: ' . $trip->driver->id : 'Waiting for driver',
             'vehicle_name' => $trip->vehicle?->name ?? 'No vehicle',
             'vehicle_meta' => $trip->vehicle?->category?->passenger_capacity
                 ? $trip->vehicle->category->passenger_capacity . ' Seats'
                 : ($trip->vehicle?->license_plate ?? 'N/A'),
-            'status_label' => $statusLabel,
-            'status_class' => $statusClass,
+            'status_label' => $trip->statusLabel(),
             'progress' => $progress,
             'progress_class' => $progressClass,
+            'url' => route('pickup-requests.show', $trip),
         ];
     }
 

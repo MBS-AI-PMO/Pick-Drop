@@ -2,39 +2,42 @@
 
 namespace App\Http\Controllers\Api\Driver;
 
-use App\Http\Controllers\Api\Driver\BaseApiController;
 use App\Models\DriverPickupRequestRejection;
 use App\Models\PickupRequest;
-use App\Models\User;
 use App\Services\AppNotificationService;
+use App\Services\InvoiceService;
+use App\Services\PickupRequestMatchingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class RequestController extends BaseApiController
 {
+    public function __construct(private readonly PickupRequestMatchingService $matcher)
+    {
+    }
+
     public function available(Request $request): JsonResponse
     {
         try {
             $driver = $request->user();
-            $serviceAreaIds = $this->normalizedServiceAreaIds($driver);
-
-            if ($serviceAreaIds === []) {
-                return $this->successResponse([], 'No service areas selected');
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
             }
 
-            $requests = PickupRequest::with(['parent', 'student', 'city', 'area'])
-                ->where('status', 'pending')
-                ->whereNull('driver_id')
-                ->when($driver->city_id, fn ($query) => $query->where('city_id', $driver->city_id))
-                ->whereIn('area_id', $serviceAreaIds)
-                ->whereDoesntHave('driverRejections', function ($q) use ($driver) {
-                    $q->where('driver_id', $driver->id);
-                })
+            $requests = $this->matcher
+                ->constrainAvailableQuery(
+                    PickupRequest::query()->with(['parent', 'student', 'city', 'area', 'dropArea']),
+                    $driver
+                )
                 ->latest()
-                ->get();
+                ->get()
+                ->map(fn (PickupRequest $row) => $row->toApiArray('driver'))
+                ->values();
 
             return $this->successResponse($requests, 'Available requests');
         } catch (Throwable $e) {
@@ -50,8 +53,12 @@ class RequestController extends BaseApiController
     {
         try {
             $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
 
-            $q = PickupRequest::with(['parent', 'student', 'city', 'area', 'vehicle'])
+            $q = PickupRequest::with(['parent', 'student', 'city', 'area', 'dropArea', 'vehicle', 'latestInvoice'])
                 ->where('driver_id', $driver->id)
                 ->whereNotIn('status', ['pending', 'cancelled']);
 
@@ -68,7 +75,10 @@ class RequestController extends BaseApiController
                 $q->whereIn('status', ['accepted', 'picked_up', 'dropped']);
             }
 
-            $requests = $q->latest()->get();
+            $requests = $q->latest()
+                ->get()
+                ->map(fn (PickupRequest $row) => $row->toApiArray('driver'))
+                ->values();
 
             return $this->successResponse($requests, 'Accepted requests');
         } catch (Throwable $e) {
@@ -80,19 +90,16 @@ class RequestController extends BaseApiController
     {
         try {
             $driver = $request->user();
-
-            if ($driver->role !== 'driver') {
-                return $this->errorResponse('Forbidden', 403);
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
             }
 
-            $serviceAreaIds = $this->normalizedServiceAreaIds($driver);
-            if ($serviceAreaIds === []) {
-                return $this->errorResponse('Set your service areas before accepting requests', 422);
-            }
+            app(\App\Services\ShiftFareService::class)->quoteFromRequest($pickupRequest);
 
             $updated = null;
 
-            DB::transaction(function () use ($driver, $pickupRequest, $serviceAreaIds, &$updated) {
+            DB::transaction(function () use ($driver, $pickupRequest, &$updated) {
                 /** @var PickupRequest|null $row */
                 $row = PickupRequest::query()
                     ->lockForUpdate()
@@ -105,13 +112,14 @@ class RequestController extends BaseApiController
                     ]);
                 }
 
-                if (!$this->driverCanServeRequest($driver, $row, $serviceAreaIds)) {
+                if (!$this->matcher->driverCanServe($driver, $row)) {
                     throw ValidationException::withMessages([
                         'pickup_request' => ['You cannot accept this request (city or area mismatch).'],
                     ]);
                 }
 
                 $row->driver_id = $driver->id;
+                $row->vehicle_id = $driver->assignedVehicle?->id;
                 $row->status = 'accepted';
                 $row->save();
 
@@ -120,16 +128,22 @@ class RequestController extends BaseApiController
                     ->where('pickup_request_id', $row->id)
                     ->delete();
 
-                $updated = $row->fresh(['parent', 'student', 'city', 'area', 'driver']);
+                $updated = $row->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'driver', 'vehicle']);
             });
 
             if ($updated) {
-                app(AppNotificationService::class)->notifyParentRequestAccepted($updated);
+                $invoice = app(InvoiceService::class)->createForAcceptedShift($updated);
+                $updated = $updated->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'driver', 'vehicle', 'latestInvoice.items', 'latestInvoice.payments']);
+                $notifier = app(AppNotificationService::class);
+                $notifier->notifyParentRequestAccepted($updated);
+                $notifier->notifyShiftPaymentRequired($updated, $invoice);
             }
 
-            return $this->successResponse($updated, 'Request accepted');
+            return $this->successResponse($updated?->toApiArray('driver'), 'Request accepted. Customer must pay the advance fee before the shift can start.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to accept request');
         }
@@ -139,21 +153,16 @@ class RequestController extends BaseApiController
     {
         try {
             $driver = $request->user();
-
-            if ($driver->role !== 'driver') {
-                return $this->errorResponse('Forbidden', 403);
-            }
-
-            $serviceAreaIds = $this->normalizedServiceAreaIds($driver);
-            if ($serviceAreaIds === []) {
-                return $this->errorResponse('Set your service areas first', 422);
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
             }
 
             if ($pickupRequest->status !== 'pending' || $pickupRequest->driver_id !== null) {
                 return $this->errorResponse('This request is no longer open for rejection', 422);
             }
 
-            if (!$this->driverCanServeRequest($driver, $pickupRequest, $serviceAreaIds)) {
+            if (!$this->matcher->driverCanServe($driver, $pickupRequest)) {
                 return $this->errorResponse('You cannot reject this request (city or area mismatch)', 422);
             }
 
@@ -178,13 +187,17 @@ class RequestController extends BaseApiController
     {
         try {
             $driver = $request->user();
-
-            if ($driver->role !== 'driver') {
-                return $this->errorResponse('Forbidden', 403);
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
             }
 
             if ((int) $pickupRequest->driver_id !== (int) $driver->id) {
                 return $this->errorResponse('Not found', 404);
+            }
+
+            if (!$pickupRequest->isShiftPaid()) {
+                return $this->errorResponse('Trip cannot start until the customer completes payment for this shift.', 422);
             }
 
             $validated = $request->validate([
@@ -214,40 +227,14 @@ class RequestController extends BaseApiController
 
             app(AppNotificationService::class)->notifyPickupRequestStatus($pickupRequest, $next);
 
-            return $this->successResponse($pickupRequest->fresh(['parent', 'student', 'city', 'area']), 'Status updated');
+            return $this->successResponse(
+                $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea'])->toApiArray('driver'),
+                'Status updated'
+            );
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to update request status');
         }
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function normalizedServiceAreaIds(User $driver): array
-    {
-        return collect($driver->service_areas ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  list<int>  $serviceAreaIds
-     */
-    private function driverCanServeRequest(User $driver, PickupRequest $pickupRequest, array $serviceAreaIds): bool
-    {
-        if ($serviceAreaIds === []) {
-            return false;
-        }
-
-        if ($driver->city_id && (int) $pickupRequest->city_id !== (int) $driver->city_id) {
-            return false;
-        }
-
-        return in_array((int) $pickupRequest->area_id, $serviceAreaIds, true);
     }
 }

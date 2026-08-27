@@ -14,11 +14,16 @@ class StudentController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         try {
+            $gate = $this->denyStudentAccess($request);
+            if ($gate) {
+                return $gate;
+            }
+
             $students = Student::query()
                 ->where('parent_id', $request->user()->id)
                 ->with(['city', 'pickupArea'])
                 ->orderByDesc('id')
-                ->paginate(20);
+                ->paginate(\App\Support\AppPagination::PER_PAGE);
 
             return $this->successResponse($students, 'Students for this parent');
         } catch (Throwable $e) {
@@ -29,6 +34,11 @@ class StudentController extends BaseApiController
     public function store(Request $request): JsonResponse
     {
         try {
+            $gate = $this->denyStudentAccess($request);
+            if ($gate) {
+                return $gate;
+            }
+
             $validated = $request->validate([
                 'name'   => ['required', 'string', 'max:255'],
                 'grade'  => ['nullable', 'string', 'max:100'],
@@ -60,8 +70,14 @@ class StudentController extends BaseApiController
                 'status' => 'active',
             ]));
             $student->load(['city', 'pickupArea']);
+            $user = $request->user()->fresh();
 
-            return $this->successResponse($student, 'Student created', 201);
+            return $this->successResponse([
+                'student' => $student,
+                'next_step' => $user->parentSelfNextStep(),
+                'onboarding_complete' => $user->isParentSelfOnboardingComplete(),
+                'children_count' => $user->students()->count(),
+            ], 'Student created', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -72,6 +88,11 @@ class StudentController extends BaseApiController
     public function show(Request $request, Student $student): JsonResponse
     {
         try {
+            $gate = $this->denyStudentAccess($request);
+            if ($gate) {
+                return $gate;
+            }
+
             $student->load(['city', 'pickupArea']);
 
             return $this->successResponse($student, 'Student detail');
@@ -83,6 +104,11 @@ class StudentController extends BaseApiController
     public function update(Request $request, Student $student): JsonResponse
     {
         try {
+            $gate = $this->denyStudentAccess($request);
+            if ($gate) {
+                return $gate;
+            }
+
             $validated = $request->validate([
                 'name'   => ['sometimes', 'string', 'max:255'],
                 'grade'  => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -125,12 +151,32 @@ class StudentController extends BaseApiController
     public function destroy(Request $request, Student $student): JsonResponse
     {
         try {
+            $gate = $this->denyStudentAccess($request);
+            if ($gate) {
+                return $gate;
+            }
+
             $student->delete();
 
             return $this->successResponse(null, 'Student deleted');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to delete student');
         }
+    }
+
+    private function denyStudentAccess(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        $accountDenied = $this->denyUnlessAccountType($user, $request);
+        if ($accountDenied) {
+            return $accountDenied;
+        }
+
+        if (!$user->isParentAccount()) {
+            return $this->errorResponse('Only parent accounts can manage children.', 403);
+        }
+
+        return $this->denyUnlessKycApproved($user);
     }
 }
 

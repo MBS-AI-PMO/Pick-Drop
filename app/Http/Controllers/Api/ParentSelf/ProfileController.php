@@ -12,13 +12,23 @@ class ProfileController extends BaseApiController
 {
     public function show(Request $request): JsonResponse
     {
-        return $this->successResponse($request->user(), 'Profile');
+        $user = $request->user();
+        $accountDenied = $this->denyUnlessAccountType($user, $request);
+        if ($accountDenied) {
+            return $accountDenied;
+        }
+
+        return $this->successResponse($user->toParentSelfApiArray(), 'Profile');
     }
 
     public function update(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
+            $accountDenied = $this->denyUnlessAccountType($user, $request);
+            if ($accountDenied) {
+                return $accountDenied;
+            }
 
             $validated = $request->validate([
                 'name'  => ['sometimes', 'string', 'max:255'],
@@ -37,11 +47,15 @@ class ProfileController extends BaseApiController
 
             unset($validated['address'], $validated['contact']);
 
+            if (array_key_exists('contact', $details) && !$user->phone) {
+                $user->phone = $details['contact'];
+            }
+
             $user->fill($validated);
             $user->details = $details;
             $user->save();
 
-            return $this->successResponse($user, 'Profile updated');
+            return $this->successResponse($user->fresh()->toParentSelfApiArray(), 'Profile updated');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {

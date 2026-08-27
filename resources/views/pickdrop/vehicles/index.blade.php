@@ -97,7 +97,7 @@
             <td class="py-3">
               @php $s = strtolower($vehicle->status); @endphp
               @if($s === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#d1fae5;color:#065f46;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
               @elseif($s === 'maintenance')
                 <span class="badge rounded-pill px-3 py-1" style="background:#fef3c7;color:#92400e;">Maintenance</span>
               @else
@@ -105,51 +105,47 @@
               @endif
             </td>
             <td class="py-3 text-center">
-              <div class="d-flex justify-content-center align-items-center gap-2">
+              <div class="action-btns">
 @if($vehicle->driver_id)
-
-<form action="{{ route('vehicles.unassign', $vehicle->id) }}"
-      method="POST"
-      class="d-inline">
+<form action="{{ route('vehicles.unassign', $vehicle->id) }}" method="POST">
     @csrf
-    <button type="submit"
-            class="btn btn-sm btn-warning btn-icon"
-            title="Unassign Driver"
+    <button type="submit" class="action-btn action-btn-warn" title="Unassign Driver"
             onclick="return confirm('Unassign this driver?')">
-        <i data-lucide="user-minus" class="icon-sm"></i>
+        <i data-lucide="user-minus"></i>
     </button>
 </form>
-
 @else
-
-<button
-    type="button"
-    class="btn btn-sm btn-success btn-icon"
-    title="Assign Driver"
+<button type="button" class="action-btn action-btn-add" title="Assign Driver"
     onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
         "type_name"   => optional($vehicle->category)->vehicle_name,
         "capacity_val"=> optional($vehicle->category)->passenger_capacity,
         "driver_name" => optional($vehicle->driver)->name
     ])))'>
-    <i data-lucide="user-plus" class="icon-sm"></i>
+    <i data-lucide="user-plus"></i>
 </button>
-
 @endif
-                <button class="btn btn-sm btn-light btn-icon" title="View / Edit"
+                <button type="button" class="action-btn action-btn-view" title="View"
                   onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
                     "type_name"   => optional($vehicle->category)->vehicle_name,
                     "capacity_val"=> optional($vehicle->category)->passenger_capacity,
                     "driver_name" => optional($vehicle->driver)->name
-                  ])))'>
-                  <i data-lucide="eye" class="icon-sm"></i>
+                  ])), false)'>
+                  <i data-lucide="eye"></i>
                 </button>
-
+                <button type="button" class="action-btn action-btn-edit" title="Edit"
+                  onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
+                    "type_name"   => optional($vehicle->category)->vehicle_name,
+                    "capacity_val"=> optional($vehicle->category)->passenger_capacity,
+                    "driver_name" => optional($vehicle->driver)->name
+                  ])), true)'>
+                  <i data-lucide="edit-2"></i>
+                </button>
                 <form action="{{ route('vehicles.destroy', $vehicle->id) }}" method="POST"
-                      class="d-inline" onsubmit="confirmDelete(event, this)">
+                      onsubmit="confirmDelete(event, this)">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger btn-icon">
-                    <i data-lucide="trash-2" class="icon-sm"></i>
+                  <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                    <i data-lucide="trash-2"></i>
                   </button>
                 </form>
               </div>
@@ -171,17 +167,7 @@
     </div>
   </div>
 
-  {{-- Pagination Footer --}}
-  @if($vehicles->hasPages())
-  <div class="card-footer bg-transparent app-pagination-footer">
-    <small class="app-pagination-summary">
-      Showing {{ $vehicles->firstItem() }} to {{ $vehicles->lastItem() }} of {{ $vehicles->total() }} vehicles
-    </small>
-    <div class="app-pagination-controls">
-      {{ $vehicles->links('pagination::bootstrap-5') }}
-    </div>
-  </div>
-  @endif
+  <x-app-pagination :paginator="$vehicles" label="vehicles" />
 </div>
 
 
@@ -400,8 +386,8 @@
   // View/Edit modal
   const viewModal = new bootstrap.Modal(document.getElementById('viewVehicleModal'));
 
-  function openDetailsModal(vehicle) {
-    toggleEditMode(false);
+  function openDetailsModal(vehicle, startInEdit = false) {
+    toggleEditMode(!!startInEdit);
 
     document.getElementById('viewVehicleModalLabel').textContent = 'Vehicle — ' + vehicle.name;
 
@@ -416,7 +402,7 @@
     badge.textContent = vehicle.status || '—';
     const s = (vehicle.status || '').toLowerCase();
     if (s === 'active') {
-      badge.style.background = '#d1fae5'; badge.style.color = '#065f46';
+      badge.style.background = '#eef4ff'; badge.style.color = '#3f6fd9';
     } else if (s === 'maintenance') {
       badge.style.background = '#fef3c7'; badge.style.color = '#92400e';
     } else {

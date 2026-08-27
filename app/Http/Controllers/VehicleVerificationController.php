@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
 use App\Models\Vehicle;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +35,7 @@ class VehicleVerificationController extends Controller
                 });
             }
 
-            $verifications = $query->paginate(10)->withQueryString();
+            $verifications = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.vehicle-verifications.index', compact('verifications'));
         } catch (\Throwable $e) {
