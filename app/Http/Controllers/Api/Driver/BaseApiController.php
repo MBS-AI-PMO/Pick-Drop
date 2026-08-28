@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Http\Controllers\Controller;
-use App\Models\Area;
+use App\Models\User;
+use App\Support\ValidatesCityAreas;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 abstract class BaseApiController extends Controller
 {
+    use ValidatesCityAreas;
+
     protected function successResponse(mixed $data = null, string $message = 'OK', int $code = 200): JsonResponse
     {
         return response()->json([
@@ -19,7 +21,7 @@ abstract class BaseApiController extends Controller
         ], $code);
     }
 
-    protected function errorResponse(string $message = 'Something went wrong', int $code = 500, mixed $errors = null): JsonResponse
+    protected function errorResponse(string $message = 'Something went wrong', int $code = 500, mixed $errors = null, mixed $data = null): JsonResponse
     {
         $payload = [
             'success' => false,
@@ -30,7 +32,28 @@ abstract class BaseApiController extends Controller
             $payload['errors'] = $errors;
         }
 
+        if ($data !== null) {
+            $payload['data'] = $data;
+        }
+
         return response()->json($payload, $code);
+    }
+
+    protected function denyUnlessDriverReady(User $user): ?JsonResponse
+    {
+        if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+            return $this->errorResponse('Forbidden', 403);
+        }
+
+        if (strcasecmp(trim((string) $user->status), 'Active') !== 0 || !$user->isOnboardingComplete()) {
+            return $this->errorResponse('Please complete driver verification first.', 403, null, [
+                'next_step' => $user->driverNextStep(),
+                'kyc_status' => $user->kycStatus(),
+                'vehicle_verification_status' => $user->vehicleVerificationStatus(),
+            ]);
+        }
+
+        return null;
     }
 
     protected function handleException(Throwable $e, string $defaultMessage = 'Server error'): JsonResponse
@@ -42,23 +65,6 @@ abstract class BaseApiController extends Controller
             app()->environment('local') ? $e->getMessage() : $defaultMessage,
             500
         );
-    }
-
-    /**
-     * @param  list<int|string>  $areaIds
-     */
-    protected function assertAreaIdsBelongToCity(int $cityId, array $areaIds): void
-    {
-        $ids = array_values(array_unique(array_map('intval', $areaIds)));
-        if ($ids === []) {
-            return;
-        }
-
-        if (Area::whereIn('id', $ids)->where('city_id', '!=', $cityId)->exists()) {
-            throw ValidationException::withMessages([
-                'service_areas' => ['All service area IDs must belong to the selected city.'],
-            ]);
-        }
     }
 }
 

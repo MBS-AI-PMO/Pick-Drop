@@ -31,8 +31,8 @@
         <div class="col-12 col-md-3">
     <select class="form-select" name="status" onchange="this.form.submit()">
         <option value="">All Status</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
+        <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
+        <option value="Inactive" {{ request('status') === 'Inactive' ? 'selected' : '' }}>Inactive</option>
     </select>
 </div>
 
@@ -87,7 +87,7 @@
             </td>
             <td class="py-3">
               @if(strtolower($city->status) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#d1fae5;color:#065f46;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
               @else
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $city->status }}</span>
               @endif
@@ -106,23 +106,32 @@
                   @endforeach
                 </div>
               @endif
+              <div class="mt-1">
+                <a href="{{ route('locations.areas.index', ['city_id' => $city->id]) }}" class="small text-decoration-none">
+                  View areas
+                </a>
+              </div>
             </td>
             <td class="py-3 text-center">
-              <div class="d-flex justify-content-center align-items-center gap-2">
-                <button class="btn btn-sm btn-light btn-icon" title="Edit City"
-                        onclick='openEditCityModal(@json($city->toArray()))'>
-                  <i data-lucide="edit-2" class="icon-sm"></i>
+              <div class="action-btns">
+                <button type="button" class="action-btn action-btn-view" title="View City"
+                        onclick='openViewCityModal(@json(array_merge($city->toArray(), ["areas_count" => $city->areas->count()])))'>
+                  <i data-lucide="eye"></i>
                 </button>
-                <button class="btn btn-sm btn-light btn-icon" title="Add Area"
+                <button type="button" class="action-btn action-btn-edit" title="Edit City"
+                        onclick='openEditCityModal(@json($city->toArray()))'>
+                  <i data-lucide="edit-2"></i>
+                </button>
+                <button type="button" class="action-btn action-btn-extra" title="Add Area"
                         onclick='openAddAreaModal(@json($city->toArray()))'>
-                  <i data-lucide="map-pin" class="icon-sm"></i>
+                  <i data-lucide="map-pin"></i>
                 </button>
                 <form action="{{ route('locations.cities.destroy', $city) }}" method="POST"
-                      class="d-inline m-0 p-0" onsubmit="confirmCityDelete(event, this)">
+                      onsubmit="confirmCityDelete(event, this)">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger btn-icon">
-                    <i data-lucide="trash-2" class="icon-sm"></i>
+                  <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                    <i data-lucide="trash-2"></i>
                   </button>
                 </form>
               </div>
@@ -144,17 +153,7 @@
     </div>
   </div>
 
-  {{-- Pagination Footer --}}
-  @if($cities->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $cities->firstItem() }}–{{ $cities->lastItem() }} of {{ $cities->total() }} cities
-    </small>
-    <div>
-      {{ $cities->links('pagination::bootstrap-5') }}
-    </div>
-  </div>
-  @endif
+  <x-app-pagination :paginator="$cities" label="cities" />
 </div>
 
 
@@ -225,6 +224,45 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- ========== VIEW CITY MODAL ========== --}}
+<div class="modal fade" id="viewCityModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">City Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="row g-3">
+          <div class="col-12">
+            <p class="text-secondary small mb-1">City</p>
+            <p class="fw-semibold mb-0" id="viewCityName">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Latitude</p>
+            <p class="fw-semibold mb-0" id="viewCityLat">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Longitude</p>
+            <p class="fw-semibold mb-0" id="viewCityLng">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Status</p>
+            <p class="fw-semibold mb-0" id="viewCityStatus">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Areas</p>
+            <p class="fw-semibold mb-0" id="viewCityAreas">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -532,6 +570,15 @@
     }, 150);
   });
 
+  function openViewCityModal(city) {
+    document.getElementById('viewCityName').textContent = city.name || '—';
+    document.getElementById('viewCityLat').textContent = city.latitude ?? '—';
+    document.getElementById('viewCityLng').textContent = city.longitude ?? '—';
+    document.getElementById('viewCityStatus').textContent = city.status || '—';
+    document.getElementById('viewCityAreas').textContent = (city.areas_count ?? 0) + ' areas';
+    new bootstrap.Modal(document.getElementById('viewCityModal')).show();
+  }
+
   function openEditCityModal(city) {
     document.getElementById('editCityName').value   = city.name || '';
     document.getElementById('editCityLat').value    = city.latitude ?? '';
@@ -632,4 +679,3 @@
   .pac-container { z-index: 2000 !important; }
 </style>
 @endpush
-

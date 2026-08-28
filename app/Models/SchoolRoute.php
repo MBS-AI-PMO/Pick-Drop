@@ -43,5 +43,15 @@ class SchoolRoute extends Model
     {
         return $this->hasMany(RouteStop::class, 'route_id')->orderBy('order');
     }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
+    }
 }
 

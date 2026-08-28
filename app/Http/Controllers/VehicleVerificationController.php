@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
 use App\Models\Vehicle;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +35,7 @@ class VehicleVerificationController extends Controller
                 });
             }
 
-            $verifications = $query->paginate(10)->withQueryString();
+            $verifications = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.vehicle-verifications.index', compact('verifications'));
         } catch (\Throwable $e) {
@@ -57,18 +58,58 @@ class VehicleVerificationController extends Controller
 
     public function approve(Request $request, DriverVehicleVerification $vehicleVerification)
     {
+        $request->merge(['status' => DriverVehicleVerification::STATUS_APPROVED]);
+
+        return $this->updateStatus($request, $vehicleVerification);
+    }
+
+    public function reject(Request $request, DriverVehicleVerification $vehicleVerification)
+    {
+        $request->merge(['status' => DriverVehicleVerification::STATUS_REJECTED]);
+
+        return $this->updateStatus($request, $vehicleVerification);
+    }
+
+    public function updateStatus(Request $request, DriverVehicleVerification $vehicleVerification)
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,approved,rejected'],
+            'rejection_reason' => ['nullable', 'required_if:status,rejected', 'string', 'max:1000'],
+        ]);
+
         try {
-            if ($vehicleVerification->isApproved()) {
-                return redirect()->back()->with('error', 'This vehicle verification is already approved.');
-            }
+            $status = $validated['status'];
+            $previousStatus = $vehicleVerification->status;
 
             $vehicleVerification->update([
-                'status' => DriverVehicleVerification::STATUS_APPROVED,
-                'rejection_reason' => null,
+                'status' => $status,
+                'rejection_reason' => $status === DriverVehicleVerification::STATUS_REJECTED
+                    ? $validated['rejection_reason']
+                    : null,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
             ]);
 
+            $this->syncVehicleAndUserStatus($vehicleVerification, $status);
+
+            $this->notifyStatusChange($vehicleVerification, $status, $previousStatus);
+
+            return redirect()
+                ->route('vehicle-verifications.show', $vehicleVerification)
+                ->with('success', 'Vehicle verification status updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update vehicle verification status', [
+                'id' => $vehicleVerification->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to update status: ' . $e->getMessage());
+        }
+    }
+
+    private function syncVehicleAndUserStatus(DriverVehicleVerification $vehicleVerification, string $status): void
+    {
+        if ($status === DriverVehicleVerification::STATUS_APPROVED) {
             Vehicle::updateOrCreate(
                 ['driver_id' => $vehicleVerification->user_id],
                 [
@@ -83,64 +124,44 @@ class VehicleVerificationController extends Controller
                 'status' => 'Active',
             ]);
 
-            Notification::create([
-                'title' => 'Driver Vehicle Approved',
-                'message' => ($vehicleVerification->user?->name ?? 'Driver') . ' is now fully active.',
-                'type' => 'success',
-            ]);
-
-            return redirect()
-                ->route('vehicle-verifications.show', $vehicleVerification)
-                ->with('success', 'Vehicle verification approved successfully.');
-        } catch (\Throwable $e) {
-            Log::error('Failed to approve vehicle verification', [
-                'id' => $vehicleVerification->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with('error', 'Failed to approve: ' . $e->getMessage());
+            return;
         }
-    }
 
-    public function reject(Request $request, DriverVehicleVerification $vehicleVerification)
-    {
-        $request->validate([
-            'rejection_reason' => ['required', 'string', 'max:1000'],
+        Vehicle::where('driver_id', $vehicleVerification->user_id)->update([
+            'status' => 'Inactive',
         ]);
 
-        try {
-            if ($vehicleVerification->isApproved()) {
-                return redirect()->back()->with('error', 'Approved vehicle verification cannot be rejected.');
-            }
+        $vehicleVerification->user?->update([
+            'status' => 'Pending',
+        ]);
+    }
 
-            $vehicleVerification->update([
-                'status' => DriverVehicleVerification::STATUS_REJECTED,
-                'rejection_reason' => $request->rejection_reason,
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-            ]);
-
-            $vehicleVerification->user?->update([
-                'status' => 'Pending',
-            ]);
-
-            Notification::create([
-                'title' => 'Driver Vehicle Rejected',
-                'message' => $vehicleVerification->vehicle_name . ' verification was rejected.',
-                'type' => 'warning',
-            ]);
-
-            return redirect()
-                ->route('vehicle-verifications.show', $vehicleVerification)
-                ->with('success', 'Vehicle verification rejected.');
-        } catch (\Throwable $e) {
-            Log::error('Failed to reject vehicle verification', [
-                'id' => $vehicleVerification->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with('error', 'Failed to reject: ' . $e->getMessage());
+    private function notifyStatusChange(DriverVehicleVerification $vehicleVerification, string $status, string $previousStatus): void
+    {
+        if ($status === $previousStatus) {
+            return;
         }
+
+        $driverName = $vehicleVerification->user?->name ?? 'Driver';
+        $payload = match ($status) {
+            DriverVehicleVerification::STATUS_APPROVED => [
+                'title' => 'Driver Vehicle Approved',
+                'message' => $driverName . ' is now fully active.',
+                'type' => 'success',
+            ],
+            DriverVehicleVerification::STATUS_REJECTED => [
+                'title' => 'Driver Vehicle Declined',
+                'message' => $vehicleVerification->vehicle_name . ' verification was declined.',
+                'type' => 'warning',
+            ],
+            default => [
+                'title' => 'Driver Vehicle Pending',
+                'message' => $vehicleVerification->vehicle_name . ' verification status was moved back to pending.',
+                'type' => 'info',
+            ],
+        };
+
+        Notification::create($payload);
     }
 
     public function document(DriverVehicleVerification $vehicleVerification, string $field)

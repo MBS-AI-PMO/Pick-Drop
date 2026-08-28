@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\City;
 use Illuminate\Http\Request;
+use App\Support\AppPagination;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +34,11 @@ class LocationController extends Controller
                 });
             }
 
-            $cities = $query->paginate(10)->withQueryString();
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            $cities = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.locations.index', compact('cities'));
         } catch (\Throwable $e) {
@@ -64,7 +69,7 @@ class LocationController extends Controller
                 });
             }
 
-            $areas = $query->orderByDesc('id')->paginate(15)->withQueryString();
+            $areas = $query->orderByDesc('id')->paginate(AppPagination::PER_PAGE)->withQueryString();
             $cities = City::orderBy('name')->get(['id', 'name', 'latitude', 'longitude']);
 
             return view('pickdrop.locations.areas', compact('areas', 'cities'));

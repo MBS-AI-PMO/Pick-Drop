@@ -29,13 +29,16 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        // Sirf Admin login kar sakta hai
-        if (Auth::user()->role !== 'Admin') {
+        // Sirf Super Admin aur Admin login kar sakte hain
+        if (! Auth::user()->isPanelAdmin()) {
 
             Auth::logout();
 
             return back()->with('error', 'Access denied. Only Admin can login.');
         }
+
+        User::ensureSuperAdminExists();
+        Auth::user()->refresh();
 
         return redirect()
             ->intended(route('dashboard'))

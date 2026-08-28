@@ -6,6 +6,7 @@ use App\Models\SchoolRoute;
 use App\Models\Area;
 use App\Models\City;
 use App\Models\Vehicle;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -17,7 +18,7 @@ class SchoolRouteController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = SchoolRoute::with(['vehicle'])
+            $query = SchoolRoute::with(['vehicle', 'city', 'area'])
                 ->withCount('stops');
             $citiesWithAreas = City::with(['areas' => function ($q) {
                 $q->orderBy('name');
@@ -48,7 +49,7 @@ class SchoolRouteController extends Controller
                 $query->where('destination', 'like', '%' . $request->city . '%');
             }
 
-            $routes = $query->paginate(10)->withQueryString();
+            $routes = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
 
             return view('pickdrop.routes.index', compact('routes', 'citiesWithAreas', 'availableCities'));
         } catch (\Throwable $e) {

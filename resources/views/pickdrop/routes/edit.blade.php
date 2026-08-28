@@ -23,13 +23,13 @@
   </a>
 </div>
 
-<form method="POST" action="{{ route('routes.update', $route) }}" id="editRouteForm">
-  @csrf
-  @method('PUT')
-  <div class="row g-4">
+<div class="row g-4 align-items-start">
 
     {{-- Left Column: Route Info --}}
     <div class="col-lg-8">
+      <form method="POST" action="{{ route('routes.update', $route) }}" id="editRouteForm">
+        @csrf
+        @method('PUT')
 
       {{-- Basic Info Card --}}
       <div class="card mb-4">
@@ -134,7 +134,7 @@
         <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
             <div class="w-32px h-32px rounded-2 d-flex align-items-center justify-content-center" style="background:rgba(var(--bs-success-rgb),0.1);">
-              <i data-lucide="map-pin" class="text-success" style="width:16px;height:16px;"></i>
+              <i data-lucide="map-pin" style="width:16px;height:16px;color:#3f6fd9;"></i>
             </div>
             <h6 class="mb-0 fw-bold">Route Stops</h6>
           </div>
@@ -176,7 +176,7 @@
           </div>
         </div>
       </div>
-
+      </form>
     </div>
 
     {{-- Right Column: Summary & Actions --}}
@@ -229,7 +229,7 @@
       {{-- Actions Card --}}
       <div class="card mb-4">
         <div class="card-body d-flex flex-column gap-2">
-          <button type="submit" class="btn btn-primary w-100">
+          <button type="submit" form="editRouteForm" class="btn btn-primary w-100">
             <i data-lucide="save" class="icon-sm me-1"></i> Save Changes
           </button>
           <a href="{{ route('routes.index') }}" class="btn btn-light w-100">
@@ -238,30 +238,24 @@
         </div>
       </div>
 
-    </div>
-  </div>
-</form>
+      <div class="card border-danger-subtle">
+        <div class="card-header border-bottom py-3">
+          <h6 class="mb-0 fw-bold text-danger">Danger Zone</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-secondary fs-13px mb-3">Deleting this route will remove all associated stop and student assignments permanently.</p>
+          <form method="POST" action="{{ route('routes.destroy', $route) }}" onsubmit="return confirm('Delete this route permanently?');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-outline-danger w-100">
+              <i data-lucide="trash-2" class="icon-sm me-1"></i> Delete Route
+            </button>
+          </form>
+        </div>
+      </div>
 
-{{-- Danger Zone (outside update form to avoid nested forms) --}}
-<div class="row g-4 mt-0">
-  <div class="col-lg-4 offset-lg-8">
-    <div class="card border-danger-subtle">
-      <div class="card-header border-bottom py-3">
-        <h6 class="mb-0 fw-bold text-danger">Danger Zone</h6>
-      </div>
-      <div class="card-body">
-        <p class="text-secondary fs-13px mb-3">Deleting this route will remove all associated stop and student assignments permanently.</p>
-        <form method="POST" action="{{ route('routes.destroy', $route) }}" onsubmit="return confirm('Delete this route permanently?');">
-          @csrf
-          @method('DELETE')
-          <button type="submit" class="btn btn-outline-danger w-100">
-            <i data-lucide="trash-2" class="icon-sm me-1"></i> Delete Route
-          </button>
-        </form>
-      </div>
     </div>
   </div>
-</div>
 
 @endsection
 

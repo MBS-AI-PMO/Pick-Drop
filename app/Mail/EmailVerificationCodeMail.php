@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Concerns\SendsAsPickDrop;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -10,7 +11,7 @@ use Illuminate\Queue\SerializesModels;
 
 class EmailVerificationCodeMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, SendsAsPickDrop;
 
     public string $code;
     public string $userName;
@@ -24,6 +25,7 @@ class EmailVerificationCodeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: $this->pickDropFrom(),
             subject: 'Verify Your Email Address'
         );
     }

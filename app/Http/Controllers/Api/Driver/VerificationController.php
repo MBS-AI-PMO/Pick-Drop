@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Models\Area;
+use App\Models\City;
 use App\Models\DriverVerification;
 use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
@@ -88,7 +89,7 @@ class VerificationController extends BaseApiController
 
             $cityId = (int) $validated['city_id'];
             $serviceAreaIds = array_values(array_unique(array_map('intval', $validated['service_areas'])));
-            $this->assertAreaIdsBelongToCity($cityId, $serviceAreaIds);
+            $this->assertAreaIdsBelongToCity($cityId, $serviceAreaIds, 'service_areas');
 
             $dir = 'driver-kyc/' . $user->id;
             $paths = [];
@@ -185,6 +186,10 @@ class VerificationController extends BaseApiController
                 // App KYC form: name/phone/email auto-fill (readonly from registration)
                 'prefill' => $this->accountPrefill($user),
                 'city_id' => $user->city_id,
+                'cities' => City::dropdownWithAreas(),
+                'available_areas' => $user->city_id
+                    ? Area::query()->active()->where('city_id', $user->city_id)->orderBy('name')->get()
+                    : [],
                 'service_areas' => $user->toDriverApiArray()['service_areas'] ?? [],
                 'next_step' => $user->driverNextStep(),
                 'verification' => $verification?->toApiArray(),

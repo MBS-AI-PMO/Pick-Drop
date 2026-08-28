@@ -12,6 +12,13 @@ use App\Http\Controllers\Api\ParentSelf\IssueController;
 use App\Http\Controllers\Api\ParentSelf\NotificationController;
 use App\Http\Controllers\Api\ParentSelf\NotificationPreferenceController;
 use App\Http\Controllers\Api\ParentSelf\MessageController;
+use App\Http\Controllers\Api\ParentSelf\VerificationController;
+use App\Http\Controllers\Api\ParentSelf\CommuteProfileController;
+use App\Http\Controllers\Api\ParentSelf\InvoiceController;
+use App\Http\Controllers\Api\ParentSelf\AttendanceController;
+use App\Http\Controllers\Api\ParentSelf\RatingController;
+use App\Http\Controllers\Api\ParentSelf\SosController;
+use App\Http\Controllers\Api\ParentSelf\PlatformController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +39,19 @@ Route::prefix('parent')->group(function () {
         // Email verify (token-based for now)
         Route::post('email/verify/send', [AuthController::class, 'sendEmailVerification'])->name('api.parent.email.verify.send');
         Route::post('email/verify', [AuthController::class, 'verifyEmail'])->name('api.parent.email.verify');
+        Route::post('phone/verify/send', [AuthController::class, 'sendPhoneVerification'])->name('api.parent.phone.verify.send');
+        Route::post('phone/verify', [AuthController::class, 'verifyPhone'])->name('api.parent.phone.verify');
+
+        Route::get('verification', [VerificationController::class, 'show'])->name('api.parent.verification.show');
+        Route::post('verification', [VerificationController::class, 'store'])->name('api.parent.verification.store');
+
+        Route::get('payment-methods', [InvoiceController::class, 'methods'])->name('api.parent.payment-methods');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('api.parent.invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.parent.invoices.show');
+        Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.parent.invoices.pay.stripe');
+        Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.parent.invoices.pay.bank');
+        Route::post('invoices/{invoice}/pay/jazzcash', [InvoiceController::class, 'payJazzcash'])->name('api.parent.invoices.pay.jazzcash');
+        Route::post('invoices/{invoice}/pay/easypaisa', [InvoiceController::class, 'payEasypaisa'])->name('api.parent.invoices.pay.easypaisa');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.parent.me.show');
@@ -53,6 +73,23 @@ Route::prefix('parent')->group(function () {
         Route::delete('requests/{requestId}', [RequestController::class, 'cancel'])->name('api.parent.requests.cancel');
         Route::get('requests/{requestId}/driver', [RequestController::class, 'driverInfo'])->name('api.parent.requests.driver');
         Route::get('requests/{requestId}/tracking', [RequestController::class, 'tracking'])->name('api.parent.requests.tracking');
+        Route::post('requests/{requestId}/renew', [RequestController::class, 'renew'])->name('api.parent.requests.renew');
+        Route::post('requests/{requestId}/auto-renew', [RequestController::class, 'autoRenew'])->name('api.parent.requests.auto-renew');
+        Route::post('requests/{requestId}/decline-renewal', [RequestController::class, 'declineRenewal'])->name('api.parent.requests.decline-renewal');
+        Route::get('requests/{requestId}/attendance', [AttendanceController::class, 'index'])->name('api.parent.requests.attendance');
+        Route::post('requests/{requestId}/attendance/skip', [AttendanceController::class, 'skip'])->name('api.parent.requests.attendance.skip');
+        Route::delete('requests/{requestId}/attendance/skip', [AttendanceController::class, 'unskip'])->name('api.parent.requests.attendance.unskip');
+        Route::get('requests/{requestId}/ratings', [RatingController::class, 'index'])->name('api.parent.requests.ratings.index');
+        Route::post('requests/{requestId}/ratings', [RatingController::class, 'store'])->name('api.parent.requests.ratings.store');
+        Route::get('holidays', [AttendanceController::class, 'holidays'])->name('api.parent.holidays');
+        Route::get('sos', [SosController::class, 'index'])->name('api.parent.sos.index');
+        Route::post('sos', [SosController::class, 'store'])->name('api.parent.sos.store');
+        Route::post('device-token', [PlatformController::class, 'registerDevice'])->name('api.parent.device-token');
+        Route::get('schools', [PlatformController::class, 'schools'])->name('api.parent.schools');
+        Route::get('wallet', [PlatformController::class, 'wallet'])->name('api.parent.wallet');
+        Route::get('requests/{requestId}/contact', [PlatformController::class, 'contact'])->name('api.parent.requests.contact');
+        Route::get('requests/{requestId}/cancellation-preview', [PlatformController::class, 'cancellationPreview'])->name('api.parent.requests.cancellation-preview');
+        Route::get('requests/{requestId}/otp', [PlatformController::class, 'todayOtp'])->name('api.parent.requests.otp');
 
         // Trips
         Route::get('trips/recent', [TripController::class, 'recent'])->name('api.parent.trips.recent');
@@ -97,6 +134,22 @@ Route::prefix('self')->group(function () {
         // Email verify (token-based for now)
         Route::post('email/verify/send', [AuthController::class, 'sendEmailVerification'])->name('api.self.email.verify.send');
         Route::post('email/verify', [AuthController::class, 'verifyEmail'])->name('api.self.email.verify');
+        Route::post('phone/verify/send', [AuthController::class, 'sendPhoneVerification'])->name('api.self.phone.verify.send');
+        Route::post('phone/verify', [AuthController::class, 'verifyPhone'])->name('api.self.phone.verify');
+
+        Route::get('verification', [VerificationController::class, 'show'])->name('api.self.verification.show');
+        Route::post('verification', [VerificationController::class, 'store'])->name('api.self.verification.store');
+
+        Route::get('commute-profile', [CommuteProfileController::class, 'show'])->name('api.self.commute-profile.show');
+        Route::post('commute-profile', [CommuteProfileController::class, 'store'])->name('api.self.commute-profile.store');
+
+        Route::get('payment-methods', [InvoiceController::class, 'methods'])->name('api.self.payment-methods');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('api.self.invoices.index');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.self.invoices.show');
+        Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.self.invoices.pay.stripe');
+        Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.self.invoices.pay.bank');
+        Route::post('invoices/{invoice}/pay/jazzcash', [InvoiceController::class, 'payJazzcash'])->name('api.self.invoices.pay.jazzcash');
+        Route::post('invoices/{invoice}/pay/easypaisa', [InvoiceController::class, 'payEasypaisa'])->name('api.self.invoices.pay.easypaisa');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.self.me.show');
@@ -118,6 +171,23 @@ Route::prefix('self')->group(function () {
         Route::delete('requests/{requestId}', [RequestController::class, 'cancel'])->name('api.self.requests.cancel');
         Route::get('requests/{requestId}/driver', [RequestController::class, 'driverInfo'])->name('api.self.requests.driver');
         Route::get('requests/{requestId}/tracking', [RequestController::class, 'tracking'])->name('api.self.requests.tracking');
+        Route::post('requests/{requestId}/renew', [RequestController::class, 'renew'])->name('api.self.requests.renew');
+        Route::post('requests/{requestId}/auto-renew', [RequestController::class, 'autoRenew'])->name('api.self.requests.auto-renew');
+        Route::post('requests/{requestId}/decline-renewal', [RequestController::class, 'declineRenewal'])->name('api.self.requests.decline-renewal');
+        Route::get('requests/{requestId}/attendance', [AttendanceController::class, 'index'])->name('api.self.requests.attendance');
+        Route::post('requests/{requestId}/attendance/skip', [AttendanceController::class, 'skip'])->name('api.self.requests.attendance.skip');
+        Route::delete('requests/{requestId}/attendance/skip', [AttendanceController::class, 'unskip'])->name('api.self.requests.attendance.unskip');
+        Route::get('requests/{requestId}/ratings', [RatingController::class, 'index'])->name('api.self.requests.ratings.index');
+        Route::post('requests/{requestId}/ratings', [RatingController::class, 'store'])->name('api.self.requests.ratings.store');
+        Route::get('holidays', [AttendanceController::class, 'holidays'])->name('api.self.holidays');
+        Route::get('sos', [SosController::class, 'index'])->name('api.self.sos.index');
+        Route::post('sos', [SosController::class, 'store'])->name('api.self.sos.store');
+        Route::post('device-token', [PlatformController::class, 'registerDevice'])->name('api.self.device-token');
+        Route::get('schools', [PlatformController::class, 'schools'])->name('api.self.schools');
+        Route::get('wallet', [PlatformController::class, 'wallet'])->name('api.self.wallet');
+        Route::get('requests/{requestId}/contact', [PlatformController::class, 'contact'])->name('api.self.requests.contact');
+        Route::get('requests/{requestId}/cancellation-preview', [PlatformController::class, 'cancellationPreview'])->name('api.self.requests.cancellation-preview');
+        Route::get('requests/{requestId}/otp', [PlatformController::class, 'todayOtp'])->name('api.self.requests.otp');
         // Trips
         Route::get('trips/recent', [TripController::class, 'recent'])->name('api.self.trips.recent');
         Route::get('trips/today-status', [TripController::class, 'todayStatus'])->name('api.self.trips.today-status');

@@ -14,7 +14,7 @@ class NotificationController extends BaseApiController
         try {
             $notifications = AppNotification::where('user_id', $request->user()->id)
                 ->orderByDesc('id')
-                ->paginate(20);
+                ->paginate(\App\Support\AppPagination::PER_PAGE);
 
             return $this->successResponse($notifications, 'Notifications');
         } catch (Throwable $e) {

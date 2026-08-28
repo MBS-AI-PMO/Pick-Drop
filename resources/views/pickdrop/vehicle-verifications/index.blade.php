@@ -23,7 +23,7 @@
             <option value="">All Statuses</option>
             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
-            <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+            <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Declined</option>
           </select>
         </div>
         <div class="col-auto">
@@ -72,15 +72,17 @@
                 @if($item->status === 'pending')
                   <span class="badge bg-warning text-dark">Pending</span>
                 @elseif($item->status === 'approved')
-                  <span class="badge bg-success">Approved</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
                 @else
-                  <span class="badge bg-danger">Rejected</span>
+                  <span class="badge bg-danger">Declined</span>
                 @endif
               </td>
               <td class="text-center">
-                <a href="{{ route('vehicle-verifications.show', $item) }}" class="btn btn-sm btn-outline-primary">
-                  Review
-                </a>
+                <div class="action-btns">
+                  <a href="{{ route('vehicle-verifications.show', $item) }}" class="action-btn action-btn-view" title="View">
+                    <i data-lucide="eye"></i>
+                  </a>
+                </div>
               </td>
             </tr>
           @empty
@@ -92,11 +94,7 @@
       </table>
     </div>
   </div>
-  @if($verifications->hasPages())
-    <div class="card-footer">
-      {{ $verifications->links() }}
-    </div>
-  @endif
+  <x-app-pagination :paginator="$verifications" label="vehicle verifications" />
 </div>
 
 @endsection

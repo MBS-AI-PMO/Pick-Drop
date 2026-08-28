@@ -21,5 +21,10 @@ class Area extends Model
     {
         return $this->belongsTo(City::class);
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'Active');
+    }
 }
 

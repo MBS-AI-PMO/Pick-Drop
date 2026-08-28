@@ -1,226 +1,386 @@
 @extends('layout.master')
 
 @section('content')
+@php
+  $periodQuery = array_filter([
+    'period' => $period,
+    'from' => $period === 'custom' ? $from->toDateString() : null,
+    'to' => $period === 'custom' ? $to->toDateString() : null,
+  ]);
+  $maxTrend = max(1, collect($trend)->max('value') ?: 0);
+  $statusColors = [
+    'pending' => '#94a3b8',
+    'accepted' => '#3b82f6',
+    'picked_up' => '#0ea5e9',
+    'dropped' => '#14b8a6',
+    'completed' => '#3f6fd9',
+    'cancelled' => '#e63946',
+  ];
+@endphp
 
-{{-- Page Header --}}
-<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
+<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin gap-3">
   <div>
-    <h4 class="mb-1">Reports</h4>
-    <p class="text-secondary mb-0">View and analyze system data</p>
+    <h4 class="mb-1">Operations Reports</h4>
+    <p class="text-secondary mb-0">Pickup & drop performance · {{ $periodLabel }}</p>
   </div>
+  <a href="{{ route('reports.export', $periodQuery) }}" class="btn btn-primary d-flex align-items-center gap-1">
+    <i data-lucide="download" style="width:15px;height:15px;"></i> Export CSV
+  </a>
 </div>
 
-{{-- Tabs + Filter/Export --}}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-  <ul class="nav nav-pills gap-1" id="reportTabs">
-    <li class="nav-item">
-      <a class="nav-link active px-4" href="#" data-period="daily">Daily</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link px-4" href="#" data-period="weekly">Weekly</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link px-4" href="#" data-period="monthly">Monthly</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link px-4" href="#" data-period="custom">Custom</a>
-    </li>
+  <ul class="nav nav-pills gap-1">
+    @foreach(['daily' => 'Today', 'weekly' => 'Last 7 days', 'monthly' => 'This month', 'custom' => 'Custom'] as $key => $label)
+      <li class="nav-item">
+        <a class="nav-link px-4 {{ $period === $key ? 'active' : '' }}"
+           href="{{ route('reports.index', $key === 'custom' ? ['period' => 'custom', 'from' => $from->toDateString(), 'to' => $to->toDateString()] : ['period' => $key]) }}">
+          {{ $label }}
+        </a>
+      </li>
+    @endforeach
   </ul>
-  <div class="d-flex gap-2">
-    <button class="btn btn-success d-flex align-items-center gap-1">
-      <i data-lucide="filter" style="width:15px;height:15px;"></i> Filter
-    </button>
-    <button class="btn btn-success d-flex align-items-center gap-1">
-      <i data-lucide="download" style="width:15px;height:15px;"></i> Export
-    </button>
+
+  @if($period === 'custom')
+    <form method="GET" action="{{ route('reports.index') }}" class="d-flex align-items-center gap-2 flex-wrap">
+      <input type="hidden" name="period" value="custom">
+      <input type="date" name="from" class="form-control form-control-sm" value="{{ $from->toDateString() }}" max="{{ now()->toDateString() }}">
+      <span class="text-secondary fs-13px">to</span>
+      <input type="date" name="to" class="form-control form-control-sm" value="{{ $to->toDateString() }}" max="{{ now()->toDateString() }}">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+    </form>
+  @endif
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body d-flex align-items-center justify-content-between py-3">
+        <div>
+          <p class="text-secondary fs-13px mb-1">Total trips</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($kpis['total_trips']) }}</h3>
+          <span class="text-secondary fs-12px">Requests in this period</span>
+        </div>
+        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-primary-rgb),0.12);">
+          <i data-lucide="navigation" class="text-primary"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body d-flex align-items-center justify-content-between py-3">
+        <div>
+          <p class="text-secondary fs-13px mb-1">Completed</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($kpis['completed']) }}</h3>
+          <span class="fs-12px" style="color:#3f6fd9;">{{ $kpis['completion_rate'] }}% completion rate</span>
+        </div>
+        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(34,197,94,0.12);">
+          <i data-lucide="check-circle" style="color:#3f6fd9;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body d-flex align-items-center justify-content-between py-3">
+        <div>
+          <p class="text-secondary fs-13px mb-1">In progress</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($kpis['active']) }}</h3>
+          <span class="text-secondary fs-12px">{{ number_format($kpis['pending']) }} still pending</span>
+        </div>
+        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(14,165,233,0.12);">
+          <i data-lucide="bus" class="text-info"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body d-flex align-items-center justify-content-between py-3">
+        <div>
+          <p class="text-secondary fs-13px mb-1">Cancelled</p>
+          <h3 class="mb-1 fw-bold">{{ number_format($kpis['cancelled']) }}</h3>
+          <span class="text-danger fs-12px">{{ $kpis['cancellation_rate'] }}% cancellation rate</span>
+        </div>
+        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(230,57,70,0.12);">
+          <i data-lucide="x-circle" class="text-danger"></i>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-{{-- Charts Row --}}
 <div class="row g-3 mb-4">
-
-  {{-- Trip Statistics --}}
-  <div class="col-lg-6">
-    <div class="card h-100">
+  <div class="col-lg-7">
+    <div class="card dashboard-card h-100">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="fw-bold mb-0">Trip Statistics</h6>
+        <div class="dashboard-card-header d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h6 class="card-title mb-0">Trip volume</h6>
+            <p class="text-secondary fs-12px mb-0">{{ $period === 'daily' ? 'Trips by time of day' : 'Trips by day' }}</p>
+          </div>
           <i data-lucide="bar-chart-2" class="text-secondary" style="width:18px;height:18px;"></i>
         </div>
-        {{-- Chart Placeholder --}}
-        <div class="d-flex align-items-end justify-content-center gap-2 mb-4" style="height:140px;">
-          @php
-            $bars = [40, 65, 50, 80, 55, 70, 45, 90, 60, 75, 85, 58];
-            $days = ['M','T','W','T','F','S','S','M','T','W','T','F'];
-          @endphp
-          @foreach($bars as $i => $h)
-            <div class="d-flex flex-column align-items-center gap-1">
-              <div class="rounded-top" style="width:18px;height:{{ $h }}px;background:rgba(59,91,219,{{ $loop->index == 7 ? 1 : 0.45 }});"></div>
-              <small class="text-secondary" style="font-size:9px;">{{ $days[$i] }}</small>
+        <div class="report-chart d-flex align-items-end justify-content-between gap-1" style="height:160px;">
+          @forelse($trend as $point)
+            @php $height = max(6, (int) round(($point['value'] / $maxTrend) * 140)); @endphp
+            <div class="report-chart-col flex-fill d-flex flex-column align-items-center justify-content-end h-100">
+              <span class="report-chart-value">{{ $point['value'] > 0 ? $point['value'] : '' }}</span>
+              <div class="report-chart-bar {{ $point['value'] > 0 ? 'is-filled' : '' }}" style="height:{{ $height }}px;"></div>
+              <small class="text-secondary report-chart-label">{{ $point['label'] }}</small>
+            </div>
+          @empty
+            <div class="w-100 text-center text-secondary py-5">No trip activity in this period</div>
+          @endforelse
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card dashboard-card h-100">
+      <div class="card-body">
+        <div class="dashboard-card-header d-flex justify-content-between align-items-center mb-3">
+          <h6 class="card-title mb-0">Request status</h6>
+        </div>
+        <div class="d-flex flex-column gap-3">
+          @foreach($statusBreakdown as $row)
+            <div>
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fs-13px">{{ $row['label'] }}</span>
+                <span class="fs-13px fw-semibold">{{ number_format($row['count']) }} · {{ $row['percent'] }}%</span>
+              </div>
+              <div class="progress" style="height:7px;">
+                <div class="progress-bar" style="width:{{ $row['percent'] }}%;background:{{ $statusColors[$row['key']] ?? '#94a3b8' }};"></div>
+              </div>
             </div>
           @endforeach
         </div>
-        <p class="text-center text-secondary fs-12px mb-3">Bar Chart: Trips per Day</p>
-        <hr class="my-2">
-        <div class="row text-center mt-3">
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">Total Trips</p>
-            <h5 class="fw-bold mb-0">458</h5>
-          </div>
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">On-Time</p>
-            <h5 class="fw-bold text-success mb-0">92%</h5>
-          </div>
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">Delayed</p>
-            <h5 class="fw-bold text-warning mb-0">8%</h5>
-          </div>
-        </div>
       </div>
     </div>
   </div>
+</div>
 
-  {{-- Attendance Trends --}}
-  <div class="col-lg-6">
-    <div class="card h-100">
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card dashboard-card h-100">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="fw-bold mb-0">Attendance Trends</h6>
-          <i data-lucide="trending-up" class="text-secondary" style="width:18px;height:18px;"></i>
+        <div class="dashboard-card-header mb-3">
+          <h6 class="card-title mb-0">Fleet & compliance</h6>
         </div>
-        {{-- Line Chart Placeholder --}}
-        <div style="height:140px;position:relative;" class="mb-4">
-          <svg width="100%" height="100%" viewBox="0 0 400 140" preserveAspectRatio="none">
-            {{-- Grid lines --}}
-            <line x1="0" y1="35" x2="400" y2="35" stroke="#e2e8f0" stroke-width="1"/>
-            <line x1="0" y1="70" x2="400" y2="70" stroke="#e2e8f0" stroke-width="1"/>
-            <line x1="0" y1="105" x2="400" y2="105" stroke="#e2e8f0" stroke-width="1"/>
-            {{-- Line --}}
-            <polyline
-              points="0,100 50,85 100,70 150,80 200,55 250,60 300,40 350,50 400,35"
-              fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            {{-- Area fill --}}
-            <polygon
-              points="0,100 50,85 100,70 150,80 200,55 250,60 300,40 350,50 400,35 400,140 0,140"
-              fill="rgba(34,197,94,0.08)"/>
-            {{-- Dots --}}
-            <circle cx="0"   cy="100" r="4" fill="#22c55e"/>
-            <circle cx="100" cy="70"  r="4" fill="#22c55e"/>
-            <circle cx="200" cy="55"  r="4" fill="#22c55e"/>
-            <circle cx="300" cy="40"  r="4" fill="#22c55e"/>
-            <circle cx="400" cy="35"  r="5" fill="#22c55e" stroke="white" stroke-width="2"/>
-          </svg>
-        </div>
-        <p class="text-center text-secondary fs-12px mb-3">Line Chart: Student Attendance</p>
-        <hr class="my-2">
-        <div class="row text-center mt-3">
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">Average</p>
-            <h5 class="fw-bold mb-0">95%</h5>
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary fs-13px">Active vehicles</span>
+            <span class="fw-semibold">{{ number_format($snapshot['vehicles_active']) }} / {{ number_format($snapshot['vehicles_total']) }}</span>
           </div>
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">Highest</p>
-            <h5 class="fw-bold text-success mb-0">98%</h5>
+          <div>
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-secondary fs-13px">Fleet assigned</span>
+              <span class="fw-semibold">{{ $snapshot['fleet_utilization'] }}%</span>
+            </div>
+            <div class="progress" style="height:6px;">
+              <div class="progress-bar bg-primary" style="width:{{ $snapshot['fleet_utilization'] }}%;"></div>
+            </div>
           </div>
-          <div class="col-4">
-            <p class="text-secondary fs-12px mb-1">Lowest</p>
-            <h5 class="fw-bold text-warning mb-0">91%</h5>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary fs-13px">Approved drivers</span>
+            <span class="fw-semibold">{{ number_format($snapshot['kyc_approved']) }} / {{ number_format($snapshot['drivers']) }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary fs-13px">Pending driver KYC</span>
+            <span class="fw-semibold text-warning">{{ number_format($snapshot['kyc_pending']) }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary fs-13px">Pending vehicle KYC</span>
+            <span class="fw-semibold text-warning">{{ number_format($snapshot['vehicle_kyc_pending']) }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary fs-13px">Open issues</span>
+            <span class="fw-semibold {{ $snapshot['issues_open'] > 0 ? 'text-danger' : '' }}">{{ number_format($snapshot['issues_open']) }}</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-</div>
+  <div class="col-lg-4">
+    <div class="card dashboard-card h-100">
+      <div class="card-body">
+        <div class="dashboard-card-header mb-3">
+          <h6 class="card-title mb-0">Network coverage</h6>
+        </div>
+        <div class="row g-3">
+          <div class="col-6">
+            <p class="text-secondary fs-12px mb-1">Parents</p>
+            <h5 class="fw-bold mb-0">{{ number_format($snapshot['parents']) }}</h5>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary fs-12px mb-1">Students</p>
+            <h5 class="fw-bold mb-0">{{ number_format($snapshot['students']) }}</h5>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary fs-12px mb-1">Active routes</p>
+            <h5 class="fw-bold mb-0">{{ number_format($snapshot['routes_active']) }}</h5>
+          </div>
+          <div class="col-6">
+            <p class="text-secondary fs-12px mb-1">Cities / areas</p>
+            <h5 class="fw-bold mb-0">{{ number_format($snapshot['cities']) }} / {{ number_format($snapshot['areas']) }}</h5>
+          </div>
+        </div>
+        <hr class="my-3">
+        <p class="text-secondary fs-12px mb-0">Resolved issues this system: {{ number_format($snapshot['issues_resolved']) }}</p>
+      </div>
+    </div>
+  </div>
 
-{{-- Route Efficiency Analysis --}}
-<div class="card">
-  <div class="card-body">
-    <h6 class="fw-bold mb-3">Route Efficiency Analysis</h6>
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th class="py-3">Route</th>
-            <th class="py-3">Avg. Time</th>
-            <th class="py-3">Distance</th>
-            <th class="py-3">Fuel Usage</th>
-            <th class="py-3" style="min-width:160px;">Efficiency</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="py-3 fw-semibold">Route #R-123</td>
-            <td class="py-3 text-secondary">45 mins</td>
-            <td class="py-3 text-secondary">8.5 miles</td>
-            <td class="py-3 text-secondary">2.1 gal</td>
-            <td class="py-3">
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height:6px;">
-                  <div class="progress-bar bg-success" style="width:85%;"></div>
-                </div>
-                <span class="fs-13px fw-semibold">85%</span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="py-3 fw-semibold">Route #R-124</td>
-            <td class="py-3 text-secondary">38 mins</td>
-            <td class="py-3 text-secondary">7.2 miles</td>
-            <td class="py-3 text-secondary">1.8 gal</td>
-            <td class="py-3">
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height:6px;">
-                  <div class="progress-bar bg-success" style="width:92%;"></div>
-                </div>
-                <span class="fs-13px fw-semibold">92%</span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="py-3 fw-semibold">Route #R-125</td>
-            <td class="py-3 text-secondary">52 mins</td>
-            <td class="py-3 text-secondary">10.1 miles</td>
-            <td class="py-3 text-secondary">2.5 gal</td>
-            <td class="py-3">
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height:6px;">
-                  <div class="progress-bar bg-warning" style="width:78%;"></div>
-                </div>
-                <span class="fs-13px fw-semibold">78%</span>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="py-3 fw-semibold">Route #R-126</td>
-            <td class="py-3 text-secondary">42 mins</td>
-            <td class="py-3 text-secondary">9.0 miles</td>
-            <td class="py-3 text-secondary">2.0 gal</td>
-            <td class="py-3">
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height:6px;">
-                  <div class="progress-bar bg-success" style="width:88%;"></div>
-                </div>
-                <span class="fs-13px fw-semibold">88%</span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+  <div class="col-lg-4">
+    <div class="card dashboard-card h-100">
+      <div class="card-body">
+        <div class="dashboard-card-header mb-3">
+          <h6 class="card-title mb-0">Busiest cities</h6>
+        </div>
+        @forelse($topCities as $city)
+          @php $cityMax = max(1, $topCities[0]['trips'] ?? 1); @endphp
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="fs-13px fw-semibold">{{ $city['name'] }}</span>
+              <span class="fs-13px text-secondary">{{ number_format($city['trips']) }} trips</span>
+            </div>
+            <div class="progress" style="height:6px;">
+              <div class="progress-bar" style="width:{{ (int) round(($city['trips'] / $cityMax) * 100) }}%;background:var(--pd-primary);"></div>
+            </div>
+          </div>
+        @empty
+          <p class="text-secondary mb-0 py-3 text-center">No city demand in this period</p>
+        @endforelse
+      </div>
     </div>
   </div>
 </div>
 
-@endsection
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card dashboard-card h-100">
+      <div class="card-body">
+        <div class="dashboard-card-header mb-3">
+          <h6 class="card-title mb-0">Top drivers</h6>
+        </div>
+        @forelse($topDrivers as $index => $driver)
+          <div class="d-flex align-items-center justify-content-between {{ $loop->last ? '' : 'mb-3' }}">
+            <div class="d-flex align-items-center gap-2">
+              <span class="report-rank">{{ $index + 1 }}</span>
+              <span class="fw-semibold">{{ $driver['name'] }}</span>
+            </div>
+            <span class="text-secondary fs-13px">{{ number_format($driver['trips']) }} trips</span>
+          </div>
+        @empty
+          <p class="text-secondary mb-0 py-3 text-center">No assigned trips in this period</p>
+        @endforelse
+      </div>
+    </div>
+  </div>
 
-@push('custom-scripts')
-<script>
-  document.querySelectorAll('#reportTabs .nav-link').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      e.preventDefault();
-      document.querySelectorAll('#reportTabs .nav-link').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-</script>
-@endpush
+  <div class="col-lg-8">
+    <div class="card dashboard-card h-100">
+      <div class="card-body pb-0">
+        <div class="dashboard-card-header d-flex justify-content-between align-items-center mb-3">
+          <h6 class="card-title mb-0">Recent trips</h6>
+          <span class="text-secondary fs-12px">{{ $periodLabel }}</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="py-3">Trip</th>
+                <th class="py-3">Student / parent</th>
+                <th class="py-3">Driver</th>
+                <th class="py-3">City</th>
+                <th class="py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @forelse($trips as $trip)
+                @php
+                  $status = strtolower((string) $trip->status);
+                  $badge = match ($status) {
+                    'completed' => 'background:#eef4ff;color:#3f6fd9;',
+                    'cancelled' => 'background:#fee2e2;color:#991b1b;',
+                    'pending' => 'background:#f3f4f6;color:#374151;',
+                    'picked_up', 'dropped' => 'background:#dbeafe;color:#1e40af;',
+                    default => 'background:#e0f2fe;color:#075985;',
+                  };
+                @endphp
+                <tr>
+                  <td class="py-3">
+                    <p class="mb-0 fw-semibold">#{{ $trip->id }} · {{ ucfirst($trip->type ?: 'pickup') }}</p>
+                    <small class="text-secondary">{{ $trip->created_at?->format('d M, h:i A') }}</small>
+                  </td>
+                  <td class="py-3">
+                    <p class="mb-0">{{ $trip->student?->name ?? '—' }}</p>
+                    <small class="text-secondary">{{ $trip->parent?->name ?? '—' }}</small>
+                  </td>
+                  <td class="py-3 text-secondary">{{ $trip->driver?->name ?? 'Unassigned' }}</td>
+                  <td class="py-3 text-secondary">{{ $trip->city?->name ?? '—' }}</td>
+                  <td class="py-3">
+                    <span class="badge rounded-pill px-3 py-1" style="{{ $badge }}">{{ str_replace('_', ' ', $trip->status) }}</span>
+                  </td>
+                </tr>
+              @empty
+                <tr>
+                  <td colspan="5" class="text-center py-5 text-muted">No trips found for this period.</td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <x-app-pagination :paginator="$trips" label="trips" />
+    </div>
+  </div>
+</div>
+
+<style>
+  .report-chart-bar {
+    width: 100%;
+    max-width: 28px;
+    border-radius: 6px 6px 2px 2px;
+    background: rgba(29, 53, 87, 0.18);
+  }
+  .report-chart-bar.is-filled {
+    background: var(--pd-primary);
+  }
+  .report-chart-value {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    min-height: 14px;
+  }
+  .report-chart-label {
+    font-size: 10px;
+    margin-top: 6px;
+    white-space: nowrap;
+  }
+  .report-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: #eef2f7;
+    color: #1d3557;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  [data-bs-theme="dark"] .report-chart-bar {
+    background: rgba(230, 57, 70, 0.18);
+  }
+  [data-bs-theme="dark"] .report-chart-bar.is-filled {
+    background: var(--pd-primary);
+  }
+  [data-bs-theme="dark"] .report-rank {
+    background: #2a3140;
+    color: #f1f5f9;
+  }
+</style>
+@endsection

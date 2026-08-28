@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\AppNotification;
+use App\Models\Invoice;
+use App\Models\Notification;
 use App\Models\NotificationPreference;
 use App\Models\PickupRequest;
 use App\Models\User;
@@ -22,18 +24,22 @@ class AppNotificationService
             return null;
         }
 
-        return AppNotification::create([
+        $row = AppNotification::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'body' => $body,
             'data' => $data,
         ]);
+
+        app(PushService::class)->send($userId, $title, $body, $data ?? []);
+
+        return $row;
     }
 
     public function notifyParentRequestSubmitted(PickupRequest $pickupRequest): void
     {
-        $pickupRequest->loadMissing('area');
+        $pickupRequest->loadMissing(['area', 'parent']);
 
         $this->notify(
             (int) $pickupRequest->parent_id,
@@ -45,19 +51,32 @@ class AppNotificationService
             ),
             $this->requestData($pickupRequest)
         );
+
+        $this->notifyAdminPanel(
+            $pickupRequest->typeLabel() . ' request pending',
+            sprintf(
+                '%s submitted pickup request #%d. Waiting for a driver.',
+                $pickupRequest->requesterName(),
+                $pickupRequest->id
+            ),
+            'info'
+        );
     }
 
     public function notifyDriversOfNewPickupRequest(PickupRequest $pickupRequest): void
     {
-        $pickupRequest->loadMissing(['area']);
+        $pickupRequest->loadMissing(['area', 'city']);
 
         $areaName = $pickupRequest->area?->name ?? 'your area';
+        $cityName = $pickupRequest->city?->name;
 
         $this->notifyEligibleDrivers(
             $pickupRequest,
             'new_pickup_request',
             'New pickup request',
-            sprintf('A new pickup request is available in %s.', $areaName)
+            $cityName
+                ? sprintf('A new pickup request is available in %s, %s.', $areaName, $cityName)
+                : sprintf('A new pickup request is available in %s.', $areaName)
         );
     }
 
@@ -102,6 +121,94 @@ class AppNotificationService
             'Request no longer available',
             'This pickup request was accepted by another driver.',
             $pickupRequest->driver_id
+        );
+
+        $this->notifyAdminPanel(
+            'Pickup request accepted',
+            sprintf(
+                '%s accepted request #%d from %s.',
+                $driverName,
+                $pickupRequest->id,
+                $pickupRequest->requesterName()
+            ),
+            'success'
+        );
+    }
+
+    public function notifyShiftPaymentRequired(PickupRequest $pickupRequest, Invoice $invoice): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'shift_payment_required',
+            'Payment required',
+            sprintf(
+                'Pay %s in advance to start your %d-month pick-drop service. Bank details are in the invoice.',
+                $invoice->formattedTotal(),
+                (int) ($pickupRequest->duration_months ?: 1)
+            ),
+            $this->requestData($pickupRequest, [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'next_step' => 'pay_invoice',
+            ])
+        );
+
+        if ($pickupRequest->driver_id) {
+            $this->notify(
+                (int) $pickupRequest->driver_id,
+                'shift_awaiting_payment',
+                'Waiting for payment',
+                'The customer must pay the advance monthly fee before this shift can start.',
+                $this->requestData($pickupRequest, ['invoice_id' => $invoice->id])
+            );
+        }
+
+        $this->notifyAdminPanel(
+            'Shift payment pending',
+            sprintf(
+                '%s must pay %s for request #%d before the shift starts.',
+                $pickupRequest->requesterName(),
+                $invoice->formattedTotal(),
+                $pickupRequest->id
+            ),
+            'warning'
+        );
+    }
+
+    public function notifyShiftPaymentReceived(PickupRequest $pickupRequest, Invoice $invoice): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'shift_payment_received',
+            'Payment received',
+            'Your monthly service is now active. The driver can start pickup and drop.',
+            $this->requestData($pickupRequest, [
+                'invoice_id' => $invoice->id,
+                'next_step' => 'shift_active',
+            ])
+        );
+
+        if ($pickupRequest->driver_id) {
+            $this->notify(
+                (int) $pickupRequest->driver_id,
+                'shift_payment_received',
+                'Payment received',
+                sprintf(
+                    '%s paid for request #%d. You can start the shift.',
+                    $pickupRequest->requesterName(),
+                    $pickupRequest->id
+                ),
+                $this->requestData($pickupRequest, ['invoice_id' => $invoice->id])
+            );
+        }
+
+        $this->notifyAdminPanel(
+            'Shift payment received',
+            sprintf(
+                'Request #%d is paid. Shift can start.',
+                $pickupRequest->id
+            ),
+            'success'
         );
     }
 
@@ -150,15 +257,23 @@ class AppNotificationService
                 ),
                 $this->requestData($pickupRequest)
             );
-
-            return;
+        } else {
+            $this->notifyEligibleDrivers(
+                $pickupRequest,
+                'pickup_request_cancelled',
+                'Request cancelled',
+                'A pickup request in your service area was cancelled by the parent.'
+            );
         }
 
-        $this->notifyEligibleDrivers(
-            $pickupRequest,
-            'pickup_request_cancelled',
-            'Request cancelled',
-            'A pickup request in your service area was cancelled by the parent.'
+        $this->notifyAdminPanel(
+            'Pickup request cancelled',
+            sprintf(
+                '%s cancelled pickup request #%d.',
+                $pickupRequest->requesterName(),
+                $pickupRequest->id
+            ),
+            'warning'
         );
     }
 
@@ -206,6 +321,92 @@ class AppNotificationService
                 $data
             );
         }
+
+        if ($status === 'completed') {
+            $this->notifyAdminPanel(
+                'Trip completed',
+                sprintf(
+                    'Request #%d from %s was completed.',
+                    $pickupRequest->id,
+                    $pickupRequest->requesterName()
+                ),
+                'success'
+            );
+
+            $this->notify(
+                (int) $pickupRequest->parent_id,
+                'rating_requested',
+                'Rate your driver',
+                'Please rate this trip. Your feedback helps keep rides safe.',
+                $this->requestData($pickupRequest)
+            );
+
+            if ($pickupRequest->driver_id) {
+                $this->notify(
+                    (int) $pickupRequest->driver_id,
+                    'rating_requested',
+                    'Rate this trip',
+                    'Please rate the parent for this completed trip.',
+                    $this->requestData($pickupRequest)
+                );
+            }
+        }
+    }
+
+    public function notifyDelay(PickupRequest $pickupRequest, int $etaMinutes, string $reason): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'driver_delay',
+            'Driver running late',
+            sprintf(
+                'Your driver is delayed by about %d minutes. %s',
+                $etaMinutes,
+                $reason !== '' ? $reason : 'Please wait at the pickup point.'
+            ),
+            $this->requestData($pickupRequest, ['eta_minutes' => $etaMinutes])
+        );
+
+        $this->notifyAdminPanel(
+            'Driver delay',
+            sprintf('Request #%d is delayed (%d min).', $pickupRequest->id, $etaMinutes),
+            'warning'
+        );
+    }
+
+    public function notifySos(PickupRequest $pickupRequest, User $reporter, string $message): void
+    {
+        $body = sprintf(
+            'SOS from %s on request #%d. %s',
+            $reporter->name ?? 'A user',
+            $pickupRequest->id,
+            $message !== '' ? $message : 'Emergency reported.'
+        );
+
+        if ((int) $pickupRequest->parent_id !== (int) $reporter->id) {
+            $this->notify((int) $pickupRequest->parent_id, 'sos', 'Emergency SOS', $body, $this->requestData($pickupRequest));
+        }
+
+        if ($pickupRequest->driver_id && (int) $pickupRequest->driver_id !== (int) $reporter->id) {
+            $this->notify((int) $pickupRequest->driver_id, 'sos', 'Emergency SOS', $body, $this->requestData($pickupRequest));
+        }
+
+        $this->notifyAdminPanel('SOS alert', $body, 'danger');
+    }
+
+    public function notifyRenewalDue(PickupRequest $pickupRequest): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'shift_renewal_due',
+            'Shift ending soon',
+            sprintf(
+                'Your pick-drop shift ends on %s. Renew now to keep the same driver.',
+                $pickupRequest->shift_end_date?->toFormattedDateString() ?? 'soon'
+            ),
+            $this->requestData($pickupRequest),
+            'payment_reminders'
+        );
     }
 
     public function notifyNewMessage(int $receiverId, int $pickupRequestId, string $senderName, string $preview): void
@@ -231,6 +432,7 @@ class AppNotificationService
             'pickup_request_id' => $pickupRequest->id,
             'status' => $pickupRequest->status,
             'area_id' => $pickupRequest->area_id,
+            'drop_area_id' => $pickupRequest->drop_area_id,
             'city_id' => $pickupRequest->city_id,
         ], $extra);
     }
@@ -240,21 +442,16 @@ class AppNotificationService
      */
     private function eligibleDriversForRequest(PickupRequest $pickupRequest): Collection
     {
-        $areaId = (int) $pickupRequest->area_id;
+        return app(PickupRequestMatchingService::class)->eligibleDrivers($pickupRequest);
+    }
 
-        return User::query()
-            ->where('role', 'driver')
-            ->when($pickupRequest->city_id, fn ($q) => $q->where('city_id', $pickupRequest->city_id))
-            ->whereNotNull('service_areas')
-            ->get()
-            ->filter(function (User $driver) use ($areaId) {
-                $areas = collect($driver->service_areas ?? [])
-                    ->map(fn ($id) => (int) $id)
-                    ->all();
-
-                return in_array($areaId, $areas, true);
-            })
-            ->values();
+    public function notifyAdminPanel(string $title, string $message, string $type = 'info'): void
+    {
+        Notification::create([
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
+        ]);
     }
 
     private function notifyEligibleDrivers(

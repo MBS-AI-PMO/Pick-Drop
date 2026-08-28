@@ -147,7 +147,7 @@
               <circle cx="40" cy="140" r="5" fill="#3b5bdb"/>
               <circle cx="130" cy="110" r="5" fill="#3b5bdb"/>
               <circle cx="240" cy="70" r="5" fill="#3b5bdb"/>
-              <circle cx="330" cy="45" r="7" fill="#22c55e" stroke="white" stroke-width="2"/>
+              <circle cx="330" cy="45" r="7" fill="#3f6fd9" stroke="white" stroke-width="2"/>
             </svg>
             <i data-lucide="map" style="width:28px;height:28px;color:#3b5bdb;position:relative;z-index:1;opacity:0.4;"></i>
             <p class="text-secondary fs-12px mt-2 mb-0" style="position:relative;z-index:1;">Route Map Preview</p>

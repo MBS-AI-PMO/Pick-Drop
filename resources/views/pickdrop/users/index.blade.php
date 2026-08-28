@@ -101,23 +101,27 @@
             <td class="py-3 text-secondary">{{ is_array($user->details) ? json_encode($user->details) : ($user->details ?: '—') }}</td>
             <td class="py-3">
               @if(strtolower($user->status) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#d1fae5;color:#065f46;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
               @else
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $user->status }}</span>
               @endif
             </td>
             <td class="py-3 text-center">
-              <div class="d-flex justify-content-center align-items-center gap-2">
-                <button class="btn btn-sm btn-light btn-icon" title="Edit"
+              <div class="action-btns">
+                <button type="button" class="action-btn action-btn-view" title="View"
+                        onclick='openViewModal(event, @json($user))'>
+                  <i data-lucide="eye"></i>
+                </button>
+                <button type="button" class="action-btn action-btn-edit" title="Edit"
                         onclick='openEditModal(event, @json($user))'>
-                  <i data-lucide="edit-2" class="icon-sm"></i>
+                  <i data-lucide="edit-2"></i>
                 </button>
                 <form action="{{ route('users.destroy', $user->id) }}" method="POST"
-                      class="d-inline m-0 p-0" onsubmit="confirmDelete(event, this)">
+                      onsubmit="confirmDelete(event, this)">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger btn-icon">
-                    <i data-lucide="trash-2" class="icon-sm"></i>
+                  <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                    <i data-lucide="trash-2"></i>
                   </button>
                 </form>
               </div>
@@ -140,17 +144,7 @@
     </div>
   </div>
 
-  {{-- Pagination Footer --}}
-  @if($users->hasPages())
-  <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
-    <small class="text-muted">
-      Showing {{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }} users
-    </small>
-    <div>
-      {{ $users->links('pagination::bootstrap-5') }}
-    </div>
-  </div>
-  @endif
+  <x-app-pagination :paginator="$users" label="users" />
 </div>
 
 
@@ -266,6 +260,45 @@
   </div>
 </div>
 
+{{-- ========== VIEW USER MODAL ========== --}}
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">User Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="row g-3">
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Full Name</p>
+            <p class="fw-semibold mb-0" id="viewUserName">—</p>
+          </div>
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Email</p>
+            <p class="fw-semibold mb-0" id="viewUserEmail">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Role</p>
+            <p class="fw-semibold mb-0" id="viewUserRole">—</p>
+          </div>
+          <div class="col-md-6">
+            <p class="text-secondary small mb-1">Status</p>
+            <p class="fw-semibold mb-0" id="viewUserStatus">—</p>
+          </div>
+          <div class="col-12">
+            <p class="text-secondary small mb-1">Details</p>
+            <p class="fw-semibold mb-0" id="viewUserDetails">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('custom-scripts')
@@ -296,6 +329,19 @@
 
   // Edit Modal
   const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+  const viewUserModal = new bootstrap.Modal(document.getElementById('viewUserModal'));
+
+  function openViewModal(event, user) {
+    event.preventDefault();
+    document.getElementById('viewUserName').textContent = user.name || '—';
+    document.getElementById('viewUserEmail').textContent = user.email || '—';
+    document.getElementById('viewUserRole').textContent = user.role || '—';
+    document.getElementById('viewUserStatus').textContent = user.status || '—';
+    document.getElementById('viewUserDetails').textContent = (typeof user.details === 'object' && user.details)
+      ? JSON.stringify(user.details)
+      : (user.details || '—');
+    viewUserModal.show();
+  }
 
   function openEditModal(event, user) {
     event.preventDefault();
