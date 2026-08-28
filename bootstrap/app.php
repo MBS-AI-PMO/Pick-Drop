@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',
+            'payments/jazzcash/callback',
+            'payments/easypaisa/callback',
             'api/*',
         ]);
     })

@@ -68,7 +68,27 @@ class PickupRequestMatchingService
             return false;
         }
 
-        return count(array_intersect($serviceAreas, $requestAreas)) > 0;
+        $areaOk = count(array_intersect($serviceAreas, $requestAreas)) > 0;
+
+        return $areaOk && $this->hasSeatCapacity($driver, $pickupRequest);
+    }
+
+    public function hasSeatCapacity(User $driver, PickupRequest $pickupRequest): bool
+    {
+        $capacity = (int) ($driver->assignedVehicle?->category?->passenger_capacity ?? 0);
+        if ($capacity < 1) {
+            return true;
+        }
+
+        $used = PickupRequest::query()
+            ->where('driver_id', $driver->id)
+            ->whereNotIn('status', ['cancelled', 'pending'])
+            ->where('payment_status', PickupRequest::PAYMENT_PAID)
+            ->sum('passenger_count');
+
+        $incoming = (int) ($pickupRequest->passenger_count ?: 1);
+
+        return ($used + $incoming) <= $capacity;
     }
 
     public function constrainAvailableQuery(Builder $query, User $driver): Builder
@@ -113,7 +133,7 @@ class PickupRequestMatchingService
             ->where('role', 'driver')
             ->where('status', 'Active')
             ->whereNotNull('service_areas')
-            ->with(['driverVerification'])
+            ->with(['driverVerification', 'assignedVehicle.category'])
             ->get()
             ->filter(function (User $driver) use ($pickupRequest, $rejectedIds) {
                 if ($rejectedIds !== [] && in_array((int) $driver->id, $rejectedIds, true)) {

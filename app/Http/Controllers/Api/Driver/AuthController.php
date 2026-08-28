@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class AuthController extends BaseApiController
@@ -31,6 +32,14 @@ class AuthController extends BaseApiController
 
             $otp = (string) random_int(100000, 999999);
 
+            $referrerId = null;
+            if (!empty($validated['referral_code'])) {
+                $referrerId = User::query()
+                    ->where('referral_code', $validated['referral_code'])
+                    ->where('id', '!=', 0)
+                    ->value('id');
+            }
+
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -40,6 +49,7 @@ class AuthController extends BaseApiController
                 'status' => 'Pending',
                 'otp' => $otp,
                 'referral_code' => $validated['referral_code'] ?? null,
+                'referred_by' => $referrerId,
             ]);
 
             Mail::to($user->email)->send(
@@ -248,12 +258,68 @@ class AuthController extends BaseApiController
                 'kyc_required' => $kycStatus !== 'approved',
                 'vehicle_verification_status' => $vehicleVerificationStatus,
                 'vehicle_verification_required' => $vehicleVerificationStatus !== 'approved',
-                'next_step' => $user->driverNextStep(),
-            ], 'Email verified successfully. Please complete driver verification (KYC).');
+                'next_step' => $user->fresh()->driverNextStep(),
+            ], $user->needsPhoneVerification()
+                ? 'Email verified successfully. Please verify your phone number.'
+                : 'Email verified successfully. Please complete driver verification (KYC).');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to verify email');
+        }
+    }
+
+    public function sendPhoneVerification(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+                return $this->errorResponse('Forbidden', 403);
+            }
+
+            if (is_null($user->email_verified_at)) {
+                return $this->errorResponse('Please verify your email first.', 403, null, [
+                    'next_step' => 'verify_email',
+                ]);
+            }
+
+            app(\App\Services\PhoneOtpService::class)->send($user);
+
+            return $this->successResponse([
+                'expires_in_minutes' => 10,
+                'next_step' => 'verify_phone',
+            ], 'Verification code sent to your phone. A copy was also emailed.');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to send phone verification');
+        }
+    }
+
+    public function verifyPhone(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            ]);
+
+            $user = $request->user();
+            if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+                return $this->errorResponse('Forbidden', 403);
+            }
+
+            $user = app(\App\Services\PhoneOtpService::class)->verify($user, $validated['code']);
+
+            return $this->successResponse([
+                'user' => $user->toDriverApiArray(),
+                'next_step' => $user->driverNextStep(),
+            ], 'Phone verified successfully.');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to verify phone');
         }
     }
 }

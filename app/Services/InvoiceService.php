@@ -47,6 +47,7 @@ class InvoiceService
                 'due_date' => $payload['due_date'] ?? now()->addDays(7)->toDateString(),
                 'notes' => $payload['notes'] ?? null,
                 'terms' => $payload['terms'] ?? 'Payment is due by the date shown on this invoice.',
+                'kind' => $payload['kind'] ?? 'shift',
             ]);
 
             $this->syncItems($invoice, $items);
@@ -133,7 +134,11 @@ class InvoiceService
 
         if ($invoice->isPaid()) {
             $pickupRequest->update(['payment_status' => PickupRequest::PAYMENT_PAID]);
+            $this->applyPaidRenewal($invoice, $pickupRequest);
             $this->notifier->notifyShiftPaymentReceived($pickupRequest, $invoice);
+            if ($pickupRequest->parent) {
+                app(ReferralService::class)->creditOnFirstPaidInvoice($pickupRequest->parent);
+            }
 
             return;
         }
@@ -530,5 +535,178 @@ class InvoiceService
         ]);
 
         $this->syncPickupRequestPayment($invoice);
+    }
+
+    public function rejectBankPayment(Payment $payment, string $reason, ?int $recordedBy = null): Payment
+    {
+        if ($payment->method !== Payment::METHOD_BANK || $payment->status !== Payment::STATUS_PENDING) {
+            throw new RuntimeException('Only pending bank transfers can be rejected.');
+        }
+
+        $payment->update([
+            'status' => Payment::STATUS_FAILED,
+            'rejected_at' => now(),
+            'reject_reason' => $reason,
+            'recorded_by' => $recordedBy,
+        ]);
+
+        $invoice = $payment->invoice()->firstOrFail();
+        $this->recalculate($invoice);
+        $this->syncPickupRequestPayment($invoice->fresh());
+
+        $this->notifier->notify(
+            (int) $invoice->user_id,
+            'bank_transfer_rejected',
+            'Bank payment rejected',
+            sprintf(
+                'Your bank transfer for invoice %s was rejected. %s Please submit payment again.',
+                $invoice->invoice_number,
+                $reason
+            ),
+            ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number],
+            'payment_reminders'
+        );
+
+        Notification::create([
+            'title' => 'Bank transfer rejected',
+            'message' => $invoice->invoice_number . ' bank transfer was rejected. Customer can retry.',
+            'type' => 'warning',
+        ]);
+
+        return $payment->fresh();
+    }
+
+    public function refundPayment(Payment $payment, string $reason, ?int $recordedBy = null): Payment
+    {
+        if ($payment->status !== Payment::STATUS_COMPLETED) {
+            throw new RuntimeException('Only completed payments can be refunded.');
+        }
+
+        $payment->update([
+            'status' => Payment::STATUS_REFUNDED,
+            'refunded_at' => now(),
+            'refund_reason' => $reason,
+            'recorded_by' => $recordedBy ?: $payment->recorded_by,
+        ]);
+
+        $invoice = $payment->invoice()->firstOrFail();
+        $this->recalculate($invoice);
+        $invoice->refresh();
+        $this->syncPickupRequestPayment($invoice);
+
+        $this->notifier->notify(
+            (int) $invoice->user_id,
+            'payment_refunded',
+            'Payment refunded',
+            sprintf(
+                'A payment on invoice %s was refunded. Remaining balance: %s.',
+                $invoice->invoice_number,
+                $invoice->formatMoney($invoice->balance())
+            ),
+            ['invoice_id' => $invoice->id],
+            'payment_reminders'
+        );
+
+        Notification::create([
+            'title' => 'Payment refunded',
+            'message' => $invoice->invoice_number . ' payment refunded for ' . ($invoice->customer?->name ?? 'customer') . '.',
+            'type' => 'warning',
+        ]);
+
+        return $payment->fresh();
+    }
+
+    public function createRenewalInvoice(PickupRequest $pickupRequest, int $months = 1): Invoice
+    {
+        $pickupRequest->loadMissing('stops');
+        $months = max(1, $months);
+        $start = $pickupRequest->shift_end_date
+            ? $pickupRequest->shift_end_date->copy()->addDay()
+            : now()->startOfDay();
+
+        $fare = app(ShiftFareService::class);
+        $quote = $fare->quote(
+            (float) $pickupRequest->pickup_lat,
+            (float) $pickupRequest->pickup_lng,
+            (float) $pickupRequest->drop_lat,
+            (float) $pickupRequest->drop_lng,
+            $pickupRequest->days ?? [],
+            $months,
+            $start->toDateString(),
+            $pickupRequest->stops->map(fn ($stop) => [
+                'type' => $stop->type,
+                'point' => $stop->point,
+                'lat' => $stop->lat,
+                'lng' => $stop->lng,
+                'time' => $stop->formattedTime(),
+                'area_id' => $stop->area_id,
+            ])->values()->all() ?: []
+        );
+
+        $invoice = $this->create([
+            'user_id' => $pickupRequest->parent_id,
+            'student_id' => $pickupRequest->student_id,
+            'pickup_request_id' => $pickupRequest->id,
+            'issue_date' => now()->toDateString(),
+            'due_date' => $pickupRequest->shift_end_date?->toDateString() ?? now()->addDays(3)->toDateString(),
+            'currency' => $quote['currency'],
+            'kind' => 'renewal',
+            'notes' => sprintf(
+                'Renewal invoice for request #%d (%d additional month%s, %s to %s). Current service continues until the current end date. New dates apply after this invoice is paid.',
+                $pickupRequest->id,
+                $months,
+                $months === 1 ? '' : 's',
+                $quote['shift_start_date'],
+                $quote['shift_end_date']
+            ),
+            'terms' => 'Pay this invoice before the current shift ends to keep the same driver without a break.',
+        ], [
+            [
+                'description' => sprintf(
+                    'Shift renewal: %s km × %d trips (%d month%s, %s to %s)',
+                    number_format($quote['distance_km'], 2),
+                    $quote['trip_count'],
+                    $months,
+                    $months === 1 ? '' : 's',
+                    $quote['shift_start_date'],
+                    $quote['shift_end_date']
+                ),
+                'quantity' => $quote['trip_count'],
+                'unit_price' => $quote['per_trip_amount'],
+            ],
+        ]);
+
+        $pickupRequest->update([
+            'renewal_status' => 'notified',
+            'renewal_notified_at' => $pickupRequest->renewal_notified_at ?: now(),
+        ]);
+
+        return $invoice;
+    }
+
+    private function applyPaidRenewal(Invoice $invoice, PickupRequest $pickupRequest): void
+    {
+        if (($invoice->kind ?? 'shift') !== 'renewal') {
+            return;
+        }
+
+        $months = max(1, (int) ($pickupRequest->duration_months ?: 1));
+        $extra = 1;
+        if (preg_match('/(\d+) additional month/', (string) $invoice->notes, $m)) {
+            $extra = max(1, (int) $m[1]);
+        }
+
+        $currentEnd = $pickupRequest->shift_end_date ?: now();
+        $newEnd = $currentEnd->copy()->addMonths($extra);
+        $rate = (float) $pickupRequest->driver_monthly_rate;
+
+        $pickupRequest->update([
+            'duration_months' => $months + $extra,
+            'shift_end_date' => $newEnd->toDateString(),
+            'driver_payout_amount' => round($rate * ($months + $extra), 2),
+            'driver_payout_due_on' => $newEnd->copy()->endOfMonth()->toDateString(),
+            'renewal_status' => 'renewed',
+            'auto_renew' => $pickupRequest->auto_renew,
+        ]);
     }
 }

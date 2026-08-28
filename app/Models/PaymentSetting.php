@@ -172,7 +172,7 @@ class PaymentSetting extends Model
 
     public function hasStripe(): bool
     {
-        return false;
+        return $this->stripe_enabled && filled($this->stripeSecret());
     }
 
     /**

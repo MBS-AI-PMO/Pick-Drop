@@ -17,6 +17,7 @@ class Student extends Model
         'school_location',
         'city_id',
         'pickup_area_id',
+        'school_id',
         'pickup_location',
         'pickup_lat',
         'pickup_lng',
@@ -43,6 +44,11 @@ class Student extends Model
     public function pickupArea()
     {
         return $this->belongsTo(Area::class, 'pickup_area_id');
+    }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class);
     }
 
     /**

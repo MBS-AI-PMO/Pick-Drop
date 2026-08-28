@@ -12,7 +12,11 @@ use App\Http\Controllers\Api\Driver\NotificationController;
 use App\Http\Controllers\Api\Driver\MessageController;
 use App\Http\Controllers\Api\Driver\VerificationController;
 use App\Http\Controllers\Api\Driver\VehicleVerificationController;
+use App\Http\Controllers\Api\Driver\RatingController;
+use App\Http\Controllers\Api\Driver\SosController;
 use App\Http\Controllers\Api\ParentSelf\LocationController;
+use App\Http\Controllers\Api\ParentSelf\AttendanceController;
+use App\Http\Controllers\Api\Driver\EarningsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +88,16 @@ Route::prefix('driver')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index'])->name('api.driver.notifications.index');
         Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('api.driver.notifications.mark-all-read');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('api.driver.notifications.read');
+
+        Route::post('phone/verify/send', [AuthController::class, 'sendPhoneVerification'])->name('api.driver.phone.verify.send');
+        Route::post('phone/verify', [AuthController::class, 'verifyPhone'])->name('api.driver.phone.verify');
+
+        Route::post('sos', [SosController::class, 'store'])->name('api.driver.sos.store');
+        Route::post('requests/{pickupRequest}/ratings', [RatingController::class, 'store'])->name('api.driver.requests.ratings.store');
+        Route::get('holidays', [AttendanceController::class, 'holidays'])->name('api.driver.holidays');
+        Route::get('earnings', [EarningsController::class, 'index'])->name('api.driver.earnings');
+        Route::post('device-token', [EarningsController::class, 'registerDevice'])->name('api.driver.device-token');
+        Route::get('requests/{pickupRequest}/contact', [EarningsController::class, 'contact'])->name('api.driver.requests.contact');
     });
 });
 

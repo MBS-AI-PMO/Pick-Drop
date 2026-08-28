@@ -176,9 +176,17 @@ class ShiftStopService
             throw new RuntimeException('This stop is already marked.');
         }
 
+        if ($action === 'pickup' && app(AttendanceService::class)->isOffDay($request)) {
+            throw new RuntimeException('This shift is skipped or on holiday today.');
+        }
+
         $stop->status = PickupRequestStop::STATUS_DONE;
         $stop->completed_at = now();
         $stop->save();
+
+        if ($action === 'pickup') {
+            app(AttendanceService::class)->markPresent($request, $request->driver);
+        }
 
         $this->syncRequestStatus($request->fresh('stops'));
 
@@ -278,11 +286,12 @@ class ShiftStopService
     public function todayForDriver(User $driver): Collection
     {
         $weekday = strtolower(Carbon::now()->englishDayOfWeek);
+        $today = Carbon::now()->toDateString();
+        $attendance = app(AttendanceService::class);
 
         return PickupRequestStop::query()
             ->with(['area', 'pickupRequest.student', 'pickupRequest.parent', 'pickupRequest.city'])
-            ->whereHas('pickupRequest', function ($q) use ($driver, $weekday) {
-                $today = Carbon::now()->toDateString();
+            ->whereHas('pickupRequest', function ($q) use ($driver, $weekday, $today) {
                 $dayKeys = [
                     $weekday,
                     substr($weekday, 0, 3),
@@ -303,10 +312,15 @@ class ShiftStopService
                         foreach ($dayKeys as $key) {
                             $days->orWhereJsonContains('days', $key);
                         }
+                    })
+                    ->whereDoesntHave('attendances', function ($att) use ($today) {
+                        $att->whereDate('date', $today)->whereIn('status', ['skipped', 'holiday']);
                     });
             })
             ->orderBy('scheduled_time')
             ->orderBy('sequence')
-            ->get();
+            ->get()
+            ->filter(fn (PickupRequestStop $stop) => !$attendance->isOffDay($stop->pickupRequest, $today))
+            ->values();
     }
 }

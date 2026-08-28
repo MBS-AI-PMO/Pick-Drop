@@ -150,6 +150,24 @@
                             <i data-lucide="check"></i>
                           </button>
                         </form>
+                        <form method="POST" action="{{ route('payments.reject-bank', $payment) }}" class="d-inline"
+                              onsubmit="return rejectPayment(event, this)">
+                          @csrf
+                          <input type="hidden" name="reason" value="">
+                          <button type="submit" class="action-btn action-btn-view" title="Reject">
+                            <i data-lucide="x"></i>
+                          </button>
+                        </form>
+                      @endif
+                      @if($payment->status === 'completed')
+                        <form method="POST" action="{{ route('payments.refund', $payment) }}" class="d-inline"
+                              onsubmit="return refundPayment(event, this)">
+                          @csrf
+                          <input type="hidden" name="reason" value="">
+                          <button type="submit" class="action-btn action-btn-view" title="Refund">
+                            <i data-lucide="undo-2"></i>
+                          </button>
+                        </form>
                       @endif
                       <form action="{{ route('payments.payments.destroy', $payment) }}" method="POST"
                             onsubmit="confirmDeletePayment(event, this)">
@@ -261,6 +279,38 @@
       confirmButtonText: 'Yes, delete it!'
     }).then(function (result) {
       if (result.isConfirmed) form.submit();
+    });
+  }
+  function rejectPayment(event, form) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Reject this transfer?',
+      input: 'text',
+      inputPlaceholder: 'Reason for the customer',
+      inputValidator: function (value) { if (!value) return 'Reason is required'; },
+      showCancelButton: true,
+      confirmButtonText: 'Reject'
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        form.querySelector('[name="reason"]').value = result.value;
+        form.submit();
+      }
+    });
+  }
+  function refundPayment(event, form) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Refund this payment?',
+      input: 'text',
+      inputPlaceholder: 'Refund reason',
+      inputValidator: function (value) { if (!value) return 'Reason is required'; },
+      showCancelButton: true,
+      confirmButtonText: 'Refund'
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        form.querySelector('[name="reason"]').value = result.value;
+        form.submit();
+      }
     });
   }
 </script>

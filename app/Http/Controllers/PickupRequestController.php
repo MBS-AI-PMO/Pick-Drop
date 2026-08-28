@@ -78,10 +78,18 @@ class PickupRequestController extends Controller
             'vehicle.category',
             'latestInvoice.items',
             'latestInvoice.payments',
+            'attendances',
+            'ratings.fromUser',
+            'issues.user',
         ]);
+
+        $eligibleDrivers = $pickupRequest->status === 'pending' && !$pickupRequest->driver_id
+            ? app(\App\Services\PickupRequestMatchingService::class)->eligibleDrivers($pickupRequest)
+            : collect();
 
         return view('pickdrop.pickup-requests.show', [
             'requestItem' => $pickupRequest,
+            'eligibleDrivers' => $eligibleDrivers,
         ]);
     }
 
@@ -120,5 +128,27 @@ class PickupRequestController extends Controller
         return redirect()
             ->route('pickup-requests.show', $pickupRequest)
             ->with('success', 'Driver month-end payout marked as paid.');
+    }
+
+    public function assignDriver(Request $request, PickupRequest $pickupRequest)
+    {
+        $validated = $request->validate([
+            'driver_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $driver = \App\Models\User::query()->findOrFail($validated['driver_id']);
+
+        try {
+            app(\App\Services\PickupRequestAssignmentService::class)
+                ->assign($pickupRequest, $driver, 'admin');
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('pickup-requests.show', $pickupRequest)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('pickup-requests.show', $pickupRequest)
+            ->with('success', 'Driver assigned. Advance invoice created.');
     }
 }

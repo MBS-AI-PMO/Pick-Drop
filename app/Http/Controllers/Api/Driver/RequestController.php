@@ -95,51 +95,10 @@ class RequestController extends BaseApiController
                 return $denied;
             }
 
-            app(\App\Services\ShiftFareService::class)->quoteFromRequest($pickupRequest);
+            $updated = app(\App\Services\PickupRequestAssignmentService::class)
+                ->assign($pickupRequest, $driver, 'driver');
 
-            $updated = null;
-
-            DB::transaction(function () use ($driver, $pickupRequest, &$updated) {
-                /** @var PickupRequest|null $row */
-                $row = PickupRequest::query()
-                    ->lockForUpdate()
-                    ->whereKey($pickupRequest->id)
-                    ->first();
-
-                if (!$row || $row->status !== 'pending' || $row->driver_id !== null) {
-                    throw ValidationException::withMessages([
-                        'pickup_request' => ['This request is no longer available.'],
-                    ]);
-                }
-
-                if (!$this->matcher->driverCanServe($driver, $row)) {
-                    throw ValidationException::withMessages([
-                        'pickup_request' => ['You cannot accept this request (city or area mismatch).'],
-                    ]);
-                }
-
-                $row->driver_id = $driver->id;
-                $row->vehicle_id = $driver->assignedVehicle?->id;
-                $row->status = 'accepted';
-                $row->save();
-
-                DriverPickupRequestRejection::query()
-                    ->where('driver_id', $driver->id)
-                    ->where('pickup_request_id', $row->id)
-                    ->delete();
-
-                $updated = $row->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'driver', 'vehicle']);
-            });
-
-            if ($updated) {
-                $invoice = app(InvoiceService::class)->createForAcceptedShift($updated);
-                $updated = $updated->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'driver', 'vehicle', 'latestInvoice.items', 'latestInvoice.payments']);
-                $notifier = app(AppNotificationService::class);
-                $notifier->notifyParentRequestAccepted($updated);
-                $notifier->notifyShiftPaymentRequired($updated, $invoice);
-            }
-
-            return $this->successResponse($updated?->toApiArray('driver'), 'Request accepted. Customer must pay the advance fee before the shift can start.');
+            return $this->successResponse($updated->toApiArray('driver'), 'Request accepted. Customer must pay the advance fee before the shift can start.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (RuntimeException $e) {
@@ -204,33 +163,12 @@ class RequestController extends BaseApiController
                 'status' => ['required', 'in:picked_up,dropped,completed'],
             ]);
 
-            $next = $validated['status'];
-            $allowed = match ($pickupRequest->status) {
-                'accepted' => ['picked_up'],
-                'picked_up' => ['dropped'],
-                'dropped' => ['completed'],
-                default => [],
-            };
+            $run = app(\App\Services\ShiftDayService::class)->markRequestStage($pickupRequest, $validated['status']);
 
-            if (!in_array($next, $allowed, true)) {
-                return $this->errorResponse(
-                    sprintf('Cannot change status from %s to %s', $pickupRequest->status, $next),
-                    422
-                );
-            }
-
-            $pickupRequest->status = $next;
-            if ($next === 'completed') {
-                $pickupRequest->completed_at = now();
-            }
-            $pickupRequest->save();
-
-            app(AppNotificationService::class)->notifyPickupRequestStatus($pickupRequest, $next);
-
-            return $this->successResponse(
-                $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea'])->toApiArray('driver'),
-                'Status updated'
-            );
+            return $this->successResponse([
+                'request' => $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea'])->toApiArray('driver'),
+                'today' => $run->toApiArray(false),
+            ], 'Today status updated');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {

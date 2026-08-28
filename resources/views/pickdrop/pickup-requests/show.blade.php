@@ -206,6 +206,51 @@
       </div>
     </div>
 
+    @if($requestItem->status === 'pending' && empty($requestItem->driver_id))
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Assign driver</h6></div>
+      <div class="card-body">
+        <p class="text-secondary small">If no driver accepts within 20 minutes, the system auto-assigns an eligible driver. You can also assign now.</p>
+        @if(($eligibleDrivers ?? collect())->isNotEmpty())
+          <form method="POST" action="{{ route('pickup-requests.assign', $requestItem) }}">
+            @csrf
+            <select name="driver_id" class="form-select mb-2" required>
+              <option value="">Select driver</option>
+              @foreach($eligibleDrivers as $driver)
+                <option value="{{ $driver->id }}">{{ $driver->name }} · {{ $driver->phone ?: $driver->email }}</option>
+              @endforeach
+            </select>
+            <button class="btn btn-sm btn-dark" type="submit">Assign &amp; create invoice</button>
+          </form>
+        @else
+          <p class="text-muted mb-0">No eligible active driver in this city/area yet.</p>
+        @endif
+        @if($requestItem->match_expires_at)
+          <small class="text-muted d-block mt-2">Auto-assign after {{ $requestItem->match_expires_at->format('d M Y, h:i A') }}</small>
+        @endif
+      </div>
+    </div>
+    @endif
+
+    @if($requestItem->driver)
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Live tracking</h6></div>
+      <div class="card-body">
+        @if($requestItem->driver->last_lat && $requestItem->driver->last_lng)
+          <div class="fw-semibold mb-1">{{ $requestItem->driver->last_lat }}, {{ $requestItem->driver->last_lng }}</div>
+          <small class="text-muted d-block mb-2">Updated {{ $requestItem->driver->last_location_at?->diffForHumans() ?: '—' }} · {{ $requestItem->driver->last_ride_status ?: 'no status' }}</small>
+          <a class="btn btn-sm btn-outline-dark" target="_blank"
+             href="https://maps.google.com/?q={{ $requestItem->driver->last_lat }},{{ $requestItem->driver->last_lng }}">Open map</a>
+        @else
+          <p class="text-muted mb-0">Driver has not shared a live location yet.</p>
+        @endif
+        @if($requestItem->driver?->last_lat)
+          <div id="live-map" class="mt-3 rounded" style="height:220px;"></div>
+        @endif
+      </div>
+    </div>
+    @endif
+
     <div class="card">
       <div class="card-header">
         <h6 class="mb-0">Timeline</h6>
@@ -237,3 +282,22 @@
 </div>
 
 @endsection
+
+@if($requestItem->driver?->last_lat)
+@push('custom-scripts')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  (function () {
+    var lat = {{ $requestItem->driver->last_lat }};
+    var lng = {{ $requestItem->driver->last_lng }};
+    var map = L.map('live-map').setView([lat, lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    L.marker([lat, lng]).addTo(map).bindPopup('Driver');
+    @if($requestItem->pickup_lat)
+      L.marker([{{ $requestItem->pickup_lat }}, {{ $requestItem->pickup_lng }}]).addTo(map).bindPopup('Pickup');
+    @endif
+  })();
+</script>
+@endpush
+@endif

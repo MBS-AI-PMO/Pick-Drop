@@ -43,6 +43,14 @@ class PickupRequest extends Model
         'scheduled_date',
         'cancelled_at',
         'completed_at',
+        'match_expires_at',
+        'auto_assign_attempts',
+        'assignment_source',
+        'auto_renew',
+        'renewal_status',
+        'renewed_from_id',
+        'last_delay_notified_on',
+        'renewal_notified_at',
     ];
 
     protected $casts = [
@@ -62,6 +70,10 @@ class PickupRequest extends Model
         'cancelled_at' => 'datetime',
         'completed_at' => 'datetime',
         'driver_payout_paid_at' => 'datetime',
+        'match_expires_at' => 'datetime',
+        'auto_renew' => 'boolean',
+        'last_delay_notified_on' => 'date',
+        'renewal_notified_at' => 'datetime',
     ];
 
     public function parent()
@@ -117,6 +129,31 @@ class PickupRequest extends Model
     public function latestInvoice()
     {
         return $this->hasOne(Invoice::class)->latestOfMany();
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(ShiftAttendance::class);
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    public function sosAlerts()
+    {
+        return $this->hasMany(SosAlert::class);
+    }
+
+    public function issues()
+    {
+        return $this->hasMany(IssueReport::class);
+    }
+
+    public function renewedFrom()
+    {
+        return $this->belongsTo(self::class, 'renewed_from_id');
     }
 
     public const PAYMENT_UNPAID = 'unpaid';
@@ -249,6 +286,45 @@ class PickupRequest extends Model
         };
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function trackingApiArray(): array
+    {
+        $this->loadMissing('driver');
+        $driver = $this->driver;
+
+        return [
+            'status' => $this->status,
+            'driver_id' => $this->driver_id,
+            'vehicle_id' => $this->vehicle_id,
+            'driver_status' => $driver?->last_ride_status,
+            'lat' => $driver?->last_lat !== null ? (float) $driver->last_lat : null,
+            'lng' => $driver?->last_lng !== null ? (float) $driver->last_lng : null,
+            'updated_at' => $driver?->last_location_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function todayRunApiArray(bool $includeOtp = false): ?array
+    {
+        $run = $this->relationLoaded('dayRuns')
+            ? $this->dayRuns->firstWhere('date', now()->toDateString())
+            : ShiftDayRun::query()
+                ->where('pickup_request_id', $this->id)
+                ->whereDate('date', now()->toDateString())
+                ->first();
+
+        return $run?->toApiArray($includeOtp);
+    }
+
+    public function dayRuns()
+    {
+        return $this->hasMany(ShiftDayRun::class);
+    }
+
     public function statusBadgeStyle(): string
     {
         return match ($this->status) {
@@ -345,6 +421,13 @@ class PickupRequest extends Model
             'estimated_amount' => $this->estimated_amount,
             'payment_status' => $this->payment_status ?: self::PAYMENT_UNPAID,
             'payment' => $this->paymentApiArray($audience),
+            'tracking' => $this->trackingApiArray(),
+            'today' => $this->todayRunApiArray($audience === 'user'),
+            'passenger_count' => (int) ($this->passenger_count ?: 1),
+            'auto_renew' => (bool) $this->auto_renew,
+            'renewal_status' => $this->renewal_status ?: 'none',
+            'match_expires_at' => $this->match_expires_at?->toIso8601String(),
+            'assignment_source' => $this->assignment_source,
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'completed_at' => $this->completed_at?->toIso8601String(),

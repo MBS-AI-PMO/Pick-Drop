@@ -69,15 +69,23 @@ class InvoiceController extends BaseApiController
             }
 
             $settings = PaymentSetting::current();
+            $platform = \App\Models\PlatformSetting::current();
 
             return $this->successResponse([
-                'stripe_enabled' => false,
+                'stripe_enabled' => $settings->hasStripe(),
+                'jazzcash_enabled' => (bool) $platform->jazzcash_enabled,
+                'easypaisa_enabled' => (bool) $platform->easypaisa_enabled,
                 'bank' => $settings->bankDetails(),
                 'banks' => \App\Support\PakistaniBanks::names(),
                 'company' => [
                     'name' => $settings->company_name,
                     'email' => $settings->company_email,
                     'phone' => $settings->company_phone,
+                ],
+                'pickup_otp_enabled' => (bool) $platform->pickup_otp_enabled,
+                'cancel' => [
+                    'hours' => (int) $platform->cancel_hours,
+                    'fee_percent' => (float) $platform->cancel_fee_percent,
                 ],
             ], 'Payment methods');
         } catch (Throwable $e) {
@@ -87,7 +95,64 @@ class InvoiceController extends BaseApiController
 
     public function payStripe(Request $request, Invoice $invoice): JsonResponse
     {
-        return $this->errorResponse('Card payments are not available. Please pay by bank transfer.', 422);
+        try {
+            $denied = $this->denyInvoiceOwner($request, $invoice);
+            if ($denied) {
+                return $denied;
+            }
+
+            $session = $this->invoices->createStripeCheckout(
+                $invoice,
+                url('/payments/stripe/complete') . '?session_id={CHECKOUT_SESSION_ID}',
+                url('/payments/stripe/cancel/' . $invoice->id)
+            );
+
+            return $this->successResponse([
+                'gateway' => 'stripe',
+                'checkout_url' => $session['url'] ?? $session['checkout_url'] ?? null,
+                'session' => $session,
+            ], 'Stripe checkout created');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to start card payment');
+        }
+    }
+
+    public function payJazzcash(Request $request, Invoice $invoice): JsonResponse
+    {
+        try {
+            $denied = $this->denyInvoiceOwner($request, $invoice);
+            if ($denied) {
+                return $denied;
+            }
+
+            $payload = app(\App\Services\LocalPaymentService::class)->jazzcashCheckout($invoice);
+
+            return $this->successResponse($payload, 'JazzCash checkout created. Post fields to checkout_url.');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to start JazzCash payment');
+        }
+    }
+
+    public function payEasypaisa(Request $request, Invoice $invoice): JsonResponse
+    {
+        try {
+            $denied = $this->denyInvoiceOwner($request, $invoice);
+            if ($denied) {
+                return $denied;
+            }
+
+            $payload = app(\App\Services\LocalPaymentService::class)->easypaisaCheckout($invoice);
+
+            return $this->successResponse($payload, 'EasyPaisa checkout created. Post fields to checkout_url.');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to start EasyPaisa payment');
+        }
     }
 
     public function payBank(Request $request, Invoice $invoice): JsonResponse

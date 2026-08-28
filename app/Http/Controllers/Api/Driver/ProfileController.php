@@ -28,6 +28,8 @@ class ProfileController extends BaseApiController
                 'city_id'           => ['sometimes', 'integer', 'exists:cities,id'],
                 'service_areas'     => ['sometimes', 'array', 'min:1'],
                 'service_areas.*'   => ['integer', 'exists:areas,id'],
+                'emergency_contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'emergency_contact_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             ]);
 
             if (array_key_exists('home_address', $validated)) {

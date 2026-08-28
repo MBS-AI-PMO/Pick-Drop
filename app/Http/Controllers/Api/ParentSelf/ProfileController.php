@@ -35,6 +35,8 @@ class ProfileController extends BaseApiController
                 'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
                 'address' => ['sometimes', 'nullable', 'string', 'max:500'],
                 'contact' => ['sometimes', 'nullable', 'string', 'max:50'],
+                'emergency_contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'emergency_contact_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             ]);
 
             $details = is_array($user->details) ? $user->details : [];

@@ -185,6 +185,36 @@ class InvoiceController extends Controller
         }
     }
 
+    public function rejectBank(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->invoices->rejectBankPayment($payment, $validated['reason'], $request->user()->id);
+
+            return back()->with('success', 'Bank transfer rejected. Customer can submit payment again.');
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function refundPayment(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->invoices->refundPayment($payment, $validated['reason'], $request->user()->id);
+
+            return back()->with('success', 'Payment refunded. Invoice balance updated.');
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function stripeCheckout(Invoice $invoice)
     {
         try {

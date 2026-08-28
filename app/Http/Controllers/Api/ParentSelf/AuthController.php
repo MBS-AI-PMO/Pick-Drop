@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class AuthController extends BaseApiController
@@ -29,9 +30,17 @@ class AuthController extends BaseApiController
                 'contact'  => ['nullable', 'string', 'max:50', 'unique:users,phone'],
                 'password' => ['required', 'string', 'min:6', 'confirmed'],
                 'type'     => ['required', Rule::in([$accountType])],
+                'referral_code' => ['nullable', 'string', 'max:50'],
             ]);
 
             $user = DB::transaction(function () use ($validated, $accountType) {
+                $referrerId = null;
+                if (!empty($validated['referral_code'])) {
+                    $referrerId = User::query()
+                        ->where('referral_code', $validated['referral_code'])
+                        ->value('id');
+                }
+
                 $u = User::create([
                     'name'     => $validated['name'],
                     'email'    => $validated['email'],
@@ -39,6 +48,7 @@ class AuthController extends BaseApiController
                     'password' => $validated['password'],
                     'role'     => $accountType,
                     'status'   => 'Pending',
+                    'referred_by' => $referrerId,
                     'details'  => [
                         'address' => $validated['address'] ?? null,
                         'contact' => $validated['contact'] ?? null,
@@ -246,11 +256,68 @@ class AuthController extends BaseApiController
                 'user' => $user->toParentSelfApiArray(),
                 'kyc_required' => $user->parentSelfKycStatus() !== 'approved',
                 'next_step' => $user->parentSelfNextStep(),
-            ], 'Email verified successfully. Please complete identity verification.');
+            ], $user->needsPhoneVerification()
+                ? 'Email verified successfully. Please verify your phone number.'
+                : 'Email verified successfully. Please complete identity verification.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to verify email');
+        }
+    }
+
+    public function sendPhoneVerification(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $accountDenied = $this->denyUnlessAccountType($user, $request);
+            if ($accountDenied) {
+                return $accountDenied;
+            }
+
+            $emailDenied = $this->denyUnlessEmailVerified($user);
+            if ($emailDenied) {
+                return $emailDenied;
+            }
+
+            app(\App\Services\PhoneOtpService::class)->send($user);
+
+            return $this->successResponse([
+                'expires_in_minutes' => 10,
+                'next_step' => 'verify_phone',
+            ], 'Verification code sent to your phone. A copy was also emailed.');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to send phone verification');
+        }
+    }
+
+    public function verifyPhone(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            ]);
+
+            $user = $request->user();
+            $accountDenied = $this->denyUnlessAccountType($user, $request);
+            if ($accountDenied) {
+                return $accountDenied;
+            }
+
+            $user = app(\App\Services\PhoneOtpService::class)->verify($user, $validated['code']);
+
+            return $this->successResponse([
+                'user' => $user->toParentSelfApiArray(),
+                'next_step' => $user->parentSelfNextStep(),
+            ], 'Phone verified successfully.');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to verify phone');
         }
     }
 

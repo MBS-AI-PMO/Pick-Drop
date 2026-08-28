@@ -71,6 +71,7 @@ class RequestController extends BaseApiController
                 'days'         => ['required', 'array', 'min:1'],
                 'days.*'       => ['string'],
                 'duration_months' => ['nullable', 'integer', 'min:1', 'max:24'],
+                'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20'],
                 'shift_start_date' => ['nullable', 'date'],
                 'scheduled_date' => ['nullable', 'date'],
                 'stops' => ['nullable', 'array', 'min:2'],
@@ -151,6 +152,7 @@ class RequestController extends BaseApiController
                 'type' => $validated['type'],
                 'parent_id' => $request->user()->id,
                 'student_id' => $validated['student_id'] ?? null,
+                'passenger_count' => $validated['passenger_count'] ?? 1,
                 'city_id' => $validated['city_id'],
                 'area_id' => $validated['area_id'],
                 'drop_area_id' => $validated['drop_area_id'] ?? null,
@@ -176,6 +178,7 @@ class RequestController extends BaseApiController
                 'payment_status' => PickupRequest::PAYMENT_UNPAID,
                 'scheduled_date' => $validated['scheduled_date'] ?? $quote['shift_start_date'],
                 'status' => 'pending',
+                'match_expires_at' => now()->addMinutes(\App\Services\PickupRequestAssignmentService::MATCH_TIMEOUT_MINUTES),
             ]);
 
             $stopService->sync($req, $stopPayload);
@@ -321,18 +324,25 @@ class RequestController extends BaseApiController
             if (!$pickupRequest) {
                 return $this->errorResponse('Not found', 404);
             }
-            if (in_array($pickupRequest->status, ['picked_up', 'dropped', 'completed'], true)) {
-                return $this->errorResponse('Request cannot be cancelled after trip started', 422);
+            if (in_array($pickupRequest->status, ['cancelled'], true)) {
+                return $this->errorResponse('Request cannot be cancelled after it was cancelled', 422);
             }
 
-            $pickupRequest->status = 'cancelled';
-            $pickupRequest->cancelled_at = now();
-            $pickupRequest->save();
+            $run = \App\Models\ShiftDayRun::query()
+                ->where('pickup_request_id', $pickupRequest->id)
+                ->whereDate('date', now()->toDateString())
+                ->first();
 
-            app(InvoiceService::class)->cancelOpenShiftInvoice($pickupRequest);
-            app(AppNotificationService::class)->notifyPickupRequestCancelled($pickupRequest);
+            if ($run && in_array($run->status, ['picked_up', 'dropped', 'completed'], true)) {
+                return $this->errorResponse('Request cannot be cancelled after today\'s trip started', 422);
+            }
 
-            return $this->successResponse(null, 'Request cancelled');
+            $cancelled = app(\App\Services\CancellationService::class)->cancel($pickupRequest, $request->user());
+
+            return $this->successResponse([
+                'request' => $cancelled->toApiArray(),
+                'cancellation' => app(\App\Services\CancellationService::class)->preview($cancelled),
+            ], 'Request cancelled');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to cancel request');
         }
@@ -371,16 +381,105 @@ class RequestController extends BaseApiController
                 return $this->errorResponse('Not found', 404);
             }
 
-            // NOTE: Real tracking will come from driver's live location table/stream.
-            $tracking = [
-                'status' => $pickupRequest->status,
-                'driver_id' => $pickupRequest->driver_id,
-                'vehicle_id' => $pickupRequest->vehicle_id,
-            ];
+            $tracking = app(\App\Services\TrackingService::class)->payload($pickupRequest);
 
             return $this->successResponse($tracking, 'Tracking info');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch tracking info');
+        }
+    }
+
+    public function renew(Request $request, int $requestId): JsonResponse
+    {
+        try {
+            $pickupRequest = PickupRequest::query()
+                ->where('id', $requestId)
+                ->where('parent_id', $request->user()->id)
+                ->first();
+
+            if (!$pickupRequest) {
+                return $this->errorResponse('Not found', 404);
+            }
+
+            if (in_array($pickupRequest->status, ['cancelled', 'pending'], true) || !$pickupRequest->isShiftPaid()) {
+                return $this->errorResponse('This shift cannot be renewed yet.', 422);
+            }
+
+            $validated = $request->validate([
+                'duration_months' => ['nullable', 'integer', 'min:1', 'max:12'],
+                'auto_renew' => ['nullable', 'boolean'],
+            ]);
+
+            if (array_key_exists('auto_renew', $validated)) {
+                $pickupRequest->update(['auto_renew' => (bool) $validated['auto_renew']]);
+            }
+
+            $invoice = app(InvoiceService::class)->createRenewalInvoice(
+                $pickupRequest,
+                (int) ($validated['duration_months'] ?? 1)
+            );
+
+            return $this->successResponse([
+                'request' => $pickupRequest->fresh()->toApiArray(),
+                'invoice' => $invoice->toApiArray(),
+            ], 'Renewal invoice created. Pay it before the current shift ends.');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to renew shift');
+        }
+    }
+
+    public function autoRenew(Request $request, int $requestId): JsonResponse
+    {
+        try {
+            $pickupRequest = PickupRequest::query()
+                ->where('id', $requestId)
+                ->where('parent_id', $request->user()->id)
+                ->first();
+
+            if (!$pickupRequest) {
+                return $this->errorResponse('Not found', 404);
+            }
+
+            $validated = $request->validate([
+                'enabled' => ['required', 'boolean'],
+            ]);
+
+            $pickupRequest->update(['auto_renew' => (bool) $validated['enabled']]);
+
+            return $this->successResponse($pickupRequest->fresh()->toApiArray(), $validated['enabled']
+                ? 'Auto-renew enabled'
+                : 'Auto-renew disabled');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to update auto-renew');
+        }
+    }
+
+    public function declineRenewal(Request $request, int $requestId): JsonResponse
+    {
+        try {
+            $pickupRequest = PickupRequest::query()
+                ->where('id', $requestId)
+                ->where('parent_id', $request->user()->id)
+                ->first();
+
+            if (!$pickupRequest) {
+                return $this->errorResponse('Not found', 404);
+            }
+
+            $pickupRequest->update([
+                'auto_renew' => false,
+                'renewal_status' => 'declined',
+            ]);
+
+            return $this->successResponse($pickupRequest->fresh()->toApiArray(), 'Renewal declined. Service will stop on the current end date.');
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to decline renewal');
         }
     }
 

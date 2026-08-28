@@ -42,6 +42,7 @@ class StudentController extends BaseApiController
             $validated = $request->validate([
                 'name'   => ['required', 'string', 'max:255'],
                 'grade'  => ['nullable', 'string', 'max:100'],
+                'school_id' => ['nullable', 'integer', 'exists:schools,id'],
                 'school_name' => ['nullable', 'string', 'max:255'],
                 'school_location' => ['nullable', 'string', 'max:255'],
                 'city_id' => ['nullable', 'integer', 'exists:cities,id'],
@@ -112,6 +113,7 @@ class StudentController extends BaseApiController
             $validated = $request->validate([
                 'name'   => ['sometimes', 'string', 'max:255'],
                 'grade'  => ['sometimes', 'nullable', 'string', 'max:100'],
+                'school_id' => ['sometimes', 'nullable', 'integer', 'exists:schools,id'],
                 'school_name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'school_location' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'city_id' => ['sometimes', 'nullable', 'integer', 'exists:cities,id'],

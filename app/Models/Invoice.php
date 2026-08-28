@@ -38,6 +38,8 @@ class Invoice extends Model
         'stripe_payment_intent_id',
         'notes',
         'terms',
+        'kind',
+        'reminder_sent_at',
     ];
 
     protected function casts(): array
@@ -53,6 +55,7 @@ class Invoice extends Model
             'sent_at' => 'datetime',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
         ];
     }
 
@@ -195,7 +198,7 @@ class Invoice extends Model
                 'total' => (float) $item->total,
             ])->values()->all(),
             'payable' => $this->isPayable(),
-            'stripe_enabled' => false,
+            'stripe_enabled' => PaymentSetting::current()->hasStripe(),
             'bank' => $this->isPayable() ? $settings->bankDetails() : null,
             'payments' => $this->payments->map(fn (Payment $p) => $p->toApiArray())->values()->all(),
         ];

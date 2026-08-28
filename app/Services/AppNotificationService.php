@@ -24,13 +24,17 @@ class AppNotificationService
             return null;
         }
 
-        return AppNotification::create([
+        $row = AppNotification::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'body' => $body,
             'data' => $data,
         ]);
+
+        app(PushService::class)->send($userId, $title, $body, $data ?? []);
+
+        return $row;
     }
 
     public function notifyParentRequestSubmitted(PickupRequest $pickupRequest): void
@@ -328,7 +332,81 @@ class AppNotificationService
                 ),
                 'success'
             );
+
+            $this->notify(
+                (int) $pickupRequest->parent_id,
+                'rating_requested',
+                'Rate your driver',
+                'Please rate this trip. Your feedback helps keep rides safe.',
+                $this->requestData($pickupRequest)
+            );
+
+            if ($pickupRequest->driver_id) {
+                $this->notify(
+                    (int) $pickupRequest->driver_id,
+                    'rating_requested',
+                    'Rate this trip',
+                    'Please rate the parent for this completed trip.',
+                    $this->requestData($pickupRequest)
+                );
+            }
         }
+    }
+
+    public function notifyDelay(PickupRequest $pickupRequest, int $etaMinutes, string $reason): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'driver_delay',
+            'Driver running late',
+            sprintf(
+                'Your driver is delayed by about %d minutes. %s',
+                $etaMinutes,
+                $reason !== '' ? $reason : 'Please wait at the pickup point.'
+            ),
+            $this->requestData($pickupRequest, ['eta_minutes' => $etaMinutes])
+        );
+
+        $this->notifyAdminPanel(
+            'Driver delay',
+            sprintf('Request #%d is delayed (%d min).', $pickupRequest->id, $etaMinutes),
+            'warning'
+        );
+    }
+
+    public function notifySos(PickupRequest $pickupRequest, User $reporter, string $message): void
+    {
+        $body = sprintf(
+            'SOS from %s on request #%d. %s',
+            $reporter->name ?? 'A user',
+            $pickupRequest->id,
+            $message !== '' ? $message : 'Emergency reported.'
+        );
+
+        if ((int) $pickupRequest->parent_id !== (int) $reporter->id) {
+            $this->notify((int) $pickupRequest->parent_id, 'sos', 'Emergency SOS', $body, $this->requestData($pickupRequest));
+        }
+
+        if ($pickupRequest->driver_id && (int) $pickupRequest->driver_id !== (int) $reporter->id) {
+            $this->notify((int) $pickupRequest->driver_id, 'sos', 'Emergency SOS', $body, $this->requestData($pickupRequest));
+        }
+
+        $this->notifyAdminPanel('SOS alert', $body, 'danger');
+    }
+
+    public function notifyRenewalDue(PickupRequest $pickupRequest): void
+    {
+        $this->notify(
+            (int) $pickupRequest->parent_id,
+            'shift_renewal_due',
+            'Shift ending soon',
+            sprintf(
+                'Your pick-drop shift ends on %s. Renew now to keep the same driver.',
+                $pickupRequest->shift_end_date?->toFormattedDateString() ?? 'soon'
+            ),
+            $this->requestData($pickupRequest),
+            'payment_reminders'
+        );
     }
 
     public function notifyNewMessage(int $receiverId, int $pickupRequestId, string $senderName, string $preview): void
@@ -367,7 +445,7 @@ class AppNotificationService
         return app(PickupRequestMatchingService::class)->eligibleDrivers($pickupRequest);
     }
 
-    private function notifyAdminPanel(string $title, string $message, string $type = 'info'): void
+    public function notifyAdminPanel(string $title, string $message, string $type = 'info'): void
     {
         Notification::create([
             'title' => $title,

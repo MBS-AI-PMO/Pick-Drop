@@ -30,8 +30,19 @@ class User extends Authenticatable
         'city_id',
         'service_areas',
         'otp',
+        'phone_otp',
+        'phone_otp_expires_at',
+        'phone_verified_at',
         'referral_code',
         'email_verified_at',
+        'last_lat',
+        'last_lng',
+        'last_location_at',
+        'last_ride_status',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'referred_by',
+        'referral_balance',
     ];
 
     /**
@@ -42,6 +53,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'otp',
+        'phone_otp',
     ];
 
     /**
@@ -53,6 +66,11 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'phone_otp_expires_at' => 'datetime',
+            'last_location_at' => 'datetime',
+            'last_lat' => 'float',
+            'last_lng' => 'float',
             'password' => 'hashed',
             'details' => 'array',
             'service_areas' => 'array',
@@ -133,6 +151,16 @@ class User extends Authenticatable
         return $this->hasOne(SelfCommuteProfile::class);
     }
 
+    public function needsPhoneVerification(): bool
+    {
+        return filled($this->phone) && is_null($this->phone_verified_at);
+    }
+
+    public function isPhoneVerified(): bool
+    {
+        return $this->phone_verified_at !== null;
+    }
+
     public function isParentAccount(): bool
     {
         return strcasecmp(trim((string) $this->role), 'parent') === 0;
@@ -192,6 +220,10 @@ class User extends Authenticatable
     {
         if (is_null($this->email_verified_at)) {
             return 'verify_email';
+        }
+
+        if ($this->needsPhoneVerification()) {
+            return 'verify_phone';
         }
 
         $kycStatus = $this->parentSelfKycStatus();
@@ -257,6 +289,8 @@ class User extends Authenticatable
         $base['kyc_status'] = $this->parentSelfKycStatus();
         $base['next_step'] = $this->parentSelfNextStep();
         $base['onboarding_complete'] = $this->isParentSelfOnboardingComplete();
+        $base['phone_verified'] = $this->phone_verified_at !== null;
+        $base['needs_phone_verification'] = $this->needsPhoneVerification();
         $base['verification'] = $this->parentSelfVerification
             ? $this->parentSelfVerification->toApiArray()
             : null;
@@ -307,6 +341,10 @@ class User extends Authenticatable
     {
         if (is_null($this->email_verified_at)) {
             return 'verify_email';
+        }
+
+        if ($this->needsPhoneVerification()) {
+            return 'verify_phone';
         }
 
         $kycStatus = $this->kycStatus();
@@ -367,6 +405,11 @@ class User extends Authenticatable
         $base['service_areas_setup'] = $this->hasServiceAreas();
         $base['onboarding_complete'] = $this->isOnboardingComplete();
         $base['next_step'] = $this->driverNextStep();
+        $base['phone_verified'] = $this->phone_verified_at !== null;
+        $base['needs_phone_verification'] = $this->needsPhoneVerification();
+        $base['last_lat'] = $this->last_lat;
+        $base['last_lng'] = $this->last_lng;
+        $base['last_location_at'] = $this->last_location_at?->toIso8601String();
         $base['verification'] = $this->driverVerification
             ? $this->driverVerification->toApiArray()
             : null;

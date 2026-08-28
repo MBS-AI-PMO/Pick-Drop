@@ -30,6 +30,10 @@ class Payment extends Model
         'notes',
         'recorded_by',
         'paid_at',
+        'rejected_at',
+        'reject_reason',
+        'refunded_at',
+        'refund_reason',
     ];
 
     protected function casts(): array
@@ -37,6 +41,8 @@ class Payment extends Model
         return [
             'amount' => 'float',
             'paid_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'refunded_at' => 'datetime',
         ];
     }
 
@@ -78,7 +84,11 @@ class Payment extends Model
             'reference' => $this->reference,
             'proof_url' => $this->proofUrl(),
             'notes' => $this->notes,
+            'reject_reason' => $this->reject_reason,
+            'refund_reason' => $this->refund_reason,
             'paid_at' => $this->paid_at?->toIso8601String(),
+            'rejected_at' => $this->rejected_at?->toIso8601String(),
+            'refunded_at' => $this->refunded_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

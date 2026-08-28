@@ -97,6 +97,34 @@
         </a>
       </li>
 
+      <li class="nav-item {{ active_class(['issues', 'issues/*']) }}">
+        <a href="{{ route('issues.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="flag"></i>
+          <span class="link-title">Issues</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['sos', 'sos/*']) }}">
+        <a href="{{ route('sos.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="alert-triangle"></i>
+          <span class="link-title">SOS Alerts</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['schools', 'schools/*']) }}">
+        <a href="{{ route('schools.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="school"></i>
+          <span class="link-title">Schools</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['holidays', 'holidays/*']) }}">
+        <a href="{{ route('holidays.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="calendar-days"></i>
+          <span class="link-title">Holidays</span>
+        </a>
+      </li>
+
       <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">
         <a href="{{ route('routes.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="map-pin"></i>
@@ -125,6 +153,13 @@
             </li>
           </ul>
         </div>
+      </li>
+
+      <li class="nav-item {{ active_class(['platform-settings', 'platform-settings/*']) }}">
+        <a href="{{ route('platform-settings.edit') }}" class="nav-link">
+          <i class="link-icon" data-lucide="settings"></i>
+          <span class="link-title">Platform settings</span>
+        </a>
       </li>
 
       <li class="nav-item {{ active_class(['charges', 'charges/*']) }}">

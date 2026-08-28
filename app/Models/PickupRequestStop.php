@@ -93,8 +93,10 @@ class PickupRequestStop extends Model
             'area_id' => $this->area_id,
             'area' => $this->area,
             'time' => $this->formattedTime(),
-            'status' => $this->status,
-            'completed_at' => $this->completed_at?->toIso8601String(),
+            'status' => $this->getAttribute('today_status') ?: $this->status,
+            'completed_at' => optional($this->getAttribute('today_completed_at'))?->toIso8601String()
+                ?: $this->completed_at?->toIso8601String(),
+            'pickup_otp_required' => $this->isPickup(),
             'notes' => $this->notes,
             'passenger' => [
                 'name' => $request?->student?->name ?: $request?->parent?->name,
