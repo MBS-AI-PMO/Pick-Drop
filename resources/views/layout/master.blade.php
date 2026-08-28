@@ -389,6 +389,16 @@ Author: PickDrop Team
     .page-content {
         background: var(--pd-theme-page, var(--pd-muted-surface, #f7f9fc));
     }
+    .page-wrapper .page-content,
+    .page-content.container-xxl,
+    .page-content.container-fluid {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+    }
     .footer {
         background: var(--pd-theme-footer, #ffffff) !important;
         border-top: 1px solid var(--pd-theme-border, #eef1f6) !important;
@@ -565,6 +575,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             'payments': "{{ route('payments.index') }}",
 
+            'calendar': "{{ route('holidays.index') }}",
+            'holiday': "{{ route('holidays.index') }}",
+            'holidays': "{{ route('holidays.index') }}",
+            'chutti': "{{ route('holidays.index') }}",
+
+            'complaints': "{{ route('issues.index') }}",
+            'complaint': "{{ route('issues.index') }}",
+            'issues': "{{ route('issues.index') }}",
+
             'reports': "{{ route('reports.index') }}",
 
             'profile': "{{ route('general.profile') }}"
@@ -607,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function () {
     @include('layout.partials.sidebar')
     <div class="page-wrapper">
       @include('layout.partials.header')
-      <div class="page-content @yield('page-content-class', 'container-xxl')">
+      <div class="page-content @yield('page-content-class', 'container-fluid')">
         @yield('content')
       </div>
       @include('layout.partials.footer')

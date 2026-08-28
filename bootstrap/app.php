@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'panel.admin' => \App\Http\Middleware\EnsurePanelAdmin::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',

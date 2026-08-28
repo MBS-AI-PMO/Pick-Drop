@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
     <h4 class="mb-1">{{ $school->name }}</h4>
-    <p class="text-secondary mb-0">{{ $school->city?->name }} · {{ $school->students->count() }} students</p>
+    <p class="text-secondary mb-0">{{ $school->categoryLabel() }} · {{ $school->city?->name ?: 'No city' }} · {{ $school->students->count() }} students</p>
   </div>
   <a href="{{ route('schools.index') }}" class="btn btn-outline-secondary">Back</a>
 </div>
@@ -18,6 +18,12 @@
           @method('PUT')
           <label class="form-label">Name</label>
           <input class="form-control mb-3" name="name" value="{{ $school->name }}" required>
+          <label class="form-label">Category</label>
+          <select class="form-select mb-3" name="category" required>
+            @foreach($categories as $value => $label)
+              <option value="{{ $value }}" {{ old('category', $school->category) === $value ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+          </select>
           <label class="form-label">Phone</label>
           <input class="form-control mb-3" name="phone" value="{{ $school->phone }}">
           <label class="form-label">Address</label>
