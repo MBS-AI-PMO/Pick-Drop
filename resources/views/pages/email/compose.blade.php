@@ -7,7 +7,7 @@
 
 @section('content')
 <div class="row inbox-wrapper">
-  <div class="col-lg-12">
+  <div class="col-lg-10">
     <div class="card">
       <div class="card-body">
         <div class="row">
