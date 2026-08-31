@@ -197,8 +197,10 @@
               background: transparent;
               border: 1px solid rgba(var(--#{$prefix}sidebar-color-rgb), .3);
               position: absolute;
-              left: -29px;
-              top: 10px;
+              left: 4px;
+              top: 50%;
+              margin-top: 0;
+              transform: translateY(-50%);
               -webkit-transition: all .1s ease-in-out;
               transition: all .1s ease-in-out;
             }

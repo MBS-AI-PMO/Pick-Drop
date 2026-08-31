@@ -9,12 +9,12 @@
   ];
 @endphp
 
-<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin gap-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin gap-3 dashboard-header">
   <div>
     <h4 class="mb-1">Dashboard</h4>
     <p class="text-secondary mb-0">Welcome back, {{ auth()->user()?->name ?? 'Admin' }} · live operations overview</p>
   </div>
-  <a href="{{ route('reports.index') }}" class="btn btn-success d-flex align-items-center gap-1">
+  <a href="{{ route('reports.index') }}" class="btn btn-primary d-flex align-items-center gap-2 pd-header-action">
     <i data-lucide="bar-chart-2" style="width:15px;height:15px;"></i> View reports
   </a>
 </div>
@@ -23,15 +23,13 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('vehicles.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body d-flex align-items-center justify-content-between py-3">
-          <div>
-            <p class="text-secondary fs-13px mb-1">Active vehicles</p>
-            <h3 class="mb-1 fw-bold">{{ number_format($stats['vehicles'] ?? 0) }}</h3>
-            <span class="text-secondary fs-12px">Total registered vehicles</span>
+        <div class="card-body">
+          <div class="dashboard-stat-icon is-blue">
+            <i data-lucide="bus"></i>
           </div>
-          <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-primary-rgb),0.12);">
-            <i data-lucide="bus" class="text-primary"></i>
-          </div>
+          <p class="dashboard-stat-label">Active vehicles</p>
+          <h3>{{ number_format($stats['vehicles'] ?? 0) }}</h3>
+          <span class="dashboard-stat-meta">Total registered vehicles</span>
         </div>
       </div>
     </a>
@@ -39,15 +37,13 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('users.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body d-flex align-items-center justify-content-between py-3">
-          <div>
-            <p class="text-secondary fs-13px mb-1">Total users</p>
-            <h3 class="mb-1 fw-bold">{{ number_format($stats['users'] ?? 0) }}</h3>
-            <span class="text-secondary fs-12px">All registered users</span>
+        <div class="card-body">
+          <div class="dashboard-stat-icon is-green">
+            <i data-lucide="users"></i>
           </div>
-          <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(34,197,94,0.12);">
-            <i data-lucide="users" style="color:#3f6fd9;"></i>
-          </div>
+          <p class="dashboard-stat-label">Total users</p>
+          <h3>{{ number_format($stats['users'] ?? 0) }}</h3>
+          <span class="dashboard-stat-meta">All registered users</span>
         </div>
       </div>
     </a>
@@ -55,15 +51,13 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('pickup-requests.index', ['status' => 'pending']) }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body d-flex align-items-center justify-content-between py-3">
-          <div>
-            <p class="text-secondary fs-13px mb-1">Pending requests</p>
-            <h3 class="mb-1 fw-bold">{{ number_format($stats['pending_requests'] ?? 0) }}</h3>
-            <span class="text-secondary fs-12px">Waiting for a driver</span>
+        <div class="card-body">
+          <div class="dashboard-stat-icon is-teal">
+            <i data-lucide="clipboard-list"></i>
           </div>
-          <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(14,165,233,0.12);">
-            <i data-lucide="clipboard-list" class="text-info"></i>
-          </div>
+          <p class="dashboard-stat-label">Pending requests</p>
+          <h3>{{ number_format($stats['pending_requests'] ?? 0) }}</h3>
+          <span class="dashboard-stat-meta">Waiting for a driver</span>
         </div>
       </div>
     </a>
@@ -71,15 +65,13 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('notifications.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body d-flex align-items-center justify-content-between py-3">
-          <div>
-            <p class="text-secondary fs-13px mb-1">Alerts today</p>
-            <h3 class="mb-1 fw-bold">{{ number_format($stats['alerts_today'] ?? 0) }}</h3>
-            <span class="text-danger fs-12px">System alerts logged today</span>
+        <div class="card-body">
+          <div class="dashboard-stat-icon is-red">
+            <i data-lucide="bell"></i>
           </div>
-          <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(230,57,70,0.12);">
-            <i data-lucide="bell" class="text-danger"></i>
-          </div>
+          <p class="dashboard-stat-label">Alerts today</p>
+          <h3>{{ number_format($stats['alerts_today'] ?? 0) }}</h3>
+          <span class="dashboard-stat-meta">System alerts logged today</span>
         </div>
       </div>
     </a>
