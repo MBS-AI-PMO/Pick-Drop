@@ -35,17 +35,15 @@
       </li>
 
       {{-- Notifications --}}
-      <li class="nav-item dropdown">
+      <li class="nav-item dropdown pd-notify">
         @php
           $notifications = \App\Models\Notification::latest()->take(4)->get();
           $unreadNotificationsCount = \App\Models\Notification::where('is_read', false)->count();
         @endphp
-        <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <a class="nav-link pd-icon-btn dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <i data-lucide="bell"></i>
           @if($unreadNotificationsCount > 0)
-            <div class="indicator">
-              <div class="circle"></div>
-            </div>
+            <span class="pd-notify-dot" aria-hidden="true"></span>
           @endif
         </a>
         <div class="dropdown-menu notification-dropdown p-0" aria-labelledby="notificationDropdown">
@@ -107,14 +105,13 @@
       </li>
 
       {{-- Profile --}}
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <div class="w-30px h-30px rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold" style="font-size:13px;">
-    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-</div>
-          <span class="d-none d-md-inline-block fw-semibold" style="font-size:14px;">
-    {{ auth()->user()->name }}
-</span>
+      <li class="nav-item dropdown pd-profile">
+        <a class="nav-link pd-profile-chip dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <span class="pd-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
+          <span class="pd-profile-meta d-none d-md-flex">
+            <span class="pd-profile-name">{{ auth()->user()->name }}</span>
+          </span>
+          <i class="pd-profile-caret d-none d-md-inline" data-lucide="chevron-down"></i>
         </a>
         <div class="dropdown-menu p-0" aria-labelledby="profileDropdown">
           <div class="d-flex flex-column align-items-center border-bottom px-5 py-3">
