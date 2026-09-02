@@ -142,6 +142,34 @@ class PickupRequestMatchingService
 
                 return $this->driverCanServe($driver, $pickupRequest);
             })
+            ->sortBy(fn (User $driver) => $this->distanceKm($driver, $pickupRequest) ?? 9999)
             ->values();
+    }
+
+    public const NEARBY_KM = 15;
+
+    public function distanceKm(?User $driver, PickupRequest $pickupRequest): ?float
+    {
+        if (!$driver?->last_lat || !$pickupRequest->pickup_lat) {
+            return null;
+        }
+
+        if ($driver->last_location_at && $driver->last_location_at->lt(now()->subHours(2))) {
+            return null;
+        }
+
+        return app(TrackingService::class)->distanceMeters(
+            (float) $driver->last_lat,
+            (float) $driver->last_lng,
+            (float) $pickupRequest->pickup_lat,
+            (float) $pickupRequest->pickup_lng
+        ) / 1000;
+    }
+
+    public function isNearby(User $driver, PickupRequest $pickupRequest): bool
+    {
+        $km = $this->distanceKm($driver, $pickupRequest);
+
+        return $km !== null && $km <= self::NEARBY_KM;
     }
 }

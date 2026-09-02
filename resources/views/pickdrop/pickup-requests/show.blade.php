@@ -108,7 +108,32 @@
             <div class="fw-semibold">{{ (int) ($requestItem->duration_months ?: 1) }} month{{ (int) ($requestItem->duration_months ?: 1) === 1 ? '' : 's' }}</div>
             <small class="text-muted">{{ $requestItem->shift_start_date?->format('d M Y') ?: '—' }} → {{ $requestItem->shift_end_date?->format('d M Y') ?: '—' }}</small>
           </div>
+          <div class="col-md-6">
+            <label class="text-muted small">Round trip</label>
+            <div class="fw-semibold">{{ $requestItem->round_trip !== false ? 'Yes — drop back at the same pickup point' : 'One way' }}</div>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <h6 class="mb-0">Pickup &amp; drop points</h6>
+      </div>
+      <div class="card-body">
+        @php $journey = $requestItem->journeyApiArray(); @endphp
+        <p class="text-secondary small mb-3">{{ $journey['rule'] ?? 'Passenger is dropped back at the same place they were picked up.' }}</p>
+        @forelse(($journey['stops'] ?? []) as $stop)
+          <div class="d-flex justify-content-between align-items-start mb-2 pb-2 {{ !$loop->last ? 'border-bottom' : '' }}">
+            <div>
+              <div class="fw-semibold">{{ $stop['sequence'] ?? $loop->iteration }}. {{ $stop['action'] ?? $stop['point'] }}</div>
+              <small class="text-muted">{{ ucfirst($stop['leg'] ?? 'outbound') }} · {{ $stop['point'] ?? '—' }} · {{ $stop['time'] ?? '—' }}</small>
+            </div>
+            <span class="badge text-bg-light">{{ ($stop['virtual'] ?? false) ? 'Return' : ucfirst($stop['type'] ?? 'stop') }}</span>
+          </div>
+        @empty
+          <p class="text-muted mb-0">No stops recorded yet.</p>
+        @endforelse
       </div>
     </div>
   </div>
@@ -133,8 +158,65 @@
         @else
           <p class="text-secondary mb-0">Waiting for a driver to accept this request.</p>
         @endif
+        @if(($liveDriver ?? null) && $requestItem->driver && (int) $liveDriver->id !== (int) $requestItem->driver_id)
+          <div class="mt-3 pt-3 border-top">
+            <label class="text-muted small">Today’s cover driver</label>
+            <div class="fw-semibold">{{ $liveDriver->name }}</div>
+            <small class="text-muted">{{ $liveDriver->phone ?: $liveDriver->email }}</small>
+          </div>
+        @endif
       </div>
     </div>
+
+    @if($canAssignCover ?? false)
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Alternative driver</h6></div>
+      <div class="card-body">
+        <p class="text-secondary small">If the assigned driver cannot come or the vehicle breaks down, send a nearby driver for that day. If nobody covers, that day’s amount is refunded to the parent wallet after 8pm.</p>
+        @if(($coverDrivers ?? collect())->isNotEmpty())
+          <form method="POST" action="{{ route('pickup-requests.cover', $requestItem) }}">
+            @csrf
+            <label class="text-muted small">Date</label>
+            <input type="date" name="date" class="form-control mb-2" value="{{ now()->toDateString() }}" required>
+            <label class="text-muted small">Reason</label>
+            <select name="reason" class="form-select mb-2">
+              <option value="unavailable">Driver unavailable</option>
+              <option value="breakdown">Vehicle breakdown</option>
+              <option value="absent">Absent</option>
+            </select>
+            <label class="text-muted small">Replacement driver</label>
+            <select name="driver_id" class="form-select mb-2" required>
+              <option value="">Select driver</option>
+              @foreach($coverDrivers as $driver)
+                <option value="{{ $driver->id }}">{{ $driver->name }} · {{ $driver->phone ?: $driver->email }}</option>
+              @endforeach
+            </select>
+            <button class="btn btn-sm btn-dark" type="submit">Assign for this day</button>
+          </form>
+        @else
+          <p class="text-muted mb-0">No other eligible driver in this city/area yet.</p>
+        @endif
+        @if($requestItem->replacements->isNotEmpty())
+          <div class="mt-3 pt-3 border-top">
+            <label class="text-muted small d-block mb-2">Cover history</label>
+            @foreach($requestItem->replacements->sortByDesc('date') as $replacement)
+              <div class="small mb-2">
+                <div class="fw-semibold">{{ $replacement->date?->format('d M Y') }} · {{ ucfirst($replacement->reason) }}</div>
+                <div class="text-secondary">
+                  {{ ucfirst($replacement->status) }}
+                  @if($replacement->replacementDriver)
+                    · {{ $replacement->replacementDriver->name }}
+                  @else
+                    · waiting for a driver
+                  @endif
+                </div>
+              </div>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    </div>
+    @endif
 
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
@@ -232,19 +314,20 @@
     </div>
     @endif
 
-    @if($requestItem->driver)
+    @if($liveDriver ?? $requestItem->driver)
+    @php $mapDriver = $liveDriver ?? $requestItem->driver; @endphp
     <div class="card mb-3">
       <div class="card-header"><h6 class="mb-0">Live tracking</h6></div>
       <div class="card-body">
-        @if($requestItem->driver->last_lat && $requestItem->driver->last_lng)
-          <div class="fw-semibold mb-1">{{ $requestItem->driver->last_lat }}, {{ $requestItem->driver->last_lng }}</div>
-          <small class="text-muted d-block mb-2">Updated {{ $requestItem->driver->last_location_at?->diffForHumans() ?: '—' }} · {{ $requestItem->driver->last_ride_status ?: 'no status' }}</small>
+        @if($mapDriver->last_lat && $mapDriver->last_lng)
+          <div class="fw-semibold mb-1">{{ $mapDriver->last_lat }}, {{ $mapDriver->last_lng }}</div>
+          <small class="text-muted d-block mb-2">Updated {{ $mapDriver->last_location_at?->diffForHumans() ?: '—' }} · {{ $mapDriver->last_ride_status ?: 'no status' }}</small>
           <a class="btn btn-sm btn-outline-dark" target="_blank"
-             href="https://maps.google.com/?q={{ $requestItem->driver->last_lat }},{{ $requestItem->driver->last_lng }}">Open map</a>
+             href="https://maps.google.com/?q={{ $mapDriver->last_lat }},{{ $mapDriver->last_lng }}">Open map</a>
         @else
           <p class="text-muted mb-0">Driver has not shared a live location yet.</p>
         @endif
-        @if($requestItem->driver?->last_lat)
+        @if($mapDriver->last_lat)
           <div id="live-map" class="mt-3 rounded" style="height:220px;"></div>
         @endif
       </div>
@@ -283,19 +366,23 @@
 
 @endsection
 
-@if($requestItem->driver?->last_lat)
+@php $mapDriver = $liveDriver ?? $requestItem->driver; @endphp
+@if($mapDriver?->last_lat)
 @push('custom-scripts')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   (function () {
-    var lat = {{ $requestItem->driver->last_lat }};
-    var lng = {{ $requestItem->driver->last_lng }};
+    var lat = {{ $mapDriver->last_lat }};
+    var lng = {{ $mapDriver->last_lng }};
     var map = L.map('live-map').setView([lat, lng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    L.marker([lat, lng]).addTo(map).bindPopup('Driver');
+    L.marker([lat, lng]).addTo(map).bindPopup(@json($mapDriver->name ?: 'Driver'));
     @if($requestItem->pickup_lat)
       L.marker([{{ $requestItem->pickup_lat }}, {{ $requestItem->pickup_lng }}]).addTo(map).bindPopup('Pickup');
+    @endif
+    @if($requestItem->drop_lat)
+      L.marker([{{ $requestItem->drop_lat }}, {{ $requestItem->drop_lng }}]).addTo(map).bindPopup('Drop');
     @endif
   })();
 </script>

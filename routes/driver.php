@@ -62,6 +62,7 @@ Route::prefix('driver')->group(function () {
         // Parent/Self requests
         Route::get('requests/available', [RequestController::class, 'available'])->name('api.driver.requests.available');
         Route::get('requests/accepted', [RequestController::class, 'accepted'])->name('api.driver.requests.accepted');
+        Route::get('requests/cover', [\App\Http\Controllers\Api\Driver\CoverController::class, 'available'])->name('api.driver.requests.cover');
         Route::post('requests/{pickupRequest}/accept', [RequestController::class, 'accept'])->name('api.driver.requests.accept');
         Route::post('requests/{pickupRequest}/reject', [RequestController::class, 'reject'])->name('api.driver.requests.reject');
         Route::post('requests/{pickupRequest}/status', [RequestController::class, 'updateStatus'])->name('api.driver.requests.status');
@@ -96,6 +97,10 @@ Route::prefix('driver')->group(function () {
         Route::post('requests/{pickupRequest}/ratings', [RatingController::class, 'store'])->name('api.driver.requests.ratings.store');
         Route::get('holidays', [AttendanceController::class, 'holidays'])->name('api.driver.holidays');
         Route::get('earnings', [EarningsController::class, 'index'])->name('api.driver.earnings');
+        Route::get('payrolls', [\App\Http\Controllers\Api\Driver\CoverController::class, 'payrolls'])->name('api.driver.payrolls.index');
+        Route::get('payrolls/{payroll}', [\App\Http\Controllers\Api\Driver\CoverController::class, 'payroll'])->name('api.driver.payrolls.show');
+        Route::post('requests/{pickupRequest}/unavailable', [\App\Http\Controllers\Api\Driver\CoverController::class, 'unavailable'])->name('api.driver.requests.unavailable');
+        Route::post('cover/{replacement}/accept', [\App\Http\Controllers\Api\Driver\CoverController::class, 'accept'])->name('api.driver.cover.accept');
         Route::post('device-token', [EarningsController::class, 'registerDevice'])->name('api.driver.device-token');
         Route::get('requests/{pickupRequest}/contact', [EarningsController::class, 'contact'])->name('api.driver.requests.contact');
     });

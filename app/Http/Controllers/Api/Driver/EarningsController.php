@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Models\DeviceToken;
+use App\Models\DriverPayroll;
 use App\Models\PickupRequest;
 use App\Models\ShiftDayRun;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +51,12 @@ class EarningsController extends BaseApiController
                     'status' => $r->driver_payout_status,
                     'due_on' => $r->driver_payout_due_on?->toDateString(),
                 ])->values(),
+                'latest_payroll' => DriverPayroll::query()
+                    ->with('items')
+                    ->where('driver_id', $driver->id)
+                    ->orderByDesc('month')
+                    ->first()
+                    ?->toApiArray(),
             ], 'Earnings');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch earnings');

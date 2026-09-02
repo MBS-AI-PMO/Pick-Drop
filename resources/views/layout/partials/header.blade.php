@@ -20,7 +20,7 @@
       </div>
     </form>
 
-    <ul class="navbar-nav">
+    <ul class="navbar-nav pd-toolbar">
       <li class="theme-switcher-wrapper nav-item">
         <input type="checkbox" value="" id="theme-switcher">
         <label for="theme-switcher">
@@ -108,10 +108,10 @@
       <li class="nav-item dropdown pd-profile">
         <a class="nav-link pd-profile-chip dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <span class="pd-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
-          <span class="pd-profile-meta d-none d-md-flex">
+          <span class="pd-profile-meta">
             <span class="pd-profile-name">{{ auth()->user()->name }}</span>
           </span>
-          <i class="pd-profile-caret d-none d-md-inline" data-lucide="chevron-down"></i>
+          <i class="pd-profile-caret" data-lucide="chevron-down"></i>
         </a>
         <div class="dropdown-menu p-0" aria-labelledby="profileDropdown">
           <div class="d-flex flex-column align-items-center border-bottom px-5 py-3">

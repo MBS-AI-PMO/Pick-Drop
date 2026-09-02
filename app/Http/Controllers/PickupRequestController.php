@@ -81,15 +81,34 @@ class PickupRequestController extends Controller
             'attendances',
             'ratings.fromUser',
             'issues.user',
+            'stops.area',
+            'replacements.originalDriver',
+            'replacements.replacementDriver',
         ]);
 
         $eligibleDrivers = $pickupRequest->status === 'pending' && !$pickupRequest->driver_id
             ? app(\App\Services\PickupRequestMatchingService::class)->eligibleDrivers($pickupRequest)
             : collect();
 
+        $canAssignCover = $pickupRequest->driver_id
+            && !in_array($pickupRequest->status, ['cancelled', 'completed'], true);
+
+        $coverDrivers = $canAssignCover
+            ? app(\App\Services\PickupRequestMatchingService::class)
+                ->eligibleDrivers($pickupRequest)
+                ->where('id', '!=', (int) $pickupRequest->driver_id)
+                ->values()
+            : collect();
+
+        $liveDriver = app(\App\Services\CoverService::class)->driverForDate($pickupRequest)
+            ?: $pickupRequest->driver;
+
         return view('pickdrop.pickup-requests.show', [
             'requestItem' => $pickupRequest,
             'eligibleDrivers' => $eligibleDrivers,
+            'coverDrivers' => $coverDrivers,
+            'canAssignCover' => $canAssignCover,
+            'liveDriver' => $liveDriver,
         ]);
     }
 
@@ -150,5 +169,45 @@ class PickupRequestController extends Controller
         return redirect()
             ->route('pickup-requests.show', $pickupRequest)
             ->with('success', 'Driver assigned. Advance invoice created.');
+    }
+
+    public function assignCover(Request $request, PickupRequest $pickupRequest)
+    {
+        $validated = $request->validate([
+            'driver_id' => ['required', 'integer', 'exists:users,id'],
+            'date' => ['nullable', 'date'],
+            'reason' => ['nullable', 'in:breakdown,unavailable,absent'],
+        ]);
+
+        $driver = \App\Models\User::query()->findOrFail($validated['driver_id']);
+        $cover = app(\App\Services\CoverService::class);
+        $date = $validated['date'] ?? now()->toDateString();
+
+        try {
+            $row = \App\Models\ShiftReplacement::query()
+                ->where('pickup_request_id', $pickupRequest->id)
+                ->whereDate('date', $date)
+                ->where('status', \App\Models\ShiftReplacement::OPEN)
+                ->first();
+
+            if (!$row) {
+                $row = $cover->open(
+                    $pickupRequest,
+                    $validated['reason'] ?? \App\Models\ShiftReplacement::REASON_UNAVAILABLE,
+                    $date,
+                    'Assigned by admin'
+                );
+            }
+
+            $cover->assignAdmin($row, $driver);
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('pickup-requests.show', $pickupRequest)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('pickup-requests.show', $pickupRequest)
+            ->with('success', 'Alternative driver assigned for ' . $date . '.');
     }
 }

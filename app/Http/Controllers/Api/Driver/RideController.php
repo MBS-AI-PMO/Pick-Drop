@@ -28,12 +28,25 @@ class RideController extends BaseApiController
             }
 
             $stops = app(ShiftDayService::class)->todayStopsForDriver($driver);
+            $stops->loadMissing('pickupRequest.stops.area');
             $payload = $stops->map(fn (PickupRequestStop $stop) => $stop->toApiArray())->values();
+            $trips = $stops->groupBy('pickup_request_id')->map(function ($group) {
+                $pickupRequest = $group->first()?->pickupRequest;
+
+                return [
+                    'pickup_request_id' => $pickupRequest?->id,
+                    'passenger' => $pickupRequest?->student?->name ?: $pickupRequest?->requesterName(),
+                    'round_trip' => $pickupRequest?->round_trip !== false,
+                    'journey' => $pickupRequest?->journeyApiArray(),
+                    'stop_ids' => $group->pluck('id')->values()->all(),
+                ];
+            })->values();
 
             return $this->successResponse([
                 'date' => Carbon::now()->toDateString(),
                 'weekday' => strtolower(Carbon::now()->englishDayOfWeek),
                 'optimized' => true,
+                'round_trip_rule' => 'Drop every passenger back at the same pickup point.',
                 'summary' => [
                     'total' => $payload->count(),
                     'pending' => $payload->where('status', PickupRequestStop::STATUS_PENDING)->count(),
@@ -41,6 +54,7 @@ class RideController extends BaseApiController
                     'pickups' => $payload->where('type', PickupRequestStop::TYPE_PICKUP)->count(),
                     'drops' => $payload->where('type', PickupRequestStop::TYPE_DROP)->count(),
                 ],
+                'trips' => $trips,
                 'stops' => $payload,
             ], "Today's rides");
         } catch (Throwable $e) {

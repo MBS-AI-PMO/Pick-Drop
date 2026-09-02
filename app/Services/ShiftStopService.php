@@ -299,7 +299,19 @@ class ShiftStopService
                     ucfirst(substr($weekday, 0, 3)),
                 ];
 
-                $q->where('driver_id', $driver->id)
+                $q->where(function ($owner) use ($driver, $today) {
+                    $owner->where(function ($original) use ($driver, $today) {
+                        $original->where('driver_id', $driver->id)
+                            ->whereDoesntHave('replacements', function ($rep) use ($today) {
+                                $rep->whereDate('date', $today)
+                                    ->whereIn('status', ['open', 'accepted']);
+                            });
+                    })->orWhereHas('replacements', function ($rep) use ($driver, $today) {
+                        $rep->where('replacement_driver_id', $driver->id)
+                            ->whereDate('date', $today)
+                            ->where('status', 'accepted');
+                    });
+                })
                     ->where('payment_status', PickupRequest::PAYMENT_PAID)
                     ->whereNotIn('status', ['cancelled', 'completed'])
                     ->where(function ($range) use ($today) {

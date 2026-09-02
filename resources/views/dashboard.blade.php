@@ -7,6 +7,7 @@
     'Picked Up' => 'background:#e0f2fe;color:#075985;',
     'Dropped' => 'background:#eef4ff;color:#3f6fd9;',
   ];
+  $rings = $stats['rings'] ?? ['vehicles' => 0, 'users' => 0, 'pending' => 0, 'alerts' => 0];
 @endphp
 
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin gap-3 dashboard-header">
@@ -24,12 +25,11 @@
     <a href="{{ route('vehicles.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
         <div class="card-body">
-          <div class="dashboard-stat-icon is-blue">
-            <i data-lucide="bus"></i>
+          <x-stat-ring :percent="$rings['vehicles']" tone="blue" />
+          <div>
+            <h3>{{ number_format($stats['vehicles'] ?? 0) }}</h3>
+            <p class="dashboard-stat-label">Active vehicles</p>
           </div>
-          <p class="dashboard-stat-label">Active vehicles</p>
-          <h3>{{ number_format($stats['vehicles'] ?? 0) }}</h3>
-          <span class="dashboard-stat-meta">Total registered vehicles</span>
         </div>
       </div>
     </a>
@@ -38,12 +38,11 @@
     <a href="{{ route('users.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
         <div class="card-body">
-          <div class="dashboard-stat-icon is-green">
-            <i data-lucide="users"></i>
+          <x-stat-ring :percent="$rings['users']" tone="green" />
+          <div>
+            <h3>{{ number_format($stats['users'] ?? 0) }}</h3>
+            <p class="dashboard-stat-label">Total users</p>
           </div>
-          <p class="dashboard-stat-label">Total users</p>
-          <h3>{{ number_format($stats['users'] ?? 0) }}</h3>
-          <span class="dashboard-stat-meta">All registered users</span>
         </div>
       </div>
     </a>
@@ -52,12 +51,11 @@
     <a href="{{ route('pickup-requests.index', ['status' => 'pending']) }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
         <div class="card-body">
-          <div class="dashboard-stat-icon is-teal">
-            <i data-lucide="clipboard-list"></i>
+          <x-stat-ring :percent="$rings['pending']" tone="teal" />
+          <div>
+            <h3>{{ number_format($stats['pending_requests'] ?? 0) }}</h3>
+            <p class="dashboard-stat-label">Pending requests</p>
           </div>
-          <p class="dashboard-stat-label">Pending requests</p>
-          <h3>{{ number_format($stats['pending_requests'] ?? 0) }}</h3>
-          <span class="dashboard-stat-meta">Waiting for a driver</span>
         </div>
       </div>
     </a>
@@ -66,12 +64,11 @@
     <a href="{{ route('notifications.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
         <div class="card-body">
-          <div class="dashboard-stat-icon is-red">
-            <i data-lucide="bell"></i>
+          <x-stat-ring :percent="$rings['alerts']" tone="orange" />
+          <div>
+            <h3>{{ number_format($stats['alerts_today'] ?? 0) }}</h3>
+            <p class="dashboard-stat-label">Alerts today</p>
           </div>
-          <p class="dashboard-stat-label">Alerts today</p>
-          <h3>{{ number_format($stats['alerts_today'] ?? 0) }}</h3>
-          <span class="dashboard-stat-meta">System alerts logged today</span>
         </div>
       </div>
     </a>

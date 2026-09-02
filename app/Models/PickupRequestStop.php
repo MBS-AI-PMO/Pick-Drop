@@ -17,6 +17,7 @@ class PickupRequestStop extends Model
     protected $fillable = [
         'pickup_request_id',
         'type',
+        'leg',
         'sequence',
         'name',
         'point',
@@ -85,6 +86,7 @@ class PickupRequestStop extends Model
             'id' => $this->id,
             'pickup_request_id' => $this->pickup_request_id,
             'type' => $this->type,
+            'leg' => $this->leg ?: 'outbound',
             'sequence' => (int) $this->sequence,
             'name' => $this->name ?: ($this->isPickup() ? 'Pickup' : 'Drop'),
             'point' => $this->point,
@@ -94,6 +96,9 @@ class PickupRequestStop extends Model
             'area' => $this->area,
             'time' => $this->formattedTime(),
             'status' => $this->getAttribute('today_status') ?: $this->status,
+            'action' => $this->isPickup()
+                ? 'Pick up from ' . $this->point
+                : 'Drop at ' . $this->point,
             'completed_at' => optional($this->getAttribute('today_completed_at'))?->toIso8601String()
                 ?: $this->completed_at?->toIso8601String(),
             'pickup_otp_required' => $this->isPickup(),

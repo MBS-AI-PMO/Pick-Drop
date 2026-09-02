@@ -131,6 +131,11 @@ class User extends Authenticatable
         return $this->hasOne(Vehicle::class, 'driver_id');
     }
 
+    public function payrolls()
+    {
+        return $this->hasMany(DriverPayroll::class, 'driver_id');
+    }
+
     public function driverVerification()
     {
         return $this->hasOne(DriverVerification::class);
