@@ -13,6 +13,7 @@ class WalletTransaction extends Model
         'type',
         'reason',
         'referred_user_id',
+        'pickup_request_id',
     ];
 
     protected function casts(): array

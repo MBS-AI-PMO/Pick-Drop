@@ -48,6 +48,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'show'])->name('pickup-requests.show');
     Route::post('/pickup-requests/{pickupRequest}/driver-payout', [PickupRequestController::class, 'markDriverPaid'])->name('pickup-requests.driver-payout');
     Route::post('/pickup-requests/{pickupRequest}/assign', [PickupRequestController::class, 'assignDriver'])->name('pickup-requests.assign');
+    Route::post('/pickup-requests/{pickupRequest}/cover', [PickupRequestController::class, 'assignCover'])->name('pickup-requests.cover');
     Route::get('/issues', [AdminIssueController::class, 'index'])->name('issues.index');
     Route::get('/issues/{issueReport}', [AdminIssueController::class, 'show'])->name('issues.show');
     Route::post('/issues/{issueReport}/status', [AdminIssueController::class, 'updateStatus'])->name('issues.status');
@@ -116,6 +117,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/export', [\App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
     Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
     Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
+    Route::get('/payrolls', [\App\Http\Controllers\DriverPayrollController::class, 'index'])->name('payrolls.index');
+    Route::post('/payrolls/recalculate', [\App\Http\Controllers\DriverPayrollController::class, 'recalculate'])->name('payrolls.recalculate');
+    Route::get('/payrolls/{payroll}', [\App\Http\Controllers\DriverPayrollController::class, 'show'])->name('payrolls.show');
+    Route::post('/payrolls/{payroll}/days', [\App\Http\Controllers\DriverPayrollController::class, 'markDay'])->name('payrolls.days');
+    Route::post('/payrolls/{payroll}/approve', [\App\Http\Controllers\DriverPayrollController::class, 'approve'])->name('payrolls.approve');
+    Route::post('/payrolls/{payroll}/pay', [\App\Http\Controllers\DriverPayrollController::class, 'pay'])->name('payrolls.pay');
     Route::get('/profile', [ProfileController::class, 'index'])->name('general.profile');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');

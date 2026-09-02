@@ -135,6 +135,43 @@ class AttendanceService
         ]);
     }
 
+    public function setByAdmin(
+        PickupRequest $pickupRequest,
+        string $date,
+        string $status,
+        User $by,
+        ?string $reason = null
+    ): ShiftAttendance {
+        $this->assertDateInShift($pickupRequest, Carbon::parse($date)->startOfDay());
+
+        $payload = match ($status) {
+            'present' => [
+                'status' => ShiftAttendance::PRESENT,
+                'reason' => $reason ?: 'Marked present by admin',
+                'marked_by' => $pickupRequest->driver_id,
+            ],
+            'leave' => [
+                'status' => ShiftAttendance::LEAVE,
+                'reason' => $reason ?: 'Driver leave',
+                'marked_by' => $by->id,
+            ],
+            'absent' => [
+                'status' => ShiftAttendance::ABSENT,
+                'reason' => $reason ?: 'No-show marked by admin',
+                'marked_by' => $by->id,
+            ],
+            default => throw new RuntimeException('Use present, leave, or absent.'),
+        };
+
+        return ShiftAttendance::query()->updateOrCreate(
+            [
+                'pickup_request_id' => $pickupRequest->id,
+                'date' => Carbon::parse($date)->toDateString(),
+            ],
+            $payload
+        );
+    }
+
     private function assertDateInShift(PickupRequest $pickupRequest, Carbon $day): void
     {
         if ($pickupRequest->shift_start_date && $day->lt($pickupRequest->shift_start_date->startOfDay())) {

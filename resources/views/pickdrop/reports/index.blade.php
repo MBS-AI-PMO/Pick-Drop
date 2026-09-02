@@ -23,87 +23,74 @@
     <h4 class="mb-1">Operations Reports</h4>
     <p class="text-secondary mb-0">Pickup & drop performance · {{ $periodLabel }}</p>
   </div>
-  <a href="{{ route('reports.export', $periodQuery) }}" class="btn btn-primary d-flex align-items-center gap-1">
+  <a href="{{ route('reports.export', $periodQuery) }}" class="btn btn-primary d-flex align-items-center gap-2">
     <i data-lucide="download" style="width:15px;height:15px;"></i> Export CSV
   </a>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-  <ul class="nav nav-pills gap-1">
+<div class="pd-report-toolbar mb-4">
+  <div class="pd-period-tabs" role="tablist">
     @foreach(['daily' => 'Today', 'weekly' => 'Last 7 days', 'monthly' => 'This month', 'custom' => 'Custom'] as $key => $label)
-      <li class="nav-item">
-        <a class="nav-link px-4 {{ $period === $key ? 'active' : '' }}"
-           href="{{ route('reports.index', $key === 'custom' ? ['period' => 'custom', 'from' => $from->toDateString(), 'to' => $to->toDateString()] : ['period' => $key]) }}">
-          {{ $label }}
-        </a>
-      </li>
+      <a class="pd-period-tab {{ $period === $key ? 'is-active' : '' }}"
+         href="{{ route('reports.index', $key === 'custom' ? ['period' => 'custom', 'from' => $from->toDateString(), 'to' => $to->toDateString()] : ['period' => $key]) }}">
+        {{ $label }}
+      </a>
     @endforeach
-  </ul>
+  </div>
 
   @if($period === 'custom')
-    <form method="GET" action="{{ route('reports.index') }}" class="d-flex align-items-center gap-2 flex-wrap">
+    <form method="GET" action="{{ route('reports.index') }}" class="pd-report-dates">
       <input type="hidden" name="period" value="custom">
-      <input type="date" name="from" class="form-control form-control-sm" value="{{ $from->toDateString() }}" max="{{ now()->toDateString() }}">
-      <span class="text-secondary fs-13px">to</span>
-      <input type="date" name="to" class="form-control form-control-sm" value="{{ $to->toDateString() }}" max="{{ now()->toDateString() }}">
-      <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+      <input type="date" name="from" class="pd-date-input" value="{{ $from->toDateString() }}" max="{{ now()->toDateString() }}" aria-label="From date">
+      <span class="pd-date-sep">to</span>
+      <input type="date" name="to" class="pd-date-input" value="{{ $to->toDateString() }}" max="{{ now()->toDateString() }}" aria-label="To date">
+      <button type="submit" class="btn btn-primary pd-date-apply">Apply</button>
     </form>
   @endif
 </div>
 
 <div class="row g-3 mb-4">
+  @php $tripDenom = max(1, (int) $kpis['total_trips']); @endphp
   <div class="col-sm-6 col-xl-3">
     <div class="card dashboard-stat-card h-100">
-      <div class="card-body d-flex align-items-center justify-content-between py-3">
+      <div class="card-body">
+        <x-stat-ring :percent="$kpis['total_trips'] > 0 ? 100 : 0" tone="blue" />
         <div>
-          <p class="text-secondary fs-13px mb-1">Total trips</p>
-          <h3 class="mb-1 fw-bold">{{ number_format($kpis['total_trips']) }}</h3>
-          <span class="text-secondary fs-12px">Requests in this period</span>
-        </div>
-        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(var(--bs-primary-rgb),0.12);">
-          <i data-lucide="navigation" class="text-primary"></i>
+          <h3>{{ number_format($kpis['total_trips']) }}</h3>
+          <p class="dashboard-stat-label">Total trips</p>
         </div>
       </div>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card dashboard-stat-card h-100">
-      <div class="card-body d-flex align-items-center justify-content-between py-3">
+      <div class="card-body">
+        <x-stat-ring :percent="$kpis['completion_rate']" tone="green" />
         <div>
-          <p class="text-secondary fs-13px mb-1">Completed</p>
-          <h3 class="mb-1 fw-bold">{{ number_format($kpis['completed']) }}</h3>
-          <span class="fs-12px" style="color:#3f6fd9;">{{ $kpis['completion_rate'] }}% completion rate</span>
-        </div>
-        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(34,197,94,0.12);">
-          <i data-lucide="check-circle" style="color:#3f6fd9;"></i>
+          <h3>{{ number_format($kpis['completed']) }}</h3>
+          <p class="dashboard-stat-label">Completed</p>
         </div>
       </div>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card dashboard-stat-card h-100">
-      <div class="card-body d-flex align-items-center justify-content-between py-3">
+      <div class="card-body">
+        <x-stat-ring :percent="($kpis['active'] / $tripDenom) * 100" tone="teal" />
         <div>
-          <p class="text-secondary fs-13px mb-1">In progress</p>
-          <h3 class="mb-1 fw-bold">{{ number_format($kpis['active']) }}</h3>
-          <span class="text-secondary fs-12px">{{ number_format($kpis['pending']) }} still pending</span>
-        </div>
-        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(14,165,233,0.12);">
-          <i data-lucide="bus" class="text-info"></i>
+          <h3>{{ number_format($kpis['active']) }}</h3>
+          <p class="dashboard-stat-label">In progress</p>
         </div>
       </div>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="card dashboard-stat-card h-100">
-      <div class="card-body d-flex align-items-center justify-content-between py-3">
+      <div class="card-body">
+        <x-stat-ring :percent="$kpis['cancellation_rate']" tone="orange" />
         <div>
-          <p class="text-secondary fs-13px mb-1">Cancelled</p>
-          <h3 class="mb-1 fw-bold">{{ number_format($kpis['cancelled']) }}</h3>
-          <span class="text-danger fs-12px">{{ $kpis['cancellation_rate'] }}% cancellation rate</span>
-        </div>
-        <div class="dashboard-stat-icon w-50px h-50px d-flex align-items-center justify-content-center rounded-circle" style="background:rgba(230,57,70,0.12);">
-          <i data-lucide="x-circle" class="text-danger"></i>
+          <h3>{{ number_format($kpis['cancelled']) }}</h3>
+          <p class="dashboard-stat-label">Cancelled</p>
         </div>
       </div>
     </div>
@@ -340,6 +327,88 @@
 </div>
 
 <style>
+  .pd-report-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 8px;
+    background: var(--pd-theme-card, #fff);
+    border: 1px solid rgba(226, 232, 244, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(80, 100, 160, 0.06);
+  }
+  .pd-period-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: #f3f5f9;
+    border-radius: 12px;
+  }
+  .pd-period-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 9px;
+    color: #5b6b82;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .pd-period-tab:hover {
+    color: #5b6cff;
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .pd-period-tab.is-active {
+    color: #5b6cff;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(80, 100, 160, 0.14);
+  }
+  .pd-report-dates {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .pd-date-input {
+    width: 148px !important;
+    flex: 0 0 148px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #e4eaf4;
+    border-radius: 10px;
+    background: #fff;
+    color: #1d3557;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pd-date-input:focus {
+    outline: 0;
+    border-color: #5b6cff;
+    box-shadow: 0 0 0 3px rgba(91, 108, 255, 0.14);
+  }
+  .pd-date-sep {
+    color: #8a96a8;
+    font-size: 12px;
+    font-weight: 600;
+    flex: 0 0 auto;
+  }
+  .pd-date-apply {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
   .report-chart-bar {
     width: 100%;
     max-width: 28px;
@@ -372,6 +441,34 @@
     font-size: 12px;
     font-weight: 700;
   }
+  [data-bs-theme="dark"] .pd-report-toolbar {
+    background: var(--pd-theme-card, #1e2129);
+    border-color: var(--pd-theme-border, rgba(255, 255, 255, 0.08));
+    box-shadow: none;
+  }
+  [data-bs-theme="dark"] .pd-period-tabs {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  [data-bs-theme="dark"] .pd-period-tab {
+    color: #c8d0dc;
+  }
+  [data-bs-theme="dark"] .pd-period-tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  [data-bs-theme="dark"] .pd-period-tab.is-active {
+    color: #fff;
+    background: rgba(91, 108, 255, 0.28);
+    box-shadow: none;
+  }
+  [data-bs-theme="dark"] .pd-date-input {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f4f7fb;
+  }
+  [data-bs-theme="dark"] .pd-date-sep {
+    color: #8b97ab;
+  }
   [data-bs-theme="dark"] .report-chart-bar {
     background: rgba(230, 57, 70, 0.18);
   }
@@ -381,6 +478,17 @@
   [data-bs-theme="dark"] .report-rank {
     background: #2a3140;
     color: #f1f5f9;
+  }
+  @media (max-width: 767px) {
+    .pd-report-dates {
+      width: 100%;
+      margin-left: 0;
+      flex-wrap: wrap;
+    }
+    .pd-date-input {
+      width: calc(50% - 20px) !important;
+      flex: 1 1 calc(50% - 20px);
+    }
   }
 </style>
 @endsection

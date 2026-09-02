@@ -30,6 +30,7 @@ class PickupRequest extends Model
         'shift_end_date',
         'distance_km',
         'trip_count',
+        'round_trip',
         'estimated_amount',
         'driver_monthly_rate',
         'driver_payout_amount',
@@ -72,6 +73,7 @@ class PickupRequest extends Model
         'driver_payout_paid_at' => 'datetime',
         'match_expires_at' => 'datetime',
         'auto_renew' => 'boolean',
+        'round_trip' => 'boolean',
         'last_delay_notified_on' => 'date',
         'renewal_notified_at' => 'datetime',
     ];
@@ -141,14 +143,91 @@ class PickupRequest extends Model
         return $this->hasMany(Rating::class);
     }
 
+    public function issues()
+    {
+        return $this->hasMany(IssueReport::class);
+    }
+
     public function sosAlerts()
     {
         return $this->hasMany(SosAlert::class);
     }
 
-    public function issues()
+    public function replacements()
     {
-        return $this->hasMany(IssueReport::class);
+        return $this->hasMany(ShiftReplacement::class);
+    }
+
+    public function payrolls()
+    {
+        return $this->hasMany(DriverPayrollItem::class);
+    }
+
+    /**
+     * Outbound + return legs so the driver always brings the passenger back.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function journeyApiArray(): array
+    {
+        $this->loadMissing('stops.area');
+        $stops = $this->stops;
+
+        if ($stops->isEmpty()) {
+            $stops = collect();
+        }
+
+        $rows = $stops->values()->map(function (PickupRequestStop $stop, int $index) {
+            $payload = $stop->toApiArray();
+            $payload['leg'] = $stop->leg ?: ($index < 2 ? 'outbound' : 'return');
+            $payload['action'] = $stop->isPickup()
+                ? 'Pick up from ' . $stop->point
+                : 'Drop at ' . $stop->point;
+
+            return $payload;
+        })->all();
+
+        $roundTrip = $this->round_trip !== false;
+        if ($roundTrip && count($rows) === 2) {
+            $pickup = $rows[0];
+            $drop = $rows[1];
+            $returnPickup = $drop;
+            $returnPickup['type'] = PickupRequestStop::TYPE_PICKUP;
+            $returnPickup['leg'] = 'return';
+            $returnPickup['sequence'] = 3;
+            $returnPickup['name'] = 'Return pickup';
+            $returnPickup['action'] = 'Pick up from ' . ($drop['point'] ?? $this->drop_point);
+            $returnPickup['virtual'] = true;
+            $returnDrop = $pickup;
+            $returnDrop['type'] = PickupRequestStop::TYPE_DROP;
+            $returnDrop['leg'] = 'return';
+            $returnDrop['sequence'] = 4;
+            $returnDrop['name'] = 'Return drop';
+            $returnDrop['action'] = 'Drop back at ' . ($pickup['point'] ?? $this->pickup_point);
+            $returnDrop['virtual'] = true;
+            $rows[0]['leg'] = 'outbound';
+            $rows[1]['leg'] = 'outbound';
+            $rows[] = $returnPickup;
+            $rows[] = $returnDrop;
+        }
+
+        return [
+            'round_trip' => $roundTrip,
+            'rule' => 'Passenger is dropped back at the same place they were picked up.',
+            'from' => [
+                'point' => $this->pickup_point,
+                'lat' => $this->pickup_lat,
+                'lng' => $this->pickup_lng,
+                'time' => $this->formatTime($this->pickup_time),
+            ],
+            'to' => [
+                'point' => $this->drop_point,
+                'lat' => $this->drop_lat,
+                'lng' => $this->drop_lng,
+                'time' => $this->formatTime($this->drop_time),
+            ],
+            'stops' => $rows,
+        ];
     }
 
     public function renewedFrom()
@@ -412,6 +491,8 @@ class PickupRequest extends Model
                 'area' => $this->dropArea,
             ],
             'stops' => $this->stops->map(fn (PickupRequestStop $stop) => $stop->toApiArray())->values()->all(),
+            'journey' => $this->journeyApiArray(),
+            'round_trip' => $this->round_trip !== false,
             'days' => $this->days ?? [],
             'duration_months' => (int) ($this->duration_months ?: 1),
             'shift_start_date' => $this->shift_start_date?->toDateString(),

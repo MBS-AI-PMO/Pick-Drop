@@ -73,6 +73,7 @@ Route::prefix('parent')->group(function () {
         Route::delete('requests/{requestId}', [RequestController::class, 'cancel'])->name('api.parent.requests.cancel');
         Route::get('requests/{requestId}/driver', [RequestController::class, 'driverInfo'])->name('api.parent.requests.driver');
         Route::get('requests/{requestId}/tracking', [RequestController::class, 'tracking'])->name('api.parent.requests.tracking');
+        Route::get('requests/{requestId}/replacements', [RequestController::class, 'replacements'])->name('api.parent.requests.replacements');
         Route::post('requests/{requestId}/renew', [RequestController::class, 'renew'])->name('api.parent.requests.renew');
         Route::post('requests/{requestId}/auto-renew', [RequestController::class, 'autoRenew'])->name('api.parent.requests.auto-renew');
         Route::post('requests/{requestId}/decline-renewal', [RequestController::class, 'declineRenewal'])->name('api.parent.requests.decline-renewal');
@@ -171,6 +172,7 @@ Route::prefix('self')->group(function () {
         Route::delete('requests/{requestId}', [RequestController::class, 'cancel'])->name('api.self.requests.cancel');
         Route::get('requests/{requestId}/driver', [RequestController::class, 'driverInfo'])->name('api.self.requests.driver');
         Route::get('requests/{requestId}/tracking', [RequestController::class, 'tracking'])->name('api.self.requests.tracking');
+        Route::get('requests/{requestId}/replacements', [RequestController::class, 'replacements'])->name('api.self.requests.replacements');
         Route::post('requests/{requestId}/renew', [RequestController::class, 'renew'])->name('api.self.requests.renew');
         Route::post('requests/{requestId}/auto-renew', [RequestController::class, 'autoRenew'])->name('api.self.requests.auto-renew');
         Route::post('requests/{requestId}/decline-renewal', [RequestController::class, 'declineRenewal'])->name('api.self.requests.decline-renewal');
