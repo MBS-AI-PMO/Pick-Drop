@@ -8,6 +8,12 @@ use Illuminate\Support\Carbon;
 
 class Holiday extends Model
 {
+    public const TYPES = [
+        'public' => 'Public holiday',
+        'school' => 'Institution holiday',
+        'custom' => 'Announced off day',
+    ];
+
     protected $fillable = [
         'date',
         'name',
@@ -20,6 +26,11 @@ class Holiday extends Model
         return [
             'date' => 'date',
         ];
+    }
+
+    public function typeLabel(): string
+    {
+        return self::TYPES[$this->type] ?? ucfirst((string) $this->type);
     }
 
     public function city(): BelongsTo

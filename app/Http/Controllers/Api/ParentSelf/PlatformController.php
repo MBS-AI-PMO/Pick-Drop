@@ -38,20 +38,25 @@ class PlatformController extends BaseApiController
         }
     }
 
-    public function schools(): JsonResponse
+    public function schools(Request $request): JsonResponse
     {
         try {
+            $category = (string) $request->query('category', '');
+
             $schools = School::query()
                 ->with('city')
                 ->where('status', 'Active')
+                ->when($category !== '' && array_key_exists($category, School::CATEGORIES), function ($q) use ($category) {
+                    $q->where('category', $category);
+                })
                 ->orderBy('name')
                 ->get()
                 ->map->toApiArray()
                 ->values();
 
-            return $this->successResponse($schools, 'Schools');
+            return $this->successResponse($schools, 'Institutions');
         } catch (Throwable $e) {
-            return $this->handleException($e, 'Unable to fetch schools');
+            return $this->handleException($e, 'Unable to fetch institutions');
         }
     }
 

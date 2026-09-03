@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\ParentSelf;
 
-use App\Http\Controllers\Api\ParentSelf\BaseApiController;
+use App\Models\School;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +53,8 @@ class StudentController extends BaseApiController
                 'pickup_time' => ['nullable', 'date_format:H:i'],
                 'dropoff_time' => ['nullable', 'date_format:H:i'],
             ]);
+
+            $validated = $this->applySelectedInstitution($validated);
 
             if (!empty($validated['city_id']) && !empty($validated['pickup_area_id'])) {
                 $this->assertAreaBelongsToCity(
@@ -126,6 +128,8 @@ class StudentController extends BaseApiController
                 'status' => ['sometimes', 'in:active,inactive'],
             ]);
 
+            $validated = $this->applySelectedInstitution($validated);
+
             $student->fill($validated);
 
             $cityId = (int) ($student->city_id ?? 0);
@@ -179,6 +183,31 @@ class StudentController extends BaseApiController
         }
 
         return $this->denyUnlessKycApproved($user);
+    }
+
+    /**
+     * Parents pick an admin-created institution. They cannot create a new one.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applySelectedInstitution(array $validated): array
+    {
+        if (empty($validated['school_id'])) {
+            return $validated;
+        }
+
+        $institution = School::query()->find($validated['school_id']);
+        if (! $institution) {
+            return $validated;
+        }
+
+        $validated['school_name'] = $institution->name;
+        if (empty($validated['school_location'])) {
+            $validated['school_location'] = $institution->address;
+        }
+
+        return $validated;
     }
 }
 

@@ -58,11 +58,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
-    Route::get('/schools', [SchoolController::class, 'index'])->name('schools.index');
-    Route::post('/schools', [SchoolController::class, 'store'])->name('schools.store');
-    Route::get('/schools/{school}', [SchoolController::class, 'show'])->name('schools.show');
-    Route::put('/schools/{school}', [SchoolController::class, 'update'])->name('schools.update');
-    Route::delete('/schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy');
+    Route::middleware('panel.admin')->group(function () {
+        Route::get('/schools', [SchoolController::class, 'index'])->name('schools.index');
+        Route::post('/schools', [SchoolController::class, 'store'])->name('schools.store');
+        Route::get('/schools/{school}', [SchoolController::class, 'show'])->name('schools.show');
+        Route::put('/schools/{school}', [SchoolController::class, 'update'])->name('schools.update');
+        Route::delete('/schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy');
+    });
     Route::get('/platform-settings', [PlatformSettingController::class, 'edit'])->name('platform-settings.edit');
     Route::put('/platform-settings', [PlatformSettingController::class, 'update'])->name('platform-settings.update');
     Route::get('/parent-self-verifications', [ParentSelfVerificationController::class, 'index'])->name('parent-self-verifications.index');

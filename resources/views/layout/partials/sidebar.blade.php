@@ -48,6 +48,8 @@
         </a>
       </li>
 
+      <li class="nav-item nav-category">Operations</li>
+
       <li class="nav-item has-sub {{ request()->is('locations*') ? 'active' : '' }}">
         <a class="nav-link {{ request()->is('locations*') ? 'active' : '' }}"
            data-bs-toggle="collapse" href="#locations-nav" role="button"
@@ -97,10 +99,24 @@
         </a>
       </li>
 
+      <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">
+        <a href="{{ route('routes.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="map-pin"></i>
+          <span class="link-title">Routes</span>
+        </a>
+      </li>
+
+      <li class="nav-item {{ active_class(['schools', 'schools/*']) }}">
+        <a href="{{ route('schools.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="building-2"></i>
+          <span class="link-title">Institutions</span>
+        </a>
+      </li>
+
       <li class="nav-item {{ active_class(['issues', 'issues/*']) }}">
         <a href="{{ route('issues.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="flag"></i>
-          <span class="link-title">Issues</span>
+          <span class="link-title">Complaints</span>
         </a>
       </li>
 
@@ -111,24 +127,10 @@
         </a>
       </li>
 
-      <li class="nav-item {{ active_class(['schools', 'schools/*']) }}">
-        <a href="{{ route('schools.index') }}" class="nav-link">
-          <i class="link-icon" data-lucide="school"></i>
-          <span class="link-title">Schools</span>
-        </a>
-      </li>
-
       <li class="nav-item {{ active_class(['holidays', 'holidays/*']) }}">
         <a href="{{ route('holidays.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="calendar-days"></i>
-          <span class="link-title">Holidays</span>
-        </a>
-      </li>
-
-      <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">
-        <a href="{{ route('routes.index') }}" class="nav-link">
-          <i class="link-icon" data-lucide="map-pin"></i>
-          <span class="link-title">Routes</span>
+          <span class="link-title">Calendar</span>
         </a>
       </li>
 
@@ -155,13 +157,6 @@
         </div>
       </li>
 
-      <li class="nav-item {{ active_class(['platform-settings', 'platform-settings/*']) }}">
-        <a href="{{ route('platform-settings.edit') }}" class="nav-link">
-          <i class="link-icon" data-lucide="settings"></i>
-          <span class="link-title">Platform settings</span>
-        </a>
-      </li>
-
       <li class="nav-item {{ active_class(['charges', 'charges/*']) }}">
         <a href="{{ route('charges.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="badge-dollar-sign"></i>
@@ -175,6 +170,15 @@
         <a href="{{ route('reports.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="bar-chart-2"></i>
           <span class="link-title">Reports</span>
+        </a>
+      </li>
+
+      <li class="nav-item nav-category">Settings</li>
+
+      <li class="nav-item {{ active_class(['platform-settings', 'platform-settings/*']) }}">
+        <a href="{{ route('platform-settings.edit') }}" class="nav-link">
+          <i class="link-icon" data-lucide="settings"></i>
+          <span class="link-title">Platform settings</span>
         </a>
       </li>
 

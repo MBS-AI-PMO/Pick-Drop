@@ -8,8 +8,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class School extends Model
 {
+    public const CATEGORIES = [
+        'school' => 'School',
+        'college' => 'College',
+        'university' => 'University',
+        'office' => 'Office',
+        'other' => 'Other',
+    ];
+
     protected $fillable = [
         'name',
+        'category',
         'city_id',
         'address',
         'phone',
@@ -27,6 +36,11 @@ class School extends Model
         return $this->hasMany(Student::class);
     }
 
+    public function categoryLabel(): string
+    {
+        return self::CATEGORIES[$this->category] ?? ucfirst((string) $this->category);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -37,6 +51,8 @@ class School extends Model
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'category' => $this->category ?: 'school',
+            'category_label' => $this->categoryLabel(),
             'city_id' => $this->city_id,
             'city' => $this->city?->name,
             'address' => $this->address,

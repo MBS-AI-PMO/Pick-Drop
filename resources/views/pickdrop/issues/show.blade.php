@@ -4,7 +4,7 @@
 
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
-    <h4 class="mb-1">Issue #{{ $issue->id }}</h4>
+    <h4 class="mb-1">Complaint #{{ $issue->id }}</h4>
     <p class="text-secondary mb-0">{{ $issue->subject }}</p>
   </div>
   <a href="{{ route('issues.index') }}" class="btn btn-outline-secondary">Back</a>

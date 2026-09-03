@@ -123,16 +123,21 @@ body::-webkit-scrollbar {
 
 .page-wrapper .page-content {
     background: var(--pd-app-bg);
-    padding: 22px;
+    padding: 16px 18px 20px;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
 }
 
-.page-content.container-xxl {
-    max-width: 1440px;
-}
-
+.page-content.container-xxl,
 .page-content.container-fluid {
     max-width: 100%;
     width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 18px;
+    padding-right: 18px;
 }
 
 .page-content.container-fluid .card,

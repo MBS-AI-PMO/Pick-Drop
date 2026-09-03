@@ -4,7 +4,7 @@
 
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
-    <h4 class="mb-1">Issues</h4>
+    <h4 class="mb-1">Complaints</h4>
     <p class="text-secondary mb-0">Parent, self, and driver reports including delays</p>
   </div>
 </div>
@@ -113,13 +113,13 @@
               </td>
             </tr>
           @empty
-            <tr><td colspan="7" class="text-center py-5 text-muted">No issues found.</td></tr>
+            <tr><td colspan="7" class="text-center py-5 text-muted">No complaints found.</td></tr>
           @endforelse
         </tbody>
       </table>
     </div>
   </div>
-  <x-app-pagination :paginator="$issues" label="issues" />
+  <x-app-pagination :paginator="$issues" label="complaints" />
 </div>
 
 @endsection
