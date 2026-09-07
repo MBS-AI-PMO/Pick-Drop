@@ -102,14 +102,15 @@ Author: PickDrop Team
         border-bottom: 0 !important;
     }
     nav.sidebar .sidebar-header .sidebar-brand {
-        font-weight: 700;
-        font-size: 16px;
+        font-weight: 800;
+        font-size: 21px;
         color: #0d0d0d !important;
         text-decoration: none;
         display: inline-block;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
         margin-bottom: 0;
         padding: 4px 0;
+        line-height: 1.1;
     }
     nav.sidebar .sidebar-header .sidebar-brand span {
         color: #e63946 !important;
