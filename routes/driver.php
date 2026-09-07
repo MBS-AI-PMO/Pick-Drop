@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Driver\SosController;
 use App\Http\Controllers\Api\ParentSelf\LocationController;
 use App\Http\Controllers\Api\ParentSelf\AttendanceController;
 use App\Http\Controllers\Api\Driver\EarningsController;
+use App\Http\Controllers\Api\Driver\PayrollController as DriverPayrollApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,6 +54,8 @@ Route::prefix('driver')->group(function () {
         Route::get('me', [ProfileController::class, 'show'])->name('api.driver.me.show');
         Route::put('me', [ProfileController::class, 'update'])->name('api.driver.me.update');
         Route::put('account/change-password', [AccountController::class, 'changePassword'])->name('api.driver.account.change-password');
+        Route::get('account/payment-details', [AccountController::class, 'showPaymentDetails'])->name('api.driver.account.payment-details.show');
+        Route::put('account/payment-details', [AccountController::class, 'updatePaymentDetails'])->name('api.driver.account.payment-details.update');
         Route::delete('account', [AccountController::class, 'deleteAccount'])->name('api.driver.account.delete');
 
         // Optional later update of service areas (selected during KYC personal info)
@@ -97,6 +100,10 @@ Route::prefix('driver')->group(function () {
         Route::post('requests/{pickupRequest}/ratings', [RatingController::class, 'store'])->name('api.driver.requests.ratings.store');
         Route::get('holidays', [AttendanceController::class, 'holidays'])->name('api.driver.holidays');
         Route::get('earnings', [EarningsController::class, 'index'])->name('api.driver.earnings');
+        Route::get('payroll', [DriverPayrollApiController::class, 'index'])->name('api.driver.payroll.index');
+        Route::post('payroll/request', [DriverPayrollApiController::class, 'request'])->name('api.driver.payroll.request');
+        Route::post('payroll/preview', [DriverPayrollApiController::class, 'preview'])->name('api.driver.payroll.preview');
+        Route::get('payroll/{bill}', [DriverPayrollApiController::class, 'show'])->name('api.driver.payroll.show');
         Route::get('payrolls', [\App\Http\Controllers\Api\Driver\CoverController::class, 'payrolls'])->name('api.driver.payrolls.index');
         Route::get('payrolls/{payroll}', [\App\Http\Controllers\Api\Driver\CoverController::class, 'payroll'])->name('api.driver.payrolls.show');
         Route::post('requests/{pickupRequest}/unavailable', [\App\Http\Controllers\Api\Driver\CoverController::class, 'unavailable'])->name('api.driver.requests.unavailable');

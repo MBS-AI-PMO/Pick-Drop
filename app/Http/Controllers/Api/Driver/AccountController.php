@@ -60,4 +60,40 @@ class AccountController extends BaseApiController
             return $this->handleException($e, 'Unable to delete account');
         }
     }
+
+    public function showPaymentDetails(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return $this->successResponse([
+            'payment_account' => $user->paymentAccountDetails(),
+            'has_payment_account' => $user->hasPaymentAccount(),
+            'banks' => \App\Support\PakistaniBanks::names(),
+        ], 'Payment account details');
+    }
+
+    public function updatePaymentDetails(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'bank_name' => ['required', 'string', 'max:255'],
+                'bank_account_title' => ['required', 'string', 'max:255'],
+                'bank_account_number' => ['required', 'string', 'max:100'],
+                'bank_iban' => ['nullable', 'string', 'max:50'],
+            ]);
+
+            $user = $request->user();
+            $user->fill($validated);
+            $user->save();
+
+            return $this->successResponse([
+                'payment_account' => $user->fresh()->paymentAccountDetails(),
+                'has_payment_account' => $user->hasPaymentAccount(),
+            ], 'Payment account updated');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to update payment account');
+        }
+    }
 }

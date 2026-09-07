@@ -175,9 +175,19 @@
               <span class="link-title">Pick-Drop Charges</span>
             </a>
           </li>
+          <li class="nav-item {{ active_class(['driver-payroll', 'driver-payroll/*']) }}">
+            <a href="{{ route('driver-payroll.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="wallet"></i>
+              <span class="link-title">Driver Payments</span>
+              @php $pendingPayouts = \App\Models\DriverPayrollBill::where('status', 'pending')->count(); @endphp
+              @if($pendingPayouts > 0)
+                <span class="badge bg-danger ms-auto">{{ $pendingPayouts }}</span>
+              @endif
+            </a>
+          </li>
           <li class="nav-item {{ active_class(['payrolls', 'payrolls/*']) }}">
             <a href="{{ route('payrolls.index') }}" class="nav-link">
-              <i class="link-icon" data-lucide="wallet"></i>
+              <i class="link-icon" data-lucide="hand-coins"></i>
               <span class="link-title">Driver payroll</span>
             </a>
           </li>

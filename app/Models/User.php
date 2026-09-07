@@ -43,6 +43,10 @@ class User extends Authenticatable
         'emergency_contact_phone',
         'referred_by',
         'referral_balance',
+        'bank_name',
+        'bank_account_title',
+        'bank_account_number',
+        'bank_iban',
     ];
 
     /**
@@ -131,9 +135,37 @@ class User extends Authenticatable
         return $this->hasOne(Vehicle::class, 'driver_id');
     }
 
+    public function driverPickupRequests()
+    {
+        return $this->hasMany(PickupRequest::class, 'driver_id');
+    }
+
+    public function driverPayrollBills()
+    {
+        return $this->hasMany(DriverPayrollBill::class, 'driver_id');
+    }
+
     public function payrolls()
     {
         return $this->hasMany(DriverPayroll::class, 'driver_id');
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    public function paymentAccountDetails(): array
+    {
+        return [
+            'bank_name' => $this->bank_name,
+            'account_title' => $this->bank_account_title,
+            'account_number' => $this->bank_account_number,
+            'iban' => $this->bank_iban,
+        ];
+    }
+
+    public function hasPaymentAccount(): bool
+    {
+        return filled($this->bank_account_number) || filled($this->bank_iban);
     }
 
     public function driverVerification()
@@ -421,6 +453,8 @@ class User extends Authenticatable
         $base['vehicle_verification'] = $this->vehicleVerification
             ? $this->vehicleVerification->toApiArray()
             : null;
+        $base['payment_account'] = $this->paymentAccountDetails();
+        $base['has_payment_account'] = $this->hasPaymentAccount();
 
         return $base;
     }

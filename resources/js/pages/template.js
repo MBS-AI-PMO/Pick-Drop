@@ -317,4 +317,11 @@
   // Enable lucide icons with SVG markup
   lucide.createIcons();
 
+  // Re-render lucide icons when dropdowns open (notification bell, profile, etc.)
+  document.querySelectorAll('.navbar .dropdown').forEach(function (dropdown) {
+    dropdown.addEventListener('shown.bs.dropdown', function () {
+      lucide.createIcons();
+    });
+  });
+
 })();

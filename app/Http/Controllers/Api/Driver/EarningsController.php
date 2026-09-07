@@ -29,6 +29,17 @@ class EarningsController extends BaseApiController
 
             $month = $rows->filter(fn (PickupRequest $r) => $r->driver_payout_due_on?->isSameMonth(now()));
 
+            $payrollBills = \App\Models\DriverPayrollBill::query()
+                ->where('driver_id', $driver->id)
+                ->latest('id')
+                ->limit(10)
+                ->get();
+
+            $pendingPayroll = $payrollBills->whereIn('status', [
+                \App\Models\DriverPayrollBill::STATUS_PENDING,
+                \App\Models\DriverPayrollBill::STATUS_APPROVED,
+            ]);
+
             return $this->successResponse([
                 'currency' => 'PKR',
                 'this_month' => [
@@ -40,6 +51,11 @@ class EarningsController extends BaseApiController
                     'total' => round((float) $rows->sum('driver_payout_amount'), 2),
                     'paid' => round((float) $rows->where('driver_payout_status', PickupRequest::DRIVER_PAYOUT_PAID)->sum('driver_payout_amount'), 2),
                     'unpaid' => round((float) $rows->where('driver_payout_status', '!=', PickupRequest::DRIVER_PAYOUT_PAID)->sum('driver_payout_amount'), 2),
+                ],
+                'payroll' => [
+                    'pending_amount' => round((float) $pendingPayroll->sum('calculated_amount'), 2),
+                    'paid_amount' => round((float) $payrollBills->where('status', \App\Models\DriverPayrollBill::STATUS_PAID)->sum('calculated_amount'), 2),
+                    'recent_bills' => $payrollBills->map(fn ($b) => $b->toApiArray())->values(),
                 ],
                 'completed_days' => ShiftDayRun::query()
                     ->whereHas('pickupRequest', fn ($q) => $q->where('driver_id', $driver->id))

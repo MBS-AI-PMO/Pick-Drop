@@ -46,7 +46,7 @@
             <span class="pd-notify-dot" aria-hidden="true"></span>
           @endif
         </a>
-        <div class="dropdown-menu notification-dropdown p-0" aria-labelledby="notificationDropdown">
+        <div class="dropdown-menu dropdown-menu-end notification-dropdown p-0" aria-labelledby="notificationDropdown">
           <div class="notification-dropdown__header">
             <h6 class="notification-dropdown__title mb-0">Alerts</h6>
             <div class="d-flex align-items-center gap-2">

@@ -2,158 +2,255 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DriverPayroll;
-use App\Models\DriverPayrollItem;
-use App\Services\AttendanceService;
+use App\Models\DriverPayrollBill;
+use App\Models\User;
 use App\Services\DriverPayrollService;
+use App\Support\AppPagination;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use RuntimeException;
 
 class DriverPayrollController extends Controller
 {
-    public function index(Request $request, DriverPayrollService $payrolls)
-    {
-        $month = $this->month($request);
-
-        if ($month === now()->format('Y-m')) {
-            $payrolls->generate($month);
-        }
-
-        $rows = DriverPayroll::query()
-            ->with('driver')
-            ->withCount('items')
-            ->where('month', $month)
-            ->orderByDesc('expected_net')
-            ->get();
-
-        $cursor = Carbon::createFromFormat('Y-m', $month);
-
-        return view('pickdrop.payrolls.index', [
-            'month' => $month,
-            'cursor' => $cursor,
-            'prev' => $cursor->copy()->subMonth()->format('Y-m'),
-            'next' => $cursor->copy()->addMonth()->format('Y-m'),
-            'monthEnded' => now()->gte($cursor->copy()->endOfMonth()->addDay()->startOfDay()),
-            'payrolls' => $rows,
-            'totals' => [
-                'drivers' => $rows->count(),
-                'present' => $rows->sum('worked_days'),
-                'upcoming' => $rows->sum('upcoming_days'),
-                'cut' => $rows->sum('leave_days') + $rows->sum('absent_days'),
-                'earned' => $rows->sum('net'),
-                'expected' => $rows->sum('expected_net'),
-                'deduction' => $rows->sum('deduction'),
-            ],
-        ]);
-    }
-
-    public function recalculate(Request $request, DriverPayrollService $payrolls)
-    {
-        $month = $this->month($request);
-        $count = $payrolls->generate($month);
-
-        return redirect()
-            ->route('payrolls.index', ['month' => $month])
-            ->with('success', $count . ' driver payroll(s) updated for ' . Carbon::createFromFormat('Y-m', $month)->format('F Y') . '.');
-    }
-
-    public function show(DriverPayroll $payroll, DriverPayrollService $payrolls)
-    {
-        $payroll->load(['driver', 'items.pickupRequest.parent', 'items.pickupRequest.student']);
-
-        $shifts = $payroll->items->map(function (DriverPayrollItem $item) use ($payroll, $payrolls) {
-            $request = $item->pickupRequest;
-
-            return [
-                'item' => $item,
-                'request' => $request,
-                'days' => $request ? $payrolls->dayBreakdown($request, $payroll->month) : [],
-            ];
-        });
-
-        return view('pickdrop.payrolls.show', [
-            'payroll' => $payroll,
-            'shifts' => $shifts,
-            'monthLabel' => Carbon::createFromFormat('Y-m', $payroll->month)->format('F Y'),
-        ]);
-    }
-
-    public function markDay(
-        Request $request,
-        DriverPayroll $payroll,
-        AttendanceService $attendance,
-        DriverPayrollService $payrolls
+    public function __construct(
+        private readonly DriverPayrollService $payroll,
     ) {
-        if ($payroll->isLocked()) {
-            return back()->with('error', 'This month is already paid. Days cannot be changed.');
+    }
+
+    public function index(Request $request)
+    {
+        $query = DriverPayrollBill::query()
+            ->with(['driver', 'pickupRequest.student'])
+            ->latest('id');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
+        if ($request->filled('bill_month')) {
+            $monthStart = \Illuminate\Support\Carbon::parse($request->bill_month . '-01')->startOfMonth();
+            $monthEnd = $monthStart->copy()->endOfMonth();
+            $query->whereDate('period_start', '<=', $monthEnd->toDateString())
+                ->whereDate('period_end', '>=', $monthStart->toDateString());
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('bill_number', 'like', "%{$search}%")
+                    ->orWhereHas('driver', fn ($dq) => $dq->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%"))
+                    ->orWhereHas('pickupRequest.student', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $bills = $query->paginate(AppPagination::PER_PAGE)->withQueryString();
+
+        $summary = [
+            'pending' => DriverPayrollBill::where('status', DriverPayrollBill::STATUS_PENDING)->sum('calculated_amount'),
+            'approved' => DriverPayrollBill::where('status', DriverPayrollBill::STATUS_APPROVED)->sum('calculated_amount'),
+            'paid' => DriverPayrollBill::where('status', DriverPayrollBill::STATUS_PAID)->sum('calculated_amount'),
+            'pending_count' => DriverPayrollBill::where('status', DriverPayrollBill::STATUS_PENDING)->count(),
+        ];
+
+        $readyMonth = $request->input('ready_month');
+        $groupedReadyAll = $this->payroll->groupedReadyForBilling($readyMonth);
+        $readyPage = max(1, (int) $request->input('ready_page', 1));
+        $groupedReady = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedReadyAll->forPage($readyPage, AppPagination::PER_PAGE)->values(),
+            $groupedReadyAll->count(),
+            AppPagination::PER_PAGE,
+            $readyPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+                'pageName' => 'ready_page',
+            ]
+        );
+        $readyMonths = $this->payroll->readyBillingMonths();
+
+        $billMonths = DriverPayrollBill::query()
+            ->orderByDesc('period_start')
+            ->get(['period_start'])
+            ->map(fn ($bill) => $bill->period_start?->format('Y-m'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->map(fn ($m) => [
+                'value' => $m,
+                'label' => \Illuminate\Support\Carbon::parse($m . '-01')->format('F Y'),
+            ])
+            ->all();
+
+        return view('pickdrop.driver-payroll.index', compact(
+            'bills',
+            'summary',
+            'groupedReady',
+            'readyMonths',
+            'readyMonth',
+            'billMonths'
+        ));
+    }
+
+    public function driver(Request $request, User $user)
+    {
+        $role = strtolower(trim((string) $user->role));
+        if (! in_array($role, ['driver'], true) && ! str_contains($role, 'driver')) {
+            return redirect()
+                ->route('driver-payroll.index')
+                ->with('error', 'Selected user is not a driver.');
+        }
+
+        $view = $request->input('view', 'monthly');
+        $month = $request->input('month', now()->format('Y-m'));
+        $week = $request->integer('week', 1);
+        $date = $request->input('date', now()->toDateString());
+
+        $overview = $this->payroll->driverOverview($user, $view, $month, $week, $date);
+        $user->load('driverVerification');
+
+        return view('pickdrop.driver-payroll.driver', [
+            'driver' => $user,
+            'overview' => $overview,
+            'view' => $view,
+            'month' => $month,
+            'week' => $week,
+            'date' => $date,
+        ]);
+    }
+
+    public function generate(Request $request)
+    {
         $validated = $request->validate([
             'pickup_request_id' => ['required', 'integer', 'exists:pickup_requests,id'],
-            'date' => ['required', 'date'],
-            'status' => ['required', 'in:present,leave,absent'],
+            'period_start' => ['required', 'date'],
+            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
         ]);
 
-        $item = $payroll->items()
-            ->where('pickup_request_id', $validated['pickup_request_id'])
-            ->first();
-
-        if (!$item?->pickupRequest) {
-            return back()->with('error', 'That shift is not on this payroll.');
-        }
+        $pickupRequest = \App\Models\PickupRequest::query()->findOrFail($validated['pickup_request_id']);
 
         try {
-            $attendance->setByAdmin(
-                $item->pickupRequest,
-                $validated['date'],
-                $validated['status'],
-                $request->user()
+            $bill = $this->payroll->generateBill(
+                $pickupRequest,
+                $validated['period_start'],
+                $validated['period_end'],
+                auth()->user()
             );
         } catch (RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
-        $payrolls->generate($payroll->month, $payroll->driver_id);
-
-        $label = match ($validated['status']) {
-            'present' => 'present (will be paid)',
-            'leave' => 'leave (deducted)',
-            default => 'no-show (deducted)',
-        };
-
-        return back()->with('success', Carbon::parse($validated['date'])->format('d M') . ' marked as ' . $label . '.');
+        return redirect()
+            ->route('driver-payroll.show', $bill)
+            ->with('success', 'Bill generated successfully.');
     }
 
-    public function approve(Request $request, DriverPayroll $payroll, DriverPayrollService $payrolls)
+    public function generateAll(Request $request, User $user)
     {
-        $payrolls->generate($payroll->month, $payroll->driver_id);
-        $payrolls->approve($payroll->fresh(), $request->user());
-
-        return back()->with('success', 'Numbers checked. You can pay this driver.');
-    }
-
-    public function pay(Request $request, DriverPayroll $payroll, DriverPayrollService $payrolls)
-    {
-        $payrolls->generate($payroll->month, $payroll->driver_id);
-        $payroll = $payroll->fresh();
-
-        if (!$payroll->monthEnded() && !$request->boolean('pay_now')) {
-            return back()->with('error', 'Month is still running. Pay at month end, or tick “Pay earned amount now” to pay only the days already present.');
+        $role = strtolower(trim((string) $user->role));
+        if (! in_array($role, ['driver'], true) && ! str_contains($role, 'driver')) {
+            return redirect()
+                ->route('driver-payroll.index')
+                ->with('error', 'Selected user is not a driver.');
         }
 
-        $payrolls->markPaid($payroll, $request->user());
+        if ($request->filled('month')) {
+            $validated = $request->validate([
+                'month' => ['required', 'date_format:Y-m'],
+            ]);
 
-        return back()->with('success', 'Driver marked as paid PKR ' . number_format((float) $payroll->net, 2) . '.');
+            try {
+                $bills = $this->payroll->generateBillsForDriverMonth(
+                    $user,
+                    $validated['month'],
+                    auth()->user()
+                );
+            } catch (RuntimeException $e) {
+                return redirect()->back()->with('error', $e->getMessage());
+            }
+        } elseif ($request->filled('period_start') && $request->filled('period_end')) {
+            $validated = $request->validate([
+                'period_start' => ['required', 'date'],
+                'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+            ]);
+
+            try {
+                $bills = $this->payroll->generateBillsForDriver(
+                    $user,
+                    $validated['period_start'],
+                    $validated['period_end'],
+                    auth()->user()
+                );
+            } catch (RuntimeException $e) {
+                return redirect()->back()->with('error', $e->getMessage());
+            }
+        } else {
+            try {
+                $bills = $this->payroll->generateAllReadyForDriver($user, auth()->user());
+            } catch (RuntimeException $e) {
+                return redirect()->back()->with('error', $e->getMessage());
+            }
+        }
+
+        $count = count($bills);
+
+        return redirect()
+            ->route('driver-payroll.index')
+            ->with('success', "{$count} shift bill" . ($count === 1 ? '' : 's') . ' generated for ' . $user->name . '.');
     }
 
-    private function month(Request $request): string
+    public function show(DriverPayrollBill $bill)
     {
-        $value = (string) $request->input('month', $request->query('month', now()->format('Y-m')));
+        $bill->load(['driver.driverVerification', 'pickupRequest.student', 'approver', 'payer']);
+
+        return view('pickdrop.driver-payroll.show', [
+            'bill' => $bill,
+        ]);
+    }
+
+    public function approve(DriverPayrollBill $bill)
+    {
         try {
-            return Carbon::createFromFormat('Y-m', $value)->format('Y-m');
-        } catch (\Throwable $e) {
-            return now()->format('Y-m');
+            $this->payroll->approve($bill, auth()->user());
+        } catch (RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
+
+        return redirect()
+            ->route('driver-payroll.show', $bill)
+            ->with('success', 'Payment request approved.');
+    }
+
+    public function pay(Request $request, DriverPayrollBill $bill)
+    {
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->payroll->markPaid($bill, auth()->user(), $validated['notes'] ?? null);
+        } catch (RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('driver-payroll.show', $bill)
+            ->with('success', 'Driver payment recorded.');
+    }
+
+    public function reject(Request $request, DriverPayrollBill $bill)
+    {
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->payroll->reject($bill, auth()->user(), $validated['notes'] ?? null);
+        } catch (RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('driver-payroll.index')
+            ->with('success', 'Payment request rejected.');
     }
 }

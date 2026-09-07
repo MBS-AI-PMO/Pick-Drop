@@ -530,6 +530,16 @@ Author: PickDrop Team
         padding-left: 18px !important;
         padding-right: 18px !important;
     }
+    .page-wrapper .page-content,
+    .page-content.container-xxl,
+    .page-content.container-fluid {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+    }
     .footer {
         background: transparent !important;
         border-top: 0 !important;
@@ -1320,6 +1330,13 @@ document.addEventListener('DOMContentLoaded', function () {
             'charges': "{{ route('charges.index') }}",
 
             'payments': "{{ route('payments.index') }}",
+
+            'payroll': "{{ route('driver-payroll.index') }}",
+            'payrolls': "{{ route('payrolls.index') }}",
+            'payouts': "{{ route('driver-payroll.index') }}",
+            'driver payments': "{{ route('driver-payroll.index') }}",
+            'driver payment': "{{ route('driver-payroll.index') }}",
+            'driver payroll': "{{ route('payrolls.index') }}",
 
             'calendar': "{{ route('holidays.index') }}",
             'holiday': "{{ route('holidays.index') }}",

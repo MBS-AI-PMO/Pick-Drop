@@ -255,35 +255,28 @@
 
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">Driver payout</h6>
-        @php
-          $driverPaid = $requestItem->driver_payout_status === \App\Models\PickupRequest::DRIVER_PAYOUT_PAID;
-        @endphp
-        <span class="badge rounded-pill px-3 py-1" style="{{ $driverPaid ? 'background:#d1fae5;color:#065f46;' : 'background:#fef9c3;color:#92400e;' }}">
-          {{ $driverPaid ? 'Paid' : 'Month-end unpaid' }}
-        </span>
+        <h6 class="mb-0">Driver payment</h6>
+        @php $latestBill = $requestItem->payrollBills()->latest('id')->first(); @endphp
+        @if($latestBill)
+          <span class="badge rounded-pill px-3 py-1" style="{{ $latestBill->statusBadgeStyle() }}">{{ $latestBill->statusLabel() }}</span>
+        @else
+          <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">No bill yet</span>
+        @endif
       </div>
       <div class="card-body">
         <div class="mb-2">
-          <label class="text-muted small">Fixed monthly rate</label>
+          <label class="text-muted small">Monthly rate</label>
           <div class="fw-semibold">PKR {{ number_format((float) ($requestItem->driver_monthly_rate ?? 0), 2) }}</div>
         </div>
         <div class="mb-2">
-          <label class="text-muted small">Total ({{ (int) ($requestItem->duration_months ?: 1) }} month{{ (int) ($requestItem->duration_months ?: 1) === 1 ? '' : 's' }})</label>
-          <div class="fw-semibold">PKR {{ number_format((float) ($requestItem->driver_payout_amount ?? 0), 2) }}</div>
+          <label class="text-muted small">Shift period</label>
+          <div class="fw-semibold fs-13px">{{ $requestItem->shift_start_date?->format('d M Y') ?: '—' }} – {{ $requestItem->shift_end_date?->format('d M Y') ?: '—' }}</div>
         </div>
-        <div class="mb-2">
-          <label class="text-muted small">Due</label>
-          <div class="fw-semibold">{{ $requestItem->driver_payout_due_on?->format('d M Y') ?: 'Month end' }}</div>
-        </div>
-        <p class="text-secondary fs-12px mb-2">Paid by PickDrop to the driver at month end. Not taken from the customer invoice.</p>
-        @if($requestItem->driver && !$driverPaid)
-          <form method="POST" action="{{ route('pickup-requests.driver-payout', $requestItem) }}">
-            @csrf
-            <button type="submit" class="btn btn-sm btn-outline-secondary">Mark driver paid</button>
-          </form>
-        @elseif($requestItem->driver_payout_paid_at)
-          <small class="text-muted">Paid {{ $requestItem->driver_payout_paid_at->format('d M Y, h:i A') }}</small>
+        <p class="text-secondary fs-12px mb-3">Bills are calculated from attendance at month end. Manage payouts in <a href="{{ route('driver-payroll.index') }}">Driver Payments</a>.</p>
+        @if($latestBill)
+          <a href="{{ route('driver-payroll.show', $latestBill) }}" class="btn btn-sm btn-outline-secondary">View payment bill</a>
+        @elseif($requestItem->driver)
+          <p class="text-secondary fs-12px mb-0">The driver can submit a payment request from the app once a billing period is complete.</p>
         @endif
       </div>
     </div>

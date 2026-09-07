@@ -261,7 +261,7 @@ class CoverService
     {
         $start = $pickupRequest->shift_start_date?->copy() ?: now()->startOfMonth();
         $end = $pickupRequest->shift_end_date?->copy() ?: $start->copy()->endOfMonth();
-        $working = app(DriverPayrollService::class)->workingDates($start, $end, $pickupRequest->days ?? []);
+        $working = app(MonthlyDriverPayrollService::class)->workingDates($start, $end, $pickupRequest->days ?? []);
         $days = max(1, count($working));
 
         return round(((float) $pickupRequest->estimated_amount) / $days, 2);

@@ -138,6 +138,11 @@ class PickupRequest extends Model
         return $this->hasMany(ShiftAttendance::class);
     }
 
+    public function payrollBills()
+    {
+        return $this->hasMany(DriverPayrollBill::class);
+    }
+
     public function ratings()
     {
         return $this->hasMany(Rating::class);

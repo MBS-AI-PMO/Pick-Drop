@@ -25,7 +25,10 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\SosAlertController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\DriverPayrollController;
 use App\Http\Controllers\LocalPaymentCallbackController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\View;
 
 
 Route::get('/', function () {
@@ -117,12 +120,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/export', [\App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
     Route::get('/charges', [PickDropChargeController::class, 'index'])->name('charges.index');
     Route::put('/charges', [PickDropChargeController::class, 'update'])->name('charges.update');
-    Route::get('/payrolls', [\App\Http\Controllers\DriverPayrollController::class, 'index'])->name('payrolls.index');
-    Route::post('/payrolls/recalculate', [\App\Http\Controllers\DriverPayrollController::class, 'recalculate'])->name('payrolls.recalculate');
-    Route::get('/payrolls/{payroll}', [\App\Http\Controllers\DriverPayrollController::class, 'show'])->name('payrolls.show');
-    Route::post('/payrolls/{payroll}/days', [\App\Http\Controllers\DriverPayrollController::class, 'markDay'])->name('payrolls.days');
-    Route::post('/payrolls/{payroll}/approve', [\App\Http\Controllers\DriverPayrollController::class, 'approve'])->name('payrolls.approve');
-    Route::post('/payrolls/{payroll}/pay', [\App\Http\Controllers\DriverPayrollController::class, 'pay'])->name('payrolls.pay');
+    Route::get('/payrolls', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'index'])->name('payrolls.index');
+    Route::post('/payrolls/recalculate', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'recalculate'])->name('payrolls.recalculate');
+    Route::get('/payrolls/{payroll}', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'show'])->name('payrolls.show');
+    Route::post('/payrolls/{payroll}/days', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'markDay'])->name('payrolls.days');
+    Route::post('/payrolls/{payroll}/approve', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'approve'])->name('payrolls.approve');
+    Route::post('/payrolls/{payroll}/pay', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'pay'])->name('payrolls.pay');
     Route::get('/profile', [ProfileController::class, 'index'])->name('general.profile');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
@@ -131,8 +134,26 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/profile/admins/{user}', [ProfileController::class, 'updateAdmin'])->name('profile.admins.update');
         Route::delete('/profile/admins/{user}', [ProfileController::class, 'destroyAdmin'])->name('profile.admins.destroy');
     });
-    Route::get('/notifications', [NotificationController::class,'index'])
-    ->name('notifications.index');
+    Route::get('/payroll', function () {
+        return redirect()->route('driver-payroll.index');
+    });
+    Route::get('/driver-payroll', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
+    Route::get('/driver-payroll/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
+    Route::post('/driver-payroll/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
+    Route::post('/driver-payroll/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
+    Route::get('/driver-payroll/{bill}', [DriverPayrollController::class, 'show'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.show');
+    Route::post('/driver-payroll/{bill}/approve', [DriverPayrollController::class, 'approve'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.approve');
+    Route::post('/driver-payroll/{bill}/pay', [DriverPayrollController::class, 'pay'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.pay');
+    Route::post('/driver-payroll/{bill}/reject', [DriverPayrollController::class, 'reject'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.reject');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
     ->name('notifications.clear');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
@@ -176,5 +197,3 @@ Route::get('/clear-cache', function() {
 Route::get('/{page?}', function () {
     return View::make('pages.error.404');
 })->where('page', '^(?!api/).*$');
-Route::get('/notifications', [NotificationController::class,'index'])
-    ->name('notifications.index');

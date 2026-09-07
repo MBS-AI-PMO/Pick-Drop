@@ -79,6 +79,7 @@ class PickupRequestController extends Controller
             'latestInvoice.items',
             'latestInvoice.payments',
             'attendances',
+            'payrollBills',
             'ratings.fromUser',
             'issues.user',
             'stops.area',
