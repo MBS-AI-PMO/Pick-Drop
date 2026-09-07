@@ -37,6 +37,12 @@
               <span class="link-title">Users</span>
             </a>
           </li>
+          <li class="nav-item {{ active_class(['login-logs', 'login-logs/*']) }}">
+            <a href="{{ route('login-logs.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="history"></i>
+              <span class="link-title">Login logs</span>
+            </a>
+          </li>
           <li class="nav-item {{ active_class(['driver-verifications', 'driver-verifications/*']) }}">
             <a href="{{ route('driver-verifications.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="badge-check"></i>

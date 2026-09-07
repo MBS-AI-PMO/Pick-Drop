@@ -1311,6 +1311,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             'user': "{{ route('users.index') }}",
             'users': "{{ route('users.index') }}",
+            'login logs': "{{ route('login-logs.index') }}",
+            'login log': "{{ route('login-logs.index') }}",
+            'logs': "{{ route('login-logs.index') }}",
 
             'vehicle': "{{ route('vehicles.index') }}",
             'vehicles': "{{ route('vehicles.index') }}",

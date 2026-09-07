@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\ParentSelf;
 
 use App\Http\Controllers\Api\ParentSelf\BaseApiController;
 use App\Mail\EmailVerificationCodeMail;
+use App\Models\LoginLog;
 use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +20,10 @@ use Throwable;
 
 class AuthController extends BaseApiController
 {
+    public function __construct(
+        private readonly LoginLogService $loginLogs,
+    ) {
+    }
     public function register(Request $request): JsonResponse
     {
         try {
@@ -91,11 +97,26 @@ class AuthController extends BaseApiController
                 ->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
+                $this->loginLogs->record(
+                    $request,
+                    LoginLog::CHANNEL_PARENT_API,
+                    LoginLog::STATUS_FAILED,
+                    $user,
+                    $validated['email']
+                );
+
                 return $this->errorResponse('Invalid credentials', 401);
             }
 
             $user->tokens()->delete();
             $token = $user->createToken('parent-self-api')->plainTextToken;
+
+            $this->loginLogs->record(
+                $request,
+                LoginLog::CHANNEL_PARENT_API,
+                LoginLog::STATUS_SUCCESS,
+                $user
+            );
 
             if (is_null($user->email_verified_at)) {
                 return $this->successResponse([

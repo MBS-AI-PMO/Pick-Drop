@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LoginLog;
 use App\Models\User;
+use App\Services\LoginLogService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +15,11 @@ use Illuminate\Auth\Events\PasswordReset;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly LoginLogService $loginLogs,
+    ) {
+    }
+
     /**
      * Handle an authentication attempt.
      */
@@ -31,8 +38,15 @@ class AuthController extends Controller
 
         // Sirf Super Admin aur Admin login kar sakte hain
         if (! Auth::user()->isPanelAdmin()) {
-
+            $user = Auth::user();
             Auth::logout();
+
+            $this->loginLogs->record(
+                $request,
+                LoginLog::CHANNEL_WEB,
+                LoginLog::STATUS_DENIED,
+                $user
+            );
 
             return back()->with('error', 'Access denied. Only Admin can login.');
         }
@@ -40,10 +54,25 @@ class AuthController extends Controller
         User::ensureSuperAdminExists();
         Auth::user()->refresh();
 
+        $this->loginLogs->record(
+            $request,
+            LoginLog::CHANNEL_WEB,
+            LoginLog::STATUS_SUCCESS,
+            Auth::user()
+        );
+
         return redirect()
             ->intended(route('dashboard'))
             ->with('success', 'Logged in successfully.');
     }
+
+    $this->loginLogs->record(
+        $request,
+        LoginLog::CHANNEL_WEB,
+        LoginLog::STATUS_FAILED,
+        null,
+        $credentials['email']
+    );
 
     return back()->withErrors([
         'email' => 'These credentials do not match our records.',
