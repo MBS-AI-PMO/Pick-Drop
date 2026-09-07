@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Driver;
 
 use App\Mail\EmailVerificationCodeMail;
+use App\Models\LoginLog;
 use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +17,10 @@ use Throwable;
 
 class AuthController extends BaseApiController
 {
+    public function __construct(
+        private readonly LoginLogService $loginLogs,
+    ) {
+    }
     /**
      * Step 1: Basic signup (no vehicle / no KYC docs).
      * Fields: name, phone, email, password, referral_code (optional)
@@ -87,10 +93,25 @@ class AuthController extends BaseApiController
                 ->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
+                $this->loginLogs->record(
+                    $request,
+                    LoginLog::CHANNEL_DRIVER_API,
+                    LoginLog::STATUS_FAILED,
+                    $user,
+                    $validated['email']
+                );
+
                 return $this->errorResponse('Invalid credentials', 401);
             }
 
             if (is_null($user->email_verified_at)) {
+                $this->loginLogs->record(
+                    $request,
+                    LoginLog::CHANNEL_DRIVER_API,
+                    LoginLog::STATUS_DENIED,
+                    $user
+                );
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Please verify your email address before logging in.',
@@ -109,6 +130,13 @@ class AuthController extends BaseApiController
             $kycStatus = $user->kycStatus();
             $vehicleVerificationStatus = $user->vehicleVerificationStatus();
             $nextStep = $user->driverNextStep();
+
+            $this->loginLogs->record(
+                $request,
+                LoginLog::CHANNEL_DRIVER_API,
+                LoginLog::STATUS_SUCCESS,
+                $user
+            );
 
             return $this->successResponse([
                 'user' => $user->toDriverApiArray(),

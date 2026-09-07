@@ -26,6 +26,7 @@ use App\Http\Controllers\SosAlertController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\DriverPayrollController;
+use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\LocalPaymentCallbackController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\View;
@@ -41,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
     
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+    Route::get('/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
     Route::get('/driver-verifications', [DriverVerificationController::class, 'index'])->name('driver-verifications.index');
     Route::get('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'show'])->name('driver-verifications.show');
     Route::post('/driver-verifications/{driverVerification}/status', [DriverVerificationController::class, 'updateStatus'])->name('driver-verifications.status');
