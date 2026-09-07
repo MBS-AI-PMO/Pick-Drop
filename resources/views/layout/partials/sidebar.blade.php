@@ -136,16 +136,16 @@
 
       <li class="nav-item nav-category">Finance</li>
 
-      <li class="nav-item has-sub {{ request()->is('payments*') ? 'active' : '' }}">
-        <a class="nav-link {{ request()->is('payments*') ? 'active' : '' }}"
+      <li class="nav-item has-sub {{ request()->is('payments') || request()->is('payments/invoices*') || request()->is('payments/settings') ? 'active' : '' }}">
+        <a class="nav-link {{ request()->is('payments') || request()->is('payments/invoices*') || request()->is('payments/settings') ? 'active' : '' }}"
            data-bs-toggle="collapse" href="#payments-nav" role="button"
-           aria-expanded="{{ request()->is('payments*') ? 'true' : 'false' }}"
+           aria-expanded="{{ request()->is('payments') || request()->is('payments/invoices*') || request()->is('payments/settings') ? 'true' : 'false' }}"
            aria-controls="payments-nav">
           <i class="link-icon" data-lucide="credit-card"></i>
           <span class="link-title">Payments</span>
           <i class="link-arrow" data-lucide="chevron-down"></i>
         </a>
-        <div class="collapse {{ request()->is('payments*') ? 'show' : '' }}" id="payments-nav">
+        <div class="collapse {{ request()->is('payments') || request()->is('payments/invoices*') || request()->is('payments/settings') ? 'show' : '' }}" id="payments-nav">
           <ul class="nav sub-menu">
             <li class="nav-item">
               <a href="{{ route('payments.index') }}" class="nav-link {{ request()->is('payments') || request()->is('payments/invoices*') ? 'active' : '' }}">Invoices</a>
@@ -155,6 +155,17 @@
             </li>
           </ul>
         </div>
+      </li>
+
+      <li class="nav-item {{ active_class(['driver-payroll', 'driver-payroll/*']) }}">
+        <a href="{{ route('driver-payroll.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="wallet"></i>
+          <span class="link-title">Driver Payments</span>
+          @php $pendingPayouts = \App\Models\DriverPayrollBill::where('status', 'pending')->count(); @endphp
+          @if($pendingPayouts > 0)
+            <span class="badge bg-danger ms-auto">{{ $pendingPayouts }}</span>
+          @endif
+        </a>
       </li>
 
       <li class="nav-item {{ active_class(['charges', 'charges/*']) }}">

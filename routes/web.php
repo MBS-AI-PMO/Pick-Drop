@@ -25,7 +25,10 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\SosAlertController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\DriverPayrollController;
 use App\Http\Controllers\LocalPaymentCallbackController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\View;
 
 
 Route::get('/', function () {
@@ -124,8 +127,29 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/profile/admins/{user}', [ProfileController::class, 'updateAdmin'])->name('profile.admins.update');
         Route::delete('/profile/admins/{user}', [ProfileController::class, 'destroyAdmin'])->name('profile.admins.destroy');
     });
-    Route::get('/notifications', [NotificationController::class,'index'])
-    ->name('notifications.index');
+    Route::get('/payrolls', function () {
+        return redirect()->route('driver-payroll.index');
+    });
+    Route::get('/payroll', function () {
+        return redirect()->route('driver-payroll.index');
+    });
+    Route::get('/driver-payroll', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
+    Route::get('/driver-payroll/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
+    Route::post('/driver-payroll/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
+    Route::post('/driver-payroll/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
+    Route::get('/driver-payroll/{bill}', [DriverPayrollController::class, 'show'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.show');
+    Route::post('/driver-payroll/{bill}/approve', [DriverPayrollController::class, 'approve'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.approve');
+    Route::post('/driver-payroll/{bill}/pay', [DriverPayrollController::class, 'pay'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.pay');
+    Route::post('/driver-payroll/{bill}/reject', [DriverPayrollController::class, 'reject'])
+        ->whereNumber('bill')
+        ->name('driver-payroll.reject');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
     ->name('notifications.clear');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
@@ -169,5 +193,3 @@ Route::get('/clear-cache', function() {
 Route::get('/{page?}', function () {
     return View::make('pages.error.404');
 })->where('page', '^(?!api/).*$');
-Route::get('/notifications', [NotificationController::class,'index'])
-    ->name('notifications.index');

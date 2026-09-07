@@ -7,7 +7,7 @@
 
 @section('content')
 <div class="row inbox-wrapper">
-  <div class="col-lg-12">
+  <div class="col-lg-10">
     <div class="card">
       <div class="card-body">
         <div class="row">
@@ -31,7 +31,7 @@
                   <a class="nav-link d-flex align-items-center" href="{{ route('email.inbox') }}">
                     <i data-lucide="inbox" class="icon-lg me-2"></i>
                     Inbox
-                    <span class="badge bg-danger fw-bolder ms-auto">2
+                    <span class="badge bg-danger fw-bolder ms-auto">2</span>
                   </a>
                 </li>
                 <li class="nav-item">
@@ -44,7 +44,7 @@
                   <a class="nav-link d-flex align-items-center" href="#">
                     <i data-lucide="briefcase" class="icon-lg me-2"></i>
                     Important
-                    <span class="badge bg-secondary fw-bolder ms-auto">4
+                    <span class="badge bg-secondary fw-bolder ms-auto">4</span>
                   </a>
                 </li>
                 <li class="nav-item">

@@ -575,6 +575,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             'payments': "{{ route('payments.index') }}",
 
+            'payroll': "{{ route('driver-payroll.index') }}",
+            'payouts': "{{ route('driver-payroll.index') }}",
+            'driver payments': "{{ route('driver-payroll.index') }}",
+            'driver payment': "{{ route('driver-payroll.index') }}",
+
             'calendar': "{{ route('holidays.index') }}",
             'holiday': "{{ route('holidays.index') }}",
             'holidays': "{{ route('holidays.index') }}",

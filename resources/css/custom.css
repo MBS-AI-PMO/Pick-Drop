@@ -1684,6 +1684,7 @@ html.theme-transitioning .navbar {
     border-radius: 8px;
     box-shadow: 0 14px 34px rgba(29, 53, 87, 0.12);
     overflow: hidden;
+    z-index: 1050;
 }
 
 .notification-dropdown__header,
@@ -1731,6 +1732,8 @@ html.theme-transitioning .navbar {
 
 .notification-dropdown__body {
     background: #ffffff;
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 .notification-dropdown__item {
