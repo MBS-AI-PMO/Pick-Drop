@@ -10,12 +10,16 @@
 </div>
 
 <div class="row g-3 mb-3">
+  @php $all = max(1, (int) $counts['all']); @endphp
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('pickup-requests.index') }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body py-3">
-          <p class="text-secondary fs-13px mb-1">All requests</p>
-          <h3 class="mb-0 fw-bold">{{ number_format($counts['all']) }}</h3>
+        <div class="card-body">
+          <x-stat-ring :percent="$counts['all'] > 0 ? 100 : 0" tone="blue" />
+          <div>
+            <h3>{{ number_format($counts['all']) }}</h3>
+            <p class="dashboard-stat-label">All requests</p>
+          </div>
         </div>
       </div>
     </a>
@@ -23,9 +27,12 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('pickup-requests.index', ['status' => 'pending']) }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body py-3">
-          <p class="text-secondary fs-13px mb-1">Waiting for driver</p>
-          <h3 class="mb-0 fw-bold">{{ number_format($counts['pending']) }}</h3>
+        <div class="card-body">
+          <x-stat-ring :percent="($counts['pending'] / $all) * 100" tone="orange" />
+          <div>
+            <h3>{{ number_format($counts['pending']) }}</h3>
+            <p class="dashboard-stat-label">Waiting for driver</p>
+          </div>
         </div>
       </div>
     </a>
@@ -33,9 +40,12 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('pickup-requests.index', ['status' => 'in_progress']) }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body py-3">
-          <p class="text-secondary fs-13px mb-1">In progress</p>
-          <h3 class="mb-0 fw-bold">{{ number_format($counts['accepted']) }}</h3>
+        <div class="card-body">
+          <x-stat-ring :percent="($counts['accepted'] / $all) * 100" tone="teal" />
+          <div>
+            <h3>{{ number_format($counts['accepted']) }}</h3>
+            <p class="dashboard-stat-label">In progress</p>
+          </div>
         </div>
       </div>
     </a>
@@ -43,9 +53,12 @@
   <div class="col-sm-6 col-xl-3">
     <a href="{{ route('pickup-requests.index', ['status' => 'completed']) }}" class="dashboard-stat-link">
       <div class="card dashboard-stat-card h-100">
-        <div class="card-body py-3">
-          <p class="text-secondary fs-13px mb-1">Completed</p>
-          <h3 class="mb-0 fw-bold">{{ number_format($counts['completed']) }}</h3>
+        <div class="card-body">
+          <x-stat-ring :percent="($counts['completed'] / $all) * 100" tone="green" />
+          <div>
+            <h3>{{ number_format($counts['completed']) }}</h3>
+            <p class="dashboard-stat-label">Completed</p>
+          </div>
         </div>
       </div>
     </a>

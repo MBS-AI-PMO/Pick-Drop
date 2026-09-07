@@ -145,6 +145,11 @@ class User extends Authenticatable
         return $this->hasMany(DriverPayrollBill::class, 'driver_id');
     }
 
+    public function payrolls()
+    {
+        return $this->hasMany(DriverPayroll::class, 'driver_id');
+    }
+
     /**
      * @return array<string, string|null>
      */

@@ -62,6 +62,20 @@ class IssueController extends BaseApiController
                     (string) ($validated['reason'] ?? '')
                 );
                 $pickupRequest->update(['last_delay_notified_on' => now()->toDateString()]);
+            } elseif ($pickupRequest && in_array($type, ['breakdown', 'unavailable'], true)) {
+                $cover = app(\App\Services\CoverService::class)->open(
+                    $pickupRequest,
+                    $type,
+                    now()->toDateString(),
+                    $validated['reason'] ?? null
+                );
+                $issue->pickup_request_id = $pickupRequest->id;
+                $issue->save();
+
+                return $this->successResponse([
+                    'issue' => $issue->fresh()->toApiArray(),
+                    'cover' => $cover->toApiArray(),
+                ], 'Issue submitted. Nearby drivers are being offered this trip.', 201);
             } elseif ($pickupRequest) {
                 app(AppNotificationService::class)->notify(
                     (int) $pickupRequest->parent_id,

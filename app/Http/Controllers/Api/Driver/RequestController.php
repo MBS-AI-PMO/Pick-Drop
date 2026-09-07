@@ -31,12 +31,21 @@ class RequestController extends BaseApiController
 
             $requests = $this->matcher
                 ->constrainAvailableQuery(
-                    PickupRequest::query()->with(['parent', 'student', 'city', 'area', 'dropArea']),
+                    PickupRequest::query()->with(['parent', 'student', 'city', 'area', 'dropArea', 'stops']),
                     $driver
                 )
                 ->latest()
                 ->get()
-                ->map(fn (PickupRequest $row) => $row->toApiArray('driver'))
+                ->map(function (PickupRequest $row) use ($driver) {
+                    $payload = $row->toApiArray('driver');
+                    $km = $this->matcher->distanceKm($driver, $row);
+                    $payload['distance_km'] = $km !== null ? round($km, 2) : null;
+                    $payload['nearby'] = $km !== null ? $km <= PickupRequestMatchingService::NEARBY_KM : false;
+                    $payload['journey'] = $row->journeyApiArray();
+
+                    return $payload;
+                })
+                ->sortBy(fn ($row) => $row['distance_km'] ?? 9999)
                 ->values();
 
             return $this->successResponse($requests, 'Available requests');

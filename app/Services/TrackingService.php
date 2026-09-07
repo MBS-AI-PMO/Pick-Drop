@@ -46,17 +46,12 @@ class TrackingService
      */
     public function payload(PickupRequest $pickupRequest): array
     {
+        $pickupRequest->loadMissing(['driver', 'stops', 'student']);
+        $assigned = $pickupRequest->driver;
+        $driver = app(CoverService::class)->driverForDate($pickupRequest) ?: $assigned;
+        $isCover = $driver && $assigned && (int) $driver->id !== (int) $assigned->id;
         $base = $pickupRequest->trackingApiArray();
-        $driver = $pickupRequest->driver;
-        $meters = $this->distanceMeters(
-            (float) ($driver?->last_lat ?? 0),
-            (float) ($driver?->last_lng ?? 0),
-            (float) $pickupRequest->pickup_lat,
-            (float) $pickupRequest->pickup_lng
-        );
-
         $geofence = (int) PlatformSetting::current()->geofence_meters;
-        $eta = $meters > 0 ? max(1, (int) round(($meters / 1000) / 25 * 60)) : null;
 
         $trail = [];
         if ($driver) {
@@ -75,18 +70,69 @@ class TrackingService
                 ->all();
         }
 
+        $nextStop = $pickupRequest->stops
+            ->first(fn ($stop) => $stop->status === \App\Models\PickupRequestStop::STATUS_PENDING);
+
+        $heading = $nextStop
+            ? [
+                'type' => $nextStop->type,
+                'point' => $nextStop->point,
+                'lat' => $nextStop->lat,
+                'lng' => $nextStop->lng,
+                'action' => $nextStop->isPickup()
+                    ? 'Going to pick up at ' . $nextStop->point
+                    : 'Going to drop at ' . $nextStop->point,
+            ]
+            : [
+                'type' => 'drop',
+                'point' => $pickupRequest->drop_point,
+                'lat' => $pickupRequest->drop_lat,
+                'lng' => $pickupRequest->drop_lng,
+                'action' => 'Going to ' . $pickupRequest->drop_point,
+            ];
+
+        $fromMeters = $this->distanceMeters(
+            (float) ($driver?->last_lat ?? 0),
+            (float) ($driver?->last_lng ?? 0),
+            (float) ($heading['lat'] ?? 0),
+            (float) ($heading['lng'] ?? 0)
+        );
+
         return array_merge($base, [
+            'driver_id' => $driver?->id,
+            'lat' => $driver?->last_lat !== null ? (float) $driver->last_lat : null,
+            'lng' => $driver?->last_lng !== null ? (float) $driver->last_lng : null,
+            'updated_at' => $driver?->last_location_at?->toIso8601String(),
+            'driver_status' => $driver?->last_ride_status,
+            'visible' => (bool) $driver?->last_lat,
+            'is_cover_driver' => $isCover,
+            'active_driver' => $driver ? [
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'phone' => $driver->phone,
+                'is_cover' => $isCover,
+            ] : null,
+            'passenger' => $pickupRequest->student?->name ?: $pickupRequest->requesterName(),
+            'coming_from' => [
+                'point' => $pickupRequest->pickup_point,
+                'lat' => $pickupRequest->pickup_lat,
+                'lng' => $pickupRequest->pickup_lng,
+            ],
+            'going_to' => $heading,
             'pickup' => [
                 'lat' => $pickupRequest->pickup_lat,
                 'lng' => $pickupRequest->pickup_lng,
+                'point' => $pickupRequest->pickup_point,
             ],
             'drop' => [
                 'lat' => $pickupRequest->drop_lat,
                 'lng' => $pickupRequest->drop_lng,
+                'point' => $pickupRequest->drop_point,
             ],
-            'distance_meters' => $driver?->last_lat ? (int) round($meters) : null,
-            'eta_minutes' => $driver?->last_lat ? $eta : null,
-            'arriving' => $driver?->last_lat ? $meters <= $geofence : false,
+            'journey' => $pickupRequest->journeyApiArray(),
+            'distance_meters' => $driver?->last_lat ? (int) round($fromMeters) : null,
+            'eta_minutes' => $driver?->last_lat ? max(1, (int) round(($fromMeters / 1000) / 25 * 60)) : null,
+            'arriving' => $driver?->last_lat ? $fromMeters <= $geofence : false,
             'geofence_meters' => $geofence,
             'trail' => $trail,
         ]);

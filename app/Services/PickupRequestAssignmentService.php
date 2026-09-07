@@ -70,6 +70,7 @@ class PickupRequestAssignmentService
 
         $this->notifier->notifyParentRequestAccepted($updated);
         $this->notifier->notifyShiftPaymentRequired($updated, $invoice);
+        $this->notifyOthersTaken($updated, $driver);
 
         if ($source === 'auto') {
             $this->notifier->notify(
@@ -131,6 +132,21 @@ class PickupRequestAssignmentService
         }
 
         return $assigned;
+    }
+
+    private function notifyOthersTaken(PickupRequest $pickupRequest, User $acceptedBy): void
+    {
+        $this->matcher->eligibleDrivers($pickupRequest, false)
+            ->where('id', '!=', (int) $acceptedBy->id)
+            ->each(function (User $driver) use ($pickupRequest) {
+                $this->notifier->notify(
+                    $driver->id,
+                    'pickup_request_taken',
+                    'Request taken',
+                    sprintf('Pickup request #%d was accepted by another driver.', $pickupRequest->id),
+                    ['pickup_request_id' => $pickupRequest->id]
+                );
+            });
     }
 
     private function extendWait(PickupRequest $request, string $reason): void

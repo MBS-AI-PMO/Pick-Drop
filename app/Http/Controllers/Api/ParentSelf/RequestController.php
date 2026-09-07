@@ -72,6 +72,7 @@ class RequestController extends BaseApiController
                 'days.*'       => ['string'],
                 'duration_months' => ['nullable', 'integer', 'min:1', 'max:24'],
                 'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20'],
+                'round_trip' => ['nullable', 'boolean'],
                 'shift_start_date' => ['nullable', 'date'],
                 'scheduled_date' => ['nullable', 'date'],
                 'stops' => ['nullable', 'array', 'min:2'],
@@ -170,6 +171,7 @@ class RequestController extends BaseApiController
                 'shift_end_date' => $quote['shift_end_date'],
                 'distance_km' => $quote['distance_km'],
                 'trip_count' => $quote['trip_count'],
+                'round_trip' => array_key_exists('round_trip', $validated) ? (bool) $validated['round_trip'] : true,
                 'estimated_amount' => $quote['estimated_amount'],
                 'driver_monthly_rate' => $quote['driver_monthly_rate'],
                 'driver_payout_amount' => $quote['driver_payout_amount'],
@@ -386,6 +388,31 @@ class RequestController extends BaseApiController
             return $this->successResponse($tracking, 'Tracking info');
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to fetch tracking info');
+        }
+    }
+
+    public function replacements(Request $request, int $requestId): JsonResponse
+    {
+        try {
+            $pickupRequest = PickupRequest::query()
+                ->where('id', $requestId)
+                ->where('parent_id', $request->user()->id)
+                ->first();
+
+            if (!$pickupRequest) {
+                return $this->errorResponse('Not found', 404);
+            }
+
+            $rows = $pickupRequest->replacements()
+                ->with(['originalDriver', 'replacementDriver'])
+                ->latest('date')
+                ->get()
+                ->map->toApiArray()
+                ->values();
+
+            return $this->successResponse($rows, 'Cover / alternative drivers');
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to fetch replacements');
         }
     }
 

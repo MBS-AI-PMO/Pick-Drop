@@ -31,6 +31,7 @@ class ShiftOpsService
             'renewals' => $this->notifyRenewals(),
             'auto_renewed' => $this->processAutoRenewals(),
             'absents' => $this->markAbsents(),
+            'cover_refunds' => app(CoverService::class)->closeUnfilledAndRefund(),
             'ended_shifts' => $this->completeEndedShifts(),
             'expiring_docs' => $this->notifyExpiringDocuments(),
         ];
@@ -210,6 +211,7 @@ class ShiftOpsService
             }
 
             $this->attendance->markAbsent($request, $today);
+            app(CoverService::class)->refundDay($request, $today, 'Driver did not complete the pickup today.');
             $count++;
         }
 

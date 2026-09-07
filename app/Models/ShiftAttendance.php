@@ -11,12 +11,16 @@ class ShiftAttendance extends Model
     public const SKIPPED = 'skipped';
     public const HOLIDAY = 'holiday';
     public const ABSENT = 'absent';
+    public const LEAVE = 'leave';
 
     protected $fillable = [
         'pickup_request_id',
         'date',
         'status',
         'reason',
+        'refunded_amount',
+        'refunded_at',
+        'refund_reason',
         'marked_by',
     ];
 
@@ -24,6 +28,8 @@ class ShiftAttendance extends Model
     {
         return [
             'date' => 'date',
+            'refunded_amount' => 'float',
+            'refunded_at' => 'datetime',
         ];
     }
 
@@ -53,6 +59,9 @@ class ShiftAttendance extends Model
             'date' => $this->date?->toDateString(),
             'status' => $this->status,
             'reason' => $this->reason,
+            'refunded_amount' => $this->refunded_amount !== null ? (float) $this->refunded_amount : null,
+            'refunded_at' => $this->refunded_at?->toIso8601String(),
+            'refund_reason' => $this->refund_reason,
         ];
     }
 }

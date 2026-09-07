@@ -42,7 +42,16 @@ class DashboardController extends Controller
             ->map(fn (SchoolRoute $route) => $this->formatSchedule($route));
 
         $totalVehicles = Vehicle::count();
+        $activeVehicles = Vehicle::where('status', 'Active')->count();
         $assignedVehicles = Vehicle::whereNotNull('driver_id')->orWhereNotNull('route_id')->count();
+        $totalUsers = User::count();
+        $activeUsers = User::whereRaw('LOWER(TRIM(status)) = ?', ['active'])->count();
+        $totalPickup = PickupRequest::count();
+        $pendingPickup = PickupRequest::where('status', 'pending')->count();
+        $alertsToday = Notification::whereDate('created_at', today())->count()
+            + IssueReport::whereDate('created_at', today())->count();
+        $alertsWeek = Notification::where('created_at', '>=', now()->subDays(7))->count()
+            + IssueReport::where('created_at', '>=', now()->subDays(7))->count();
         $completedTrips = PickupRequest::where('status', 'completed')->count();
         $cancelledTrips = PickupRequest::where('status', 'cancelled')->count();
         $resolvedIssues = IssueReport::whereIn('status', ['resolved', 'closed'])->count();
@@ -55,11 +64,16 @@ class DashboardController extends Controller
             : 5.0;
 
         $stats = [
-            'vehicles' => Vehicle::where('status', 'Active')->count(),
-            'users' => User::count(),
-            'pending_requests' => PickupRequest::where('status', 'pending')->count(),
-            'alerts_today' => Notification::whereDate('created_at', today())->count()
-                + IssueReport::whereDate('created_at', today())->count(),
+            'vehicles' => $activeVehicles,
+            'users' => $totalUsers,
+            'pending_requests' => $pendingPickup,
+            'alerts_today' => $alertsToday,
+            'rings' => [
+                'vehicles' => $this->percentage($activeVehicles, $totalVehicles),
+                'users' => $this->percentage($activeUsers > 0 ? $activeUsers : $totalUsers, max($totalUsers, 1)),
+                'pending' => $this->percentage($pendingPickup, max($totalPickup, 1)),
+                'alerts' => $this->percentage($alertsToday, max($alertsWeek, 1)),
+            ],
         ];
 
         $metrics = [
