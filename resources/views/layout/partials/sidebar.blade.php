@@ -191,12 +191,6 @@
               @endif
             </a>
           </li>
-          <li class="nav-item {{ active_class(['payrolls', 'payrolls/*']) }}">
-            <a href="{{ route('payrolls.index') }}" class="nav-link">
-              <i class="link-icon" data-lucide="hand-coins"></i>
-              <span class="link-title">Driver payroll</span>
-            </a>
-          </li>
         </ul>
       </li>
 
