@@ -58,9 +58,13 @@ class AuthController extends BaseApiController
                 'referred_by' => $referrerId,
             ]);
 
-            Mail::to($user->email)->send(
-                new EmailVerificationCodeMail($otp, $user->name)
-            );
+            try {
+                Mail::to($user->email)->send(
+                    new EmailVerificationCodeMail($otp, $user->name)
+                );
+            } catch (Throwable $e) {
+                report($e);
+            }
 
             $token = $user->createToken('driver-api')->plainTextToken;
 
@@ -177,9 +181,13 @@ class AuthController extends BaseApiController
                 'otp' => $otp,
             ]);
 
-            Mail::to($user->email)->send(
-                new EmailVerificationCodeMail($otp, $user->name)
-            );
+            try {
+                Mail::to($user->email)->send(
+                    new EmailVerificationCodeMail($otp, $user->name)
+                );
+            } catch (Throwable $e) {
+                report($e);
+            }
 
             return $this->successResponse([], 'A new verification code has been sent to your email.');
         } catch (ValidationException $e) {

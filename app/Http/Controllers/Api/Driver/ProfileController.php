@@ -28,6 +28,11 @@ class ProfileController extends BaseApiController
                 'city_id'           => ['sometimes', 'integer', 'exists:cities,id'],
                 'service_areas'     => ['sometimes', 'array', 'min:1'],
                 'service_areas.*'   => ['integer', 'exists:areas,id'],
+                'available_seats'   => ['sometimes', 'nullable', 'integer', 'min:1', 'max:20'],
+                'availability_hours' => ['sometimes', 'nullable', 'array', 'max:28'],
+                'availability_hours.*.day' => ['required_with:availability_hours', 'string'],
+                'availability_hours.*.start' => ['required_with:availability_hours', 'date_format:H:i'],
+                'availability_hours.*.end' => ['required_with:availability_hours', 'date_format:H:i', 'after:availability_hours.*.start'],
                 'emergency_contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'emergency_contact_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             ]);
@@ -37,6 +42,40 @@ class ProfileController extends BaseApiController
                 $details['home_address'] = $validated['home_address'];
                 $user->details = $details;
                 unset($validated['home_address']);
+            }
+
+            if (array_key_exists('available_seats', $validated)) {
+                $vehicleCap = $user->vehicleSeatCapacity();
+                if ($vehicleCap && (int) $validated['available_seats'] > $vehicleCap) {
+                    throw ValidationException::withMessages([
+                        'available_seats' => ['Available seats cannot exceed your vehicle capacity (' . $vehicleCap . ').'],
+                    ]);
+                }
+                $user->available_seats = $validated['available_seats'];
+                unset($validated['available_seats']);
+            }
+
+            if (array_key_exists('availability_hours', $validated)) {
+                $dayMap = [
+                    'mon' => 'monday', 'monday' => 'monday',
+                    'tue' => 'tuesday', 'tuesday' => 'tuesday',
+                    'wed' => 'wednesday', 'wednesday' => 'wednesday',
+                    'thu' => 'thursday', 'thursday' => 'thursday',
+                    'fri' => 'friday', 'friday' => 'friday',
+                    'sat' => 'saturday', 'saturday' => 'saturday',
+                    'sun' => 'sunday', 'sunday' => 'sunday',
+                ];
+                $hours = [];
+                foreach ($validated['availability_hours'] ?? [] as $row) {
+                    $day = $dayMap[strtolower(trim((string) ($row['day'] ?? '')))] ?? null;
+                    $start = substr((string) ($row['start'] ?? ''), 0, 5);
+                    $end = substr((string) ($row['end'] ?? ''), 0, 5);
+                    if ($day && $start < $end) {
+                        $hours[] = compact('day', 'start', 'end');
+                    }
+                }
+                $user->availability_hours = $hours;
+                unset($validated['availability_hours']);
             }
 
             if (array_key_exists('city_id', $validated)

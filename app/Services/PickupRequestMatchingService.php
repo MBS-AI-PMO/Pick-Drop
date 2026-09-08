@@ -23,13 +23,16 @@ class PickupRequestMatchingService
     }
 
     /**
-     * Pickup area plus optional drop area from the request.
+     * Pickup / drop areas on the request, plus any stop area ids.
      *
      * @return list<int>
      */
     public function requestAreaIds(PickupRequest $pickupRequest): array
     {
+        $pickupRequest->loadMissing('stops');
+
         return collect([$pickupRequest->area_id, $pickupRequest->drop_area_id])
+            ->merge($pickupRequest->stops->pluck('area_id'))
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()
@@ -48,6 +51,33 @@ class PickupRequestMatchingService
         }
 
         return $driver->isOnboardingComplete();
+    }
+
+    public function hasSeatCapacity(User $driver, PickupRequest $pickupRequest): bool
+    {
+        $capacity = (int) ($driver->effectiveAvailableSeats() ?? 0);
+        if ($capacity < 1) {
+            return true;
+        }
+
+        $used = PickupRequest::query()
+            ->where('driver_id', $driver->id)
+            ->whereNotIn('status', ['cancelled', 'pending'])
+            ->where('payment_status', PickupRequest::PAYMENT_PAID)
+            ->sum('passenger_count');
+
+        $incoming = (int) ($pickupRequest->passenger_count ?: 1);
+
+        return ($used + $incoming) <= $capacity;
+    }
+
+    public function matchesAvailability(User $driver, PickupRequest $pickupRequest): bool
+    {
+        return $driver->isAvailableForShift(
+            $pickupRequest->days ?? [],
+            $pickupRequest->pickup_time ? substr((string) $pickupRequest->pickup_time, 0, 5) : null,
+            $pickupRequest->drop_time ? substr((string) $pickupRequest->drop_time, 0, 5) : null
+        );
     }
 
     public function driverCanServe(User $driver, PickupRequest $pickupRequest): bool
@@ -70,25 +100,9 @@ class PickupRequestMatchingService
 
         $areaOk = count(array_intersect($serviceAreas, $requestAreas)) > 0;
 
-        return $areaOk && $this->hasSeatCapacity($driver, $pickupRequest);
-    }
-
-    public function hasSeatCapacity(User $driver, PickupRequest $pickupRequest): bool
-    {
-        $capacity = (int) ($driver->assignedVehicle?->category?->passenger_capacity ?? 0);
-        if ($capacity < 1) {
-            return true;
-        }
-
-        $used = PickupRequest::query()
-            ->where('driver_id', $driver->id)
-            ->whereNotIn('status', ['cancelled', 'pending'])
-            ->where('payment_status', PickupRequest::PAYMENT_PAID)
-            ->sum('passenger_count');
-
-        $incoming = (int) ($pickupRequest->passenger_count ?: 1);
-
-        return ($used + $incoming) <= $capacity;
+        return $areaOk
+            && $this->hasSeatCapacity($driver, $pickupRequest)
+            && $this->matchesAvailability($driver, $pickupRequest);
     }
 
     public function constrainAvailableQuery(Builder $query, User $driver): Builder
@@ -106,7 +120,10 @@ class PickupRequestMatchingService
             ->where('city_id', $cityId)
             ->where(function (Builder $q) use ($serviceAreaIds) {
                 $q->whereIn('area_id', $serviceAreaIds)
-                    ->orWhereIn('drop_area_id', $serviceAreaIds);
+                    ->orWhereIn('drop_area_id', $serviceAreaIds)
+                    ->orWhereHas('stops', function (Builder $stops) use ($serviceAreaIds) {
+                        $stops->whereIn('area_id', $serviceAreaIds);
+                    });
             })
             ->whereDoesntHave('driverRejections', function (Builder $q) use ($driver) {
                 $q->where('driver_id', $driver->id);

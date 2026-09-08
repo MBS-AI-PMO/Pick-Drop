@@ -362,6 +362,12 @@ class AuthController extends BaseApiController
             'updated_at' => now(),
         ]);
 
-        Mail::to($user->email)->send(new EmailVerificationCodeMail($code, $user->name));
+        try {
+            Mail::to($user->email)->send(new EmailVerificationCodeMail($code, $user->name));
+        } catch (Throwable $e) {
+            report($e);
+            // Registration must not fail if SMTP is misconfigured.
+            // Code is still stored and can be resent later.
+        }
     }
 }

@@ -60,7 +60,11 @@ class ShiftFareService
             throw new RuntimeException('Selected days do not fall within this shift period.');
         }
 
-        $tripCount = $workingDays * (count($stops) > 2 ? 1 : 2);
+        $pickupCount = collect($stops)->where('type', 'pickup')->count();
+        $dropCount = collect($stops)->where('type', 'drop')->count();
+        $oneSided = ($pickupCount === 0 && $dropCount > 0) || ($dropCount === 0 && $pickupCount > 0);
+        $tripMultiplier = ($oneSided || count($stops) > 2) ? 1 : 2;
+        $tripCount = $workingDays * $tripMultiplier;
         $perTrip = round($distanceKm * $rate, 2);
         $amount = round($perTrip * $tripCount, 2);
         $driverMonthly = max(0, (float) $charge->driver_monthly_rate);

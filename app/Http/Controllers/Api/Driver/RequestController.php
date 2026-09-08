@@ -36,6 +36,10 @@ class RequestController extends BaseApiController
                 )
                 ->latest()
                 ->get()
+                ->filter(function (PickupRequest $row) use ($driver) {
+                    return $this->matcher->hasSeatCapacity($driver, $row)
+                        && $this->matcher->matchesAvailability($driver, $row);
+                })
                 ->map(function (PickupRequest $row) use ($driver) {
                     $payload = $row->toApiArray('driver');
                     $km = $this->matcher->distanceKm($driver, $row);
