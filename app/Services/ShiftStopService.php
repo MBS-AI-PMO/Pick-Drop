@@ -57,10 +57,10 @@ class ShiftStopService
         }
         unset($row);
 
-        $pickups = collect($normalized)->where('type', 'pickup')->count();
-        $drops = collect($normalized)->where('type', 'drop')->count();
-        if ($pickups < 1 || $drops < 1) {
-            throw new RuntimeException('Add at least one pickup stop and one drop stop.');
+        $pickups = collect($normalized)->where('type', PickupRequestStop::TYPE_PICKUP)->count();
+        $drops = collect($normalized)->where('type', PickupRequestStop::TYPE_DROP)->count();
+        if ($pickups < 1 && $drops < 1) {
+            throw new RuntimeException('Add at least one pickup or one drop stop.');
         }
 
         return $normalized;
@@ -71,8 +71,11 @@ class ShiftStopService
      */
     public function defaultsFromRequest(PickupRequest $request): array
     {
-        return [
-            [
+        $serviceType = $request->resolvedServiceType();
+        $rows = [];
+
+        if ($serviceType !== PickupRequest::SERVICE_DROP_ONLY && filled($request->pickup_point)) {
+            $rows[] = [
                 'type' => PickupRequestStop::TYPE_PICKUP,
                 'sequence' => 1,
                 'name' => 'Pickup',
@@ -81,18 +84,23 @@ class ShiftStopService
                 'lng' => (float) $request->pickup_lng,
                 'area_id' => $request->area_id,
                 'scheduled_time' => substr((string) $request->pickup_time, 0, 5),
-            ],
-            [
+            ];
+        }
+
+        if ($serviceType !== PickupRequest::SERVICE_PICKUP_ONLY && filled($request->drop_point)) {
+            $rows[] = [
                 'type' => PickupRequestStop::TYPE_DROP,
-                'sequence' => 2,
+                'sequence' => count($rows) + 1,
                 'name' => 'Drop',
                 'point' => $request->drop_point,
                 'lat' => (float) $request->drop_lat,
                 'lng' => (float) $request->drop_lng,
                 'area_id' => $request->drop_area_id,
                 'scheduled_time' => substr((string) $request->drop_time, 0, 5),
-            ],
-        ];
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -126,6 +134,7 @@ class ShiftStopService
         $request->loadMissing('stops');
         $firstPickup = $request->stops->firstWhere('type', PickupRequestStop::TYPE_PICKUP);
         $lastDrop = $request->stops->where('type', PickupRequestStop::TYPE_DROP)->last();
+        $serviceType = $request->serviceTypeFromStops();
 
         if ($firstPickup) {
             $request->pickup_point = $firstPickup->point;
@@ -135,6 +144,11 @@ class ShiftStopService
             if ($firstPickup->area_id) {
                 $request->area_id = $firstPickup->area_id;
             }
+        } elseif ($serviceType === PickupRequest::SERVICE_DROP_ONLY) {
+            $request->pickup_point = null;
+            $request->pickup_lat = null;
+            $request->pickup_lng = null;
+            $request->pickup_time = null;
         }
 
         if ($lastDrop) {
@@ -143,8 +157,18 @@ class ShiftStopService
             $request->drop_lng = $lastDrop->lng;
             $request->drop_time = $lastDrop->formattedTime();
             $request->drop_area_id = $lastDrop->area_id;
+            if ($serviceType === PickupRequest::SERVICE_DROP_ONLY && $lastDrop->area_id && !$request->area_id) {
+                $request->area_id = $lastDrop->area_id;
+            }
+        } elseif ($serviceType === PickupRequest::SERVICE_PICKUP_ONLY) {
+            $request->drop_point = null;
+            $request->drop_lat = null;
+            $request->drop_lng = null;
+            $request->drop_time = null;
+            $request->drop_area_id = null;
         }
 
+        $request->service_type = $serviceType;
         $request->save();
     }
 
@@ -230,6 +254,11 @@ class ShiftStopService
         return [
             'pickup' => $pickup,
             'drop' => $drop,
+            'service_type' => match (true) {
+                $pickup && $drop => PickupRequest::SERVICE_BOTH,
+                (bool) $pickup => PickupRequest::SERVICE_PICKUP_ONLY,
+                default => PickupRequest::SERVICE_DROP_ONLY,
+            },
         ];
     }
 
@@ -266,15 +295,31 @@ class ShiftStopService
 
         $pickups = $request->stops->where('type', PickupRequestStop::TYPE_PICKUP);
         $drops = $request->stops->where('type', PickupRequestStop::TYPE_DROP);
-        $pickupsFinished = $pickups->every(fn (PickupRequestStop $stop) => !$stop->isOpen());
-        $dropsFinished = $drops->every(fn (PickupRequestStop $stop) => !$stop->isOpen());
+        $hasPickups = $pickups->isNotEmpty();
+        $hasDrops = $drops->isNotEmpty();
+        $pickupsFinished = $hasPickups && $pickups->every(fn (PickupRequestStop $stop) => !$stop->isOpen());
+        $dropsFinished = $hasDrops && $drops->every(fn (PickupRequestStop $stop) => !$stop->isOpen());
 
-        if ($dropsFinished && $pickupsFinished) {
-            $request->status = 'dropped';
-        } elseif ($pickupsFinished) {
-            $request->status = 'picked_up';
-        } elseif ($request->driver_id && $request->status === 'pending') {
-            $request->status = 'accepted';
+        if ($hasPickups && $hasDrops) {
+            if ($dropsFinished && $pickupsFinished) {
+                $request->status = 'dropped';
+            } elseif ($pickupsFinished) {
+                $request->status = 'picked_up';
+            } elseif ($request->driver_id && $request->status === 'pending') {
+                $request->status = 'accepted';
+            }
+        } elseif ($hasPickups) {
+            if ($pickupsFinished) {
+                $request->status = 'dropped';
+            } elseif ($request->driver_id && $request->status === 'pending') {
+                $request->status = 'accepted';
+            }
+        } elseif ($hasDrops) {
+            if ($dropsFinished) {
+                $request->status = 'dropped';
+            } elseif ($request->driver_id && $request->status === 'pending') {
+                $request->status = 'accepted';
+            }
         }
 
         $request->save();
