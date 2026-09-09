@@ -74,7 +74,6 @@ class PickupRequestAssignmentService
 
         $this->notifier->notifyParentRequestAccepted($updated);
         $this->notifier->notifyShiftPaymentRequired($updated, $invoice);
-        $this->notifyOthersTaken($updated, $driver);
 
         if ($source === 'auto') {
             $this->notifier->notify(
@@ -99,43 +98,13 @@ class PickupRequestAssignmentService
         return $updated;
     }
 
+    /**
+     * Auto-assign is disabled: requests stay visible to matching drivers
+     * until a driver explicitly accepts.
+     */
     public function autoAssignExpired(): int
     {
-        PickupRequest::query()
-            ->where('status', 'pending')
-            ->whereNull('driver_id')
-            ->whereNull('match_expires_at')
-            ->update([
-                'match_expires_at' => now()->addMinutes(self::MATCH_TIMEOUT_MINUTES),
-            ]);
-
-        $assigned = 0;
-
-        $expired = PickupRequest::query()
-            ->where('status', 'pending')
-            ->whereNull('driver_id')
-            ->whereNotNull('match_expires_at')
-            ->where('match_expires_at', '<=', now())
-            ->get();
-
-        foreach ($expired as $request) {
-            $driver = $this->matcher->eligibleDrivers($request)->first();
-
-            if ($driver) {
-                try {
-                    $this->assign($request, $driver, 'auto');
-                    $assigned++;
-                } catch (RuntimeException $e) {
-                    $this->extendWait($request, 'Auto-assign failed: ' . $e->getMessage());
-                }
-
-                continue;
-            }
-
-            $this->extendWait($request, 'No eligible driver found after timeout.');
-        }
-
-        return $assigned;
+        return 0;
     }
 
     private function notifyOthersTaken(PickupRequest $pickupRequest, User $acceptedBy): void

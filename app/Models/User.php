@@ -30,6 +30,8 @@ class User extends Authenticatable
         'details',
         'city_id',
         'service_areas',
+        'available_seats',
+        'availability_hours',
         'otp',
         'phone_otp',
         'phone_otp_expires_at',
@@ -79,6 +81,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'details' => 'array',
             'service_areas' => 'array',
+            'availability_hours' => 'array',
+            'available_seats' => 'integer',
         ];
     }
 
@@ -362,6 +366,118 @@ class User extends Authenticatable
         return count($this->service_areas ?? []) > 0;
     }
 
+    public function vehicleSeatCapacity(): ?int
+    {
+        $this->loadMissing('assignedVehicle.category');
+        $capacity = (int) ($this->assignedVehicle?->category?->passenger_capacity ?? 0);
+
+        return $capacity > 0 ? $capacity : null;
+    }
+
+    public function effectiveAvailableSeats(): ?int
+    {
+        $vehicleCap = $this->vehicleSeatCapacity();
+        $offered = $this->available_seats !== null ? (int) $this->available_seats : null;
+
+        if ($offered === null && $vehicleCap === null) {
+            return null;
+        }
+        if ($offered === null) {
+            return $vehicleCap;
+        }
+        if ($vehicleCap === null) {
+            return max(1, $offered);
+        }
+
+        return max(1, min($offered, $vehicleCap));
+    }
+
+    /**
+     * @return list<array{day: string, start: string, end: string}>
+     */
+    public function normalizedAvailabilityHours(): array
+    {
+        $rows = [];
+        foreach ($this->availability_hours ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $day = strtolower(trim((string) ($row['day'] ?? '')));
+            $start = substr((string) ($row['start'] ?? ''), 0, 5);
+            $end = substr((string) ($row['end'] ?? ''), 0, 5);
+            if ($day === '' || ! preg_match('/^\d{2}:\d{2}$/', $start) || ! preg_match('/^\d{2}:\d{2}$/', $end)) {
+                continue;
+            }
+            if ($start >= $end) {
+                continue;
+            }
+            $rows[] = [
+                'day' => $day,
+                'start' => $start,
+                'end' => $end,
+            ];
+        }
+
+        return array_values($rows);
+    }
+
+    /**
+     * @param  list<string>  $requestDays
+     */
+    public function isAvailableForShift(array $requestDays, ?string $pickupTime = null, ?string $dropTime = null): bool
+    {
+        $windows = $this->normalizedAvailabilityHours();
+        if ($windows === []) {
+            // No hours set yet = available any time (backward compatible).
+            return true;
+        }
+
+        $dayMap = [
+            'mon' => 'monday', 'monday' => 'monday',
+            'tue' => 'tuesday', 'tuesday' => 'tuesday',
+            'wed' => 'wednesday', 'wednesday' => 'wednesday',
+            'thu' => 'thursday', 'thursday' => 'thursday',
+            'fri' => 'friday', 'friday' => 'friday',
+            'sat' => 'saturday', 'saturday' => 'saturday',
+            'sun' => 'sunday', 'sunday' => 'sunday',
+        ];
+
+        $normalizedDays = collect($requestDays)
+            ->map(fn ($d) => $dayMap[strtolower(trim((string) $d))] ?? strtolower(trim((string) $d)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($normalizedDays === []) {
+            return true;
+        }
+
+        $pickup = $pickupTime ? substr($pickupTime, 0, 5) : null;
+        $drop = $dropTime ? substr($dropTime, 0, 5) : null;
+
+        foreach ($normalizedDays as $day) {
+            $dayWindows = collect($windows)->where('day', $day)->values();
+            if ($dayWindows->isEmpty()) {
+                return false;
+            }
+
+            $timeFits = function (?string $time) use ($dayWindows): bool {
+                if ($time === null || $time === '') {
+                    return true;
+                }
+
+                return $dayWindows->contains(fn (array $w) => $time >= $w['start'] && $time <= $w['end']);
+            };
+
+            if (! $timeFits($pickup) || ! $timeFits($drop)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function isOnboardingComplete(): bool
     {
         return $this->kycStatus() === 'approved'
@@ -443,6 +559,10 @@ class User extends Authenticatable
         $base['city'] = $this->city;
         $base['vehicle'] = $this->assignedVehicle;
         $base['service_areas'] = $map(array_map('intval', $this->service_areas ?? []));
+        $base['available_seats'] = $this->available_seats;
+        $base['vehicle_seat_capacity'] = $this->vehicleSeatCapacity();
+        $base['effective_available_seats'] = $this->effectiveAvailableSeats();
+        $base['availability_hours'] = $this->normalizedAvailabilityHours();
         $base['kyc_status'] = $this->kycStatus();
         $base['vehicle_verification_status'] = $this->vehicleVerificationStatus();
         $base['service_areas_setup'] = $this->hasServiceAreas();

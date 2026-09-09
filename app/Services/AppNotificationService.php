@@ -110,9 +110,13 @@ class AppNotificationService
         $this->notify(
             (int) $pickupRequest->parent_id,
             'pickup_request_accepted',
-            'Driver assigned',
-            sprintf('%s accepted your pickup request.', $driverName),
-            $this->requestData($pickupRequest, ['driver_id' => $pickupRequest->driver_id])
+            'Request accepted',
+            sprintf('%s accepted your request. Payment is pending — pay to start the shift.', $driverName),
+            $this->requestData($pickupRequest, [
+                'driver_id' => $pickupRequest->driver_id,
+                'next_step' => 'pay_invoice',
+                'payment_pending' => true,
+            ])
         );
 
         $this->notifyEligibleDrivers(

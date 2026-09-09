@@ -11,6 +11,7 @@ class PickupRequest extends Model
 
     protected $fillable = [
         'type',
+        'service_type',
         'parent_id',
         'student_id',
         'city_id',
@@ -186,15 +187,17 @@ class PickupRequest extends Model
 
         $rows = $stops->values()->map(function (PickupRequestStop $stop, int $index) {
             $payload = $stop->toApiArray();
-            $payload['leg'] = $stop->leg ?: ($index < 2 ? 'outbound' : 'return');
+            $payload['leg'] = $stop->leg ?: 'outbound';
             $payload['action'] = $stop->isPickup()
                 ? 'Pick up from ' . $stop->point
                 : 'Drop at ' . $stop->point;
+            $payload['virtual'] = false;
 
             return $payload;
         })->all();
 
-        $roundTrip = $this->round_trip !== false;
+        $roundTrip = $this->round_trip !== false && $this->resolvedServiceType() === self::SERVICE_BOTH;
+        // Virtual return legs only for classic 1 pickup + 1 drop. Multi-stop / one-sided journeys use stored stops as-is.
         if ($roundTrip && count($rows) === 2) {
             $pickup = $rows[0];
             $drop = $rows[1];
@@ -246,6 +249,59 @@ class PickupRequest extends Model
     public const PAYMENT_PENDING = 'pending_confirmation';
     public const PAYMENT_PAID = 'paid';
 
+    public const SERVICE_BOTH = 'both';
+    public const SERVICE_PICKUP_ONLY = 'pickup_only';
+    public const SERVICE_DROP_ONLY = 'drop_only';
+
+    public function resolvedServiceType(): string
+    {
+        $stored = strtolower(trim((string) ($this->service_type ?: '')));
+        if (in_array($stored, [self::SERVICE_BOTH, self::SERVICE_PICKUP_ONLY, self::SERVICE_DROP_ONLY], true)) {
+            return $stored;
+        }
+
+        return $this->serviceTypeFromStops();
+    }
+
+    public function serviceTypeFromStops(): string
+    {
+        $this->loadMissing('stops');
+        $hasPickup = $this->stops->contains(fn (PickupRequestStop $stop) => $stop->isPickup());
+        $hasDrop = $this->stops->contains(fn (PickupRequestStop $stop) => $stop->type === PickupRequestStop::TYPE_DROP);
+
+        if ($hasPickup && $hasDrop) {
+            return self::SERVICE_BOTH;
+        }
+        if ($hasPickup) {
+            return self::SERVICE_PICKUP_ONLY;
+        }
+        if ($hasDrop) {
+            return self::SERVICE_DROP_ONLY;
+        }
+
+        if (filled($this->pickup_point) && filled($this->drop_point)) {
+            return self::SERVICE_BOTH;
+        }
+        if (filled($this->pickup_point)) {
+            return self::SERVICE_PICKUP_ONLY;
+        }
+        if (filled($this->drop_point)) {
+            return self::SERVICE_DROP_ONLY;
+        }
+
+        return self::SERVICE_BOTH;
+    }
+
+    public function isPickupOnly(): bool
+    {
+        return $this->resolvedServiceType() === self::SERVICE_PICKUP_ONLY;
+    }
+
+    public function isDropOnly(): bool
+    {
+        return $this->resolvedServiceType() === self::SERVICE_DROP_ONLY;
+    }
+
     public function isShiftPaid(): bool
     {
         return $this->payment_status === self::PAYMENT_PAID;
@@ -263,7 +319,7 @@ class PickupRequest extends Model
         return match ($this->payment_status) {
             self::PAYMENT_PAID => 'Paid',
             self::PAYMENT_PENDING => 'Awaiting confirmation',
-            default => 'Unpaid',
+            default => $this->driver_id ? 'Payment pending' : 'Unpaid',
         };
     }
 
@@ -294,7 +350,12 @@ class PickupRequest extends Model
             'model' => 'monthly_advance',
             'required' => $required,
             'status' => $this->payment_status ?: self::PAYMENT_UNPAID,
+            'status_label' => $this->paymentStatusLabel(),
+            'payment_pending' => $required,
             'can_start_trip' => $this->isShiftPaid(),
+            'message' => $required
+                ? 'Payment is pending. The shift will start only after payment is completed.'
+                : ($this->isShiftPaid() ? 'Payment received. Shift can start.' : null),
             'duration_months' => $months,
             'min_months' => 1,
             'shift_start_date' => $this->shift_start_date?->toDateString(),
@@ -464,6 +525,7 @@ class PickupRequest extends Model
         return [
             'id' => $this->id,
             'type' => $this->type,
+            'service_type' => $this->resolvedServiceType(),
             'status' => $this->status,
             'parent_id' => $this->parent_id,
             'parent' => $this->relationLoaded('parent') ? $this->parent : null,

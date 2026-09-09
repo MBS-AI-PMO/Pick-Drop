@@ -13,8 +13,7 @@ use Throwable;
 class ServiceAreaController extends BaseApiController
 {
     /**
-     * Optional later update: view city + service areas.
-     * Onboarding mein service areas KYC (personal info) ke sath select hote hain.
+     * Optional later update: view city + service areas + seats/hours.
      */
     public function index(Request $request): JsonResponse
     {
@@ -38,7 +37,6 @@ class ServiceAreaController extends BaseApiController
                 ? City::query()->active()->select('id', 'name', 'latitude', 'longitude', 'status')->find($cityId)
                 : null;
 
-            // Areas only after a city is chosen — never mix areas from other cities.
             $availableAreas = $city
                 ? Area::query()
                     ->active()
@@ -63,6 +61,10 @@ class ServiceAreaController extends BaseApiController
                 'available_areas' => $availableAreas,
                 'selected_area_ids' => $selectedIdsForCity,
                 'service_areas' => $selectedAreas,
+                'available_seats' => $user->available_seats,
+                'vehicle_seat_capacity' => $user->vehicleSeatCapacity(),
+                'effective_available_seats' => $user->effectiveAvailableSeats(),
+                'availability_hours' => $user->normalizedAvailabilityHours(),
                 'select_city_first' => $city === null,
                 'service_areas_setup' => $user->hasServiceAreas(),
                 'onboarding_complete' => $user->isOnboardingComplete(),
@@ -76,7 +78,7 @@ class ServiceAreaController extends BaseApiController
     }
 
     /**
-     * Optional later update of city + service areas (not an onboarding step).
+     * Update city, service areas, available seats, and availability hours.
      */
     public function sync(Request $request): JsonResponse
     {
@@ -88,19 +90,38 @@ class ServiceAreaController extends BaseApiController
             }
 
             $raw = $request->input('service_areas', $request->input('area_ids'));
-            if (!is_array($raw)) {
+            if (! is_array($raw)) {
                 $raw = [];
             }
+
+            $vehicleCap = $user->vehicleSeatCapacity();
 
             $validated = Validator::make(
                 [
                     'city_id' => $request->input('city_id'),
                     'area_ids' => $raw,
+                    'available_seats' => $request->input('available_seats'),
+                    'availability_hours' => $request->input('availability_hours'),
                 ],
                 [
                     'city_id' => ['required', 'integer', 'exists:cities,id'],
                     'area_ids' => ['required', 'array', 'min:1'],
                     'area_ids.*' => ['integer', 'exists:areas,id'],
+                    'available_seats' => [
+                        'nullable',
+                        'integer',
+                        'min:1',
+                        $vehicleCap ? 'max:' . $vehicleCap : 'max:20',
+                    ],
+                    'availability_hours' => ['nullable', 'array', 'max:28'],
+                    'availability_hours.*.day' => ['required_with:availability_hours', 'string'],
+                    'availability_hours.*.start' => ['required_with:availability_hours', 'date_format:H:i'],
+                    'availability_hours.*.end' => ['required_with:availability_hours', 'date_format:H:i', 'after:availability_hours.*.start'],
+                ],
+                [
+                    'available_seats.max' => $vehicleCap
+                        ? 'Available seats cannot exceed your vehicle capacity (' . $vehicleCap . ').'
+                        : 'Available seats cannot exceed 20.',
                 ]
             )->validate();
 
@@ -111,8 +132,16 @@ class ServiceAreaController extends BaseApiController
 
             $user->city_id = $cityId;
             $user->service_areas = $ids;
-            $user->save();
 
+            if (array_key_exists('available_seats', $validated)) {
+                $user->available_seats = $validated['available_seats'];
+            }
+
+            if (array_key_exists('availability_hours', $validated)) {
+                $user->availability_hours = $this->normalizeHoursInput($validated['availability_hours'] ?? []);
+            }
+
+            $user->save();
             $user->loadMissing('city');
 
             $selectedAreas = Area::whereIn('id', $ids)->orderBy('name')->get()->values()->all();
@@ -122,14 +151,52 @@ class ServiceAreaController extends BaseApiController
                 'city' => $user->city,
                 'selected_area_ids' => $ids,
                 'service_areas' => $selectedAreas,
+                'available_seats' => $user->available_seats,
+                'vehicle_seat_capacity' => $user->vehicleSeatCapacity(),
+                'effective_available_seats' => $user->effectiveAvailableSeats(),
+                'availability_hours' => $user->normalizedAvailabilityHours(),
                 'service_areas_setup' => true,
                 'onboarding_complete' => $user->fresh()->isOnboardingComplete(),
                 'next_step' => $user->fresh()->driverNextStep(),
-            ], 'City and service areas updated successfully.');
+            ], 'City, service areas, seats and availability updated successfully.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to save service areas');
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array{day: string, start: string, end: string}>
+     */
+    private function normalizeHoursInput(array $rows): array
+    {
+        $dayMap = [
+            'mon' => 'monday', 'monday' => 'monday',
+            'tue' => 'tuesday', 'tuesday' => 'tuesday',
+            'wed' => 'wednesday', 'wednesday' => 'wednesday',
+            'thu' => 'thursday', 'thursday' => 'thursday',
+            'fri' => 'friday', 'friday' => 'friday',
+            'sat' => 'saturday', 'saturday' => 'saturday',
+            'sun' => 'sunday', 'sunday' => 'sunday',
+        ];
+
+        $normalized = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $dayKey = strtolower(trim((string) ($row['day'] ?? '')));
+            $day = $dayMap[$dayKey] ?? null;
+            $start = substr((string) ($row['start'] ?? ''), 0, 5);
+            $end = substr((string) ($row['end'] ?? ''), 0, 5);
+            if (! $day || ! preg_match('/^\d{2}:\d{2}$/', $start) || ! preg_match('/^\d{2}:\d{2}$/', $end) || $start >= $end) {
+                continue;
+            }
+            $normalized[] = compact('day', 'start', 'end');
+        }
+
+        return array_values($normalized);
     }
 }
