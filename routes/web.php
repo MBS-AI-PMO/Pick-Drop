@@ -1,37 +1,32 @@
 <?php
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\LocationController;
-use App\Http\Controllers\PickDropChargeController;
-use App\Http\Controllers\VehicleController;
-use App\Http\Controllers\SchoolRouteController;
 use App\Http\Controllers\DashboardController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Illuminate\Auth\Events\PasswordReset;
-
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\DriverVerificationController;
-use App\Http\Controllers\VehicleVerificationController;
-use App\Http\Controllers\ParentSelfVerificationController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\PaymentSettingController;
-use App\Http\Controllers\StripeWebhookController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PickupRequestController;
-use App\Http\Controllers\IssueController as AdminIssueController;
-use App\Http\Controllers\HolidayController;
-use App\Http\Controllers\FleetController;
-use App\Http\Controllers\SosAlertController;
-use App\Http\Controllers\PlatformSettingController;
-use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\DriverPayrollController;
-use App\Http\Controllers\LoginLogController;
+use App\Http\Controllers\DriverVerificationController;
+use App\Http\Controllers\FleetController;
+use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\IssueController as AdminIssueController;
 use App\Http\Controllers\LocalPaymentCallbackController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\LoginLogController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ParentSelfVerificationController;
+use App\Http\Controllers\PaymentSettingController;
+use App\Http\Controllers\PickDropChargeController;
+use App\Http\Controllers\PickupRequestController;
+use App\Http\Controllers\PlatformSettingController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\SchoolRouteController;
+use App\Http\Controllers\SosAlertController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\VehicleVerificationController;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
-
 
 Route::get('/', function () {
     return view('pages.auth.login');
@@ -40,7 +35,7 @@ Route::get('/', function () {
 // Protected Admin Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
     Route::get('/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
@@ -167,18 +162,24 @@ Route::middleware(['auth'])->group(function () {
         ->name('driver-payroll.reject');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
-    ->name('notifications.clear');
+        ->name('notifications.clear');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
-    ->name('vehicles.unassign');
+        ->name('vehicles.unassign');
 });
 
 // Auth Routes (Public)
-Route::group(['prefix' => 'auth'], function(){
-    Route::get('login', function () { return view('pages.auth.login'); })->name('login');
-    Route::get('register', function () { return view('pages.auth.register'); })->name('auth.register');
-    Route::get('forgot-password', function () { return view('pages.auth.forgot-password'); })->name('auth.forgot-password');
+Route::group(['prefix' => 'auth'], function () {
+    Route::get('login', function () {
+        return view('pages.auth.login');
+    })->name('login');
+    Route::get('register', function () {
+        return view('pages.auth.register');
+    })->name('auth.register');
+    Route::get('forgot-password', function () {
+        return view('pages.auth.forgot-password');
+    })->name('auth.forgot-password');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])
-    ->name('password.update');
+        ->name('password.update');
 
     // Auth form submissions
     Route::post('login', [AuthController::class, 'login'])
@@ -199,9 +200,10 @@ Route::post('/payments/easypaisa/callback', [LocalPaymentCallbackController::cla
 Route::get('/payments/stripe/complete', [InvoiceController::class, 'stripeComplete'])->name('payments.stripe.complete');
 Route::get('/payments/stripe/cancel/{invoice}', [InvoiceController::class, 'stripeCancel'])->name('payments.stripe.cancel');
 
-Route::get('/clear-cache', function() {
+Route::get('/clear-cache', function () {
     Artisan::call('cache:clear');
-    return "Cache is cleared";
+
+    return 'Cache is cleared';
 })->name('clear-cache');
 
 // HTML 404 for unknown admin pages only. Do not use Route::any() here —
