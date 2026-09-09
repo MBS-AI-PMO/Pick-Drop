@@ -138,7 +138,7 @@
               </a>
             </li>
             <li>
-              <a href="{{ route('auth.login') }}" class="dropdown-item py-2 text-body ms-0">
+              <a href="{{ route('login') }}" class="dropdown-item py-2 text-body ms-0">
                 <i class="me-2 icon-md" data-lucide="log-out"></i>
                 <span>Log Out</span>
               </a>

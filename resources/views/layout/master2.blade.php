@@ -49,6 +49,45 @@ License: You must have a valid license to legally use this template for your pro
   <!-- CSS for LTR layout-->
   @vite(['resources/sass/app.scss', 'resources/css/custom.css'])
 
+  <style>
+    @media (max-width: 767.98px) {
+      .page-wrapper.full-page .page-content {
+        width: 100%;
+        min-width: 0;
+        padding: 16px;
+      }
+
+      .auth-page {
+        width: calc(100vw - 32px) !important;
+        max-width: calc(100vw - 32px);
+        min-width: 0;
+      }
+
+      .auth-page > [class*="col-"] {
+        width: calc(100vw - 32px);
+        max-width: calc(100vw - 32px);
+        min-width: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      .auth-page .auth-card {
+        width: calc(100vw - 32px);
+        max-width: calc(100vw - 32px);
+      }
+
+      .auth-page .auth-form-wrapper {
+        padding: 2rem 1.25rem;
+      }
+
+      .auth-page .input-group,
+      .auth-page .form-control {
+        max-width: 100%;
+        min-width: 0;
+      }
+    }
+  </style>
+
   <!-- CSS for RTL layout-->
   <!-- @vite(['resources/rtl-css/app-rtl.css', 'resources/rtl-css/custom-rtl.css']) -->
 
