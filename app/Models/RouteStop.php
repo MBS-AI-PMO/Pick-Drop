@@ -12,6 +12,9 @@ class RouteStop extends Model
     protected $fillable = [
         'route_id',
         'name',
+        'latitude',
+        'longitude',
+        'address',
         'arrival_time',
         'order',
         'created_by',
@@ -19,6 +22,8 @@ class RouteStop extends Model
 
     protected $casts = [
         'arrival_time' => 'datetime:H:i',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function route()

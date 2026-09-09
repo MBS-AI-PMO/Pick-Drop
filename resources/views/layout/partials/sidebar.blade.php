@@ -84,6 +84,9 @@
                 <li class="nav-item">
                   <a href="{{ route('locations.areas.index') }}" class="nav-link {{ request()->is('locations/areas') ? 'active' : '' }}">Manage Areas</a>
                 </li>
+                <li class="nav-item">
+                  <a href="{{ route('locations.points.index') }}" class="nav-link {{ request()->is('locations/points') ? 'active' : '' }}">Pickup / Drop points</a>
+                </li>
               </ul>
             </div>
           </li>
@@ -111,6 +114,12 @@
             <a href="{{ route('pickup-requests.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="clipboard-list"></i>
               <span class="link-title">Pickup Requests</span>
+            </a>
+          </li>
+          <li class="nav-item {{ active_class(['fleet', 'fleet/*']) }}">
+            <a href="{{ route('fleet.live.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="radar"></i>
+              <span class="link-title">Live fleet</span>
             </a>
           </li>
           <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">

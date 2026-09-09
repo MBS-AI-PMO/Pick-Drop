@@ -52,6 +52,9 @@ class StudentController extends BaseApiController
                 'pickup_lng' => ['nullable', 'numeric', 'between:-180,180'],
                 'pickup_time' => ['nullable', 'date_format:H:i'],
                 'dropoff_time' => ['nullable', 'date_format:H:i'],
+                'emergency_name' => ['nullable', 'string', 'max:255'],
+                'emergency_phone' => ['nullable', 'string', 'max:30'],
+                'emergency_relation' => ['nullable', 'string', 'max:50'],
             ]);
 
             $validated = $this->applySelectedInstitution($validated);
@@ -126,6 +129,9 @@ class StudentController extends BaseApiController
                 'pickup_time' => ['sometimes', 'nullable', 'date_format:H:i'],
                 'dropoff_time' => ['sometimes', 'nullable', 'date_format:H:i'],
                 'status' => ['sometimes', 'in:active,inactive'],
+                'emergency_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'emergency_phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+                'emergency_relation' => ['sometimes', 'nullable', 'string', 'max:50'],
             ]);
 
             $validated = $this->applySelectedInstitution($validated);

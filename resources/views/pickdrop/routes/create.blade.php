@@ -74,16 +74,35 @@
                 <option value="">Select shift</option>
                 <option value="morning" {{ old('shift') === 'morning' ? 'selected' : '' }}>Morning</option>
                 <option value="afternoon" {{ old('shift') === 'afternoon' ? 'selected' : '' }}>Afternoon</option>
+                <option value="evening" {{ old('shift') === 'evening' ? 'selected' : '' }}>Evening</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Assign Vehicle <span class="text-danger">*</span></label>
+              <label class="form-label fw-semibold">Institution</label>
+              <select class="form-select" name="school_id">
+                <option value="">No linked institution</option>
+                @foreach(($schools ?? []) as $school)
+                  <option value="{{ $school->id }}" @selected((string) old('school_id') === (string) $school->id)>{{ $school->name }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assign Vehicle</label>
               <select class="form-select" name="vehicle_id">
                 <option value="">Select vehicle</option>
                 @foreach($vehicles as $vehicle)
                   <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
                     {{ $vehicle->name }} ({{ $vehicle->license_plate }})
                   </option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assign Driver</label>
+              <select class="form-select" name="driver_id">
+                <option value="">Select driver</option>
+                @foreach(($drivers ?? []) as $driver)
+                  <option value="{{ $driver->id }}" @selected((string) old('driver_id') === (string) $driver->id)>{{ $driver->name }}</option>
                 @endforeach
               </select>
             </div>

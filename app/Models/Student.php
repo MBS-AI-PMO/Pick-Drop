@@ -24,6 +24,9 @@ class Student extends Model
         'pickup_time',
         'dropoff_time',
         'status',
+        'emergency_name',
+        'emergency_phone',
+        'emergency_relation',
     ];
 
     protected $casts = [

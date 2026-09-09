@@ -28,16 +28,30 @@ class RideController extends BaseApiController
             }
 
             $stops = app(ShiftDayService::class)->todayStopsForDriver($driver);
-            $stops->loadMissing('pickupRequest.stops.area');
+            $stops->loadMissing(['pickupRequest.stops.area', 'pickupRequest.student', 'pickupRequest.parent', 'pickupRequest.vehicle']);
             $payload = $stops->map(fn (PickupRequestStop $stop) => $stop->toApiArray())->values();
             $trips = $stops->groupBy('pickup_request_id')->map(function ($group) {
                 $pickupRequest = $group->first()?->pickupRequest;
+                $student = $pickupRequest?->student;
 
                 return [
                     'pickup_request_id' => $pickupRequest?->id,
-                    'passenger' => $pickupRequest?->student?->name ?: $pickupRequest?->requesterName(),
+                    'passenger' => $student?->name ?: $pickupRequest?->requesterName(),
+                    'passenger_count' => (int) ($pickupRequest?->passenger_count ?: 1),
+                    'manifest' => [
+                        'name' => $student?->name ?: $pickupRequest?->requesterName(),
+                        'type' => $pickupRequest?->type,
+                        'phone' => $pickupRequest?->parent?->phone,
+                        'school' => $student?->school_name,
+                        'grade' => $student?->grade,
+                        'emergency_name' => $student?->emergency_name,
+                        'emergency_phone' => $student?->emergency_phone,
+                        'emergency_relation' => $student?->emergency_relation,
+                        'vehicle_plate' => $pickupRequest?->vehicle?->license_plate,
+                    ],
                     'round_trip' => $pickupRequest?->round_trip !== false,
                     'journey' => $pickupRequest?->journeyApiArray(),
+                    'today' => $pickupRequest?->todayRunApiArray(false),
                     'stop_ids' => $group->pluck('id')->values()->all(),
                 ];
             })->values();
@@ -53,6 +67,7 @@ class RideController extends BaseApiController
                     'done' => $payload->where('status', PickupRequestStop::STATUS_DONE)->count(),
                     'pickups' => $payload->where('type', PickupRequestStop::TYPE_PICKUP)->count(),
                     'drops' => $payload->where('type', PickupRequestStop::TYPE_DROP)->count(),
+                    'passengers' => $trips->sum('passenger_count'),
                 ],
                 'trips' => $trips,
                 'stops' => $payload,
@@ -97,6 +112,50 @@ class RideController extends BaseApiController
     public function markDrop(Request $request, int $rideId): JsonResponse
     {
         return $this->markStop($request, $rideId, 'drop');
+    }
+
+    public function start(Request $request, PickupRequest $pickupRequest): JsonResponse
+    {
+        try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $run = app(ShiftDayService::class)->startTrip($pickupRequest, $driver);
+
+            return $this->successResponse([
+                'today' => $run->toApiArray(false),
+                'request' => $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'stops.area'])?->toApiArray('driver'),
+            ], 'Trip started');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to start trip');
+        }
+    }
+
+    public function arrive(Request $request, PickupRequest $pickupRequest): JsonResponse
+    {
+        try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $run = app(ShiftDayService::class)->markArrived($pickupRequest, $driver);
+
+            return $this->successResponse([
+                'today' => $run->toApiArray(false),
+                'request' => $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'stops.area'])?->toApiArray('driver'),
+            ], 'Arrived at pickup');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to mark arrival');
+        }
     }
 
     public function updateLocation(Request $request): JsonResponse

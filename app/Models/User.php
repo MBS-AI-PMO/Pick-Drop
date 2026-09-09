@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'duty_status',
         'details',
         'city_id',
         'service_areas',
@@ -91,6 +92,11 @@ class User extends Authenticatable
         $role = strtolower(trim((string) $this->role));
 
         return in_array($role, ['admin', 'super admin'], true);
+    }
+
+    public function isOnDuty(): bool
+    {
+        return strcasecmp(trim((string) ($this->duty_status ?: 'on_duty')), 'off_duty') !== 0;
     }
 
     public function canManageAdmins(): bool
@@ -441,6 +447,8 @@ class User extends Authenticatable
         $base['vehicle_verification_status'] = $this->vehicleVerificationStatus();
         $base['service_areas_setup'] = $this->hasServiceAreas();
         $base['onboarding_complete'] = $this->isOnboardingComplete();
+        $base['duty_status'] = $this->duty_status ?: 'on_duty';
+        $base['is_on_duty'] = $this->isOnDuty();
         $base['next_step'] = $this->driverNextStep();
         $base['phone_verified'] = $this->phone_verified_at !== null;
         $base['needs_phone_verification'] = $this->needsPhoneVerification();

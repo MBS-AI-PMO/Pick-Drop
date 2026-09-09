@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\SchoolRoute;
+use App\Models\RouteStop;
 use App\Models\Area;
 use App\Models\City;
+use App\Models\School;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\AppPagination;
 use Illuminate\Http\Request;
@@ -68,7 +71,13 @@ class SchoolRouteController extends Controller
             $citiesWithAreas = City::with(['areas' => function ($q) {
                 $q->orderBy('name');
             }])->orderBy('name')->get();
-            return view('pickdrop.routes.create', compact('vehicles', 'citiesWithAreas'));
+            $schools = School::query()->orderBy('name')->get(['id', 'name', 'city_id']);
+            $drivers = User::query()
+                ->whereRaw('LOWER(role) = ?', ['driver'])
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            return view('pickdrop.routes.create', compact('vehicles', 'citiesWithAreas', 'schools', 'drivers'));
         } catch (\Throwable $e) {
             Log::error('Failed to load route create page', [
                 'error' => $e->getMessage(),
@@ -80,7 +89,6 @@ class SchoolRouteController extends Controller
 
     public function store(Request $request)
     {
-        dd($request->all());
         $data = $request->validate([
             'city_id'                 => 'required|exists:cities,id',
             'area_id'                 => 'nullable|exists:areas,id',
@@ -89,8 +97,10 @@ class SchoolRouteController extends Controller
             'allow_multi_area'        => 'nullable|boolean',
             'name'                    => 'required|string|max:255',
             'code'                    => 'nullable|string|max:50|unique:routes,code',
-            'shift'                   => 'required|string|in:morning,afternoon',
+            'shift'                   => 'required|string|in:morning,afternoon,evening',
             'vehicle_id'              => 'nullable|exists:vehicles,id',
+            'school_id'               => 'nullable|exists:schools,id',
+            'driver_id'               => 'nullable|exists:users,id',
             'start_time'              => 'nullable|date_format:H:i',
             'end_time'                => 'nullable|date_format:H:i|after_or_equal:start_time',
             'destination'             => 'required|string|max:255',
@@ -165,13 +175,18 @@ class SchoolRouteController extends Controller
     public function edit(SchoolRoute $route)
     {
         try {
-            $route->load(['vehicle', 'stops']);
+            $route->load(['vehicle', 'stops', 'school', 'driver']);
             $vehicles = Vehicle::select('id', 'name', 'license_plate')->get();
             $citiesWithAreas = City::with(['areas' => function ($q) {
                 $q->orderBy('name');
             }])->orderBy('name')->get();
+            $schools = School::query()->orderBy('name')->get(['id', 'name', 'city_id']);
+            $drivers = User::query()
+                ->whereRaw('LOWER(role) = ?', ['driver'])
+                ->orderBy('name')
+                ->get(['id', 'name']);
 
-            return view('pickdrop.routes.edit', compact('route', 'vehicles', 'citiesWithAreas'));
+            return view('pickdrop.routes.edit', compact('route', 'vehicles', 'citiesWithAreas', 'schools', 'drivers'));
         } catch (\Throwable $e) {
             Log::error('Failed to load route edit page', [
                 'route_id' => $route->id,
@@ -192,8 +207,10 @@ class SchoolRouteController extends Controller
             'allow_multi_area'        => 'nullable|boolean',
             'name'        => 'required|string|max:255',
             'code'        => 'nullable|string|max:50|unique:routes,code,' . $route->id,
-            'shift'       => 'required|string|in:morning,afternoon',
+            'shift'       => 'required|string|in:morning,afternoon,evening',
             'vehicle_id'  => 'nullable|exists:vehicles,id',
+            'school_id'   => 'nullable|exists:schools,id',
+            'driver_id'   => 'nullable|exists:users,id',
             'start_time'  => 'nullable|date_format:H:i',
             'end_time'    => 'nullable|date_format:H:i|after_or_equal:start_time',
             'destination' => 'required|string|max:255',
@@ -279,6 +296,66 @@ class SchoolRouteController extends Controller
 
             return redirect()->route('routes.index')->with('error', 'Failed to delete route: ' . $e->getMessage());
         }
+    }
+
+    public function storeStop(Request $request, SchoolRoute $route)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'arrival_time' => 'nullable|date_format:H:i',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'order' => 'nullable|integer|min:1',
+        ]);
+
+        $order = $data['order'] ?? ((int) $route->stops()->max('order') + 1);
+
+        RouteStop::create([
+            'route_id' => $route->id,
+            'name' => $data['name'],
+            'address' => $data['address'] ?? null,
+            'arrival_time' => $data['arrival_time'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'order' => $order,
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()->route('routes.edit', $route)->with('success', 'Route stop added.');
+    }
+
+    public function updateStop(Request $request, SchoolRoute $route, RouteStop $stop)
+    {
+        abort_unless((int) $stop->route_id === (int) $route->id, 404);
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'arrival_time' => 'nullable|date_format:H:i',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'order' => 'nullable|integer|min:1',
+        ]);
+
+        $stop->update([
+            'name' => $data['name'],
+            'address' => $data['address'] ?? null,
+            'arrival_time' => $data['arrival_time'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'order' => $data['order'] ?? $stop->order,
+        ]);
+
+        return redirect()->route('routes.edit', $route)->with('success', 'Route stop updated.');
+    }
+
+    public function destroyStop(SchoolRoute $route, RouteStop $stop)
+    {
+        abort_unless((int) $stop->route_id === (int) $route->id, 404);
+        $stop->delete();
+
+        return redirect()->route('routes.edit', $route)->with('success', 'Route stop removed.');
     }
 
     private function haversineDistanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float

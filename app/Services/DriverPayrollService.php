@@ -232,6 +232,14 @@ class DriverPayrollService
             'warning'
         );
 
+        $this->notifier->notify(
+            (int) $driver->id,
+            'payroll_requested',
+            'Payment requested',
+            sprintf('Your payment request %s for %s is with admin.', $bill->bill_number, $bill->periodLabel()),
+            ['bill_id' => $bill->id]
+        );
+
         return $bill;
     }
 
@@ -262,6 +270,11 @@ class DriverPayrollService
     {
         if (!in_array($bill->status, [DriverPayrollBill::STATUS_PENDING, DriverPayrollBill::STATUS_APPROVED], true)) {
             throw new RuntimeException('This bill cannot be marked as paid.');
+        }
+
+        $driver = $bill->driver ?? User::query()->find($bill->driver_id);
+        if (!$driver || !$driver->hasPaymentAccount()) {
+            throw new RuntimeException('Driver bank details are required before payout.');
         }
 
         $bill->update([

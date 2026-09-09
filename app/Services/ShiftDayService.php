@@ -152,6 +152,80 @@ class ShiftDayService
         return $stop->fresh(['area', 'pickupRequest.student', 'pickupRequest.parent', 'pickupRequest.city']);
     }
 
+    public function startTrip(PickupRequest $request, User $driver): ShiftDayRun
+    {
+        $this->assertDriverCanOperate($request, $driver);
+
+        $run = $this->ensureToday($request);
+        if ($run->status === ShiftDayRun::SKIPPED) {
+            throw new RuntimeException('This shift is skipped today.');
+        }
+
+        if (in_array($run->status, [ShiftDayRun::DROPPED, ShiftDayRun::COMPLETED], true)) {
+            throw new RuntimeException('This trip is already finished for today.');
+        }
+
+        if ($run->status === ShiftDayRun::SCHEDULED || !$run->started_at) {
+            $run->status = ShiftDayRun::STARTED;
+            $run->started_at = $run->started_at ?: now();
+            $run->save();
+
+            app(AppNotificationService::class)->notifyPickupRequestStatus($request, 'started');
+        }
+
+        return $run->fresh();
+    }
+
+    public function markArrived(PickupRequest $request, User $driver): ShiftDayRun
+    {
+        $this->assertDriverCanOperate($request, $driver);
+
+        $run = $this->ensureToday($request);
+        if ($run->status === ShiftDayRun::SKIPPED) {
+            throw new RuntimeException('This shift is skipped today.');
+        }
+
+        if (in_array($run->status, [ShiftDayRun::DROPPED, ShiftDayRun::COMPLETED], true)) {
+            throw new RuntimeException('This trip is already finished for today.');
+        }
+
+        if ($run->status === ShiftDayRun::SCHEDULED || !$run->started_at) {
+            $run->status = ShiftDayRun::STARTED;
+            $run->started_at = $run->started_at ?: now();
+        }
+
+        if (! in_array($run->status, [ShiftDayRun::PICKED_UP, ShiftDayRun::DROPPED, ShiftDayRun::COMPLETED], true)) {
+            $run->status = ShiftDayRun::ARRIVED;
+        }
+
+        $run->arrived_at = $run->arrived_at ?: now();
+        $run->save();
+
+        app(AppNotificationService::class)->notifyPickupRequestStatus($request, 'arrived');
+
+        return $run->fresh();
+    }
+
+    private function assertDriverCanOperate(PickupRequest $request, User $driver): void
+    {
+        if (!$request->isShiftPaid()) {
+            throw new RuntimeException('Trip cannot start until the customer completes payment for this shift.');
+        }
+
+        if (in_array($request->status, ['cancelled'], true)) {
+            throw new RuntimeException('This shift is no longer active.');
+        }
+
+        $todayDriver = app(CoverService::class)->driverForDate($request, now()->toDateString());
+        if (!$todayDriver || (int) $todayDriver->id !== (int) $driver->id) {
+            throw new RuntimeException('This trip is not assigned to you today.');
+        }
+
+        if ($this->attendance->isOffDay($request)) {
+            throw new RuntimeException('This shift is skipped or on holiday today.');
+        }
+    }
+
     public function markRequestStage(PickupRequest $request, string $stage): ShiftDayRun
     {
         $run = $this->ensureToday($request);
@@ -204,10 +278,26 @@ class ShiftDayService
             $run->status = ShiftDayRun::PICKED_UP;
         }
 
+        if ($run->status === ShiftDayRun::PICKED_UP && !$run->started_at) {
+            $run->started_at = now();
+        }
+
         $run->save();
 
-        if ($request->status === 'pending' && $request->driver_id) {
-            $request->update(['status' => 'accepted']);
+        if (! in_array($request->status, ['cancelled', 'completed'], true)) {
+            $bookingStatus = $request->status;
+
+            if (in_array($run->status, [ShiftDayRun::DROPPED, ShiftDayRun::COMPLETED], true)) {
+                $bookingStatus = 'dropped';
+            } elseif ($run->status === ShiftDayRun::PICKED_UP) {
+                $bookingStatus = 'picked_up';
+            } elseif ($request->status === 'pending' && $request->driver_id) {
+                $bookingStatus = 'accepted';
+            }
+
+            if ($bookingStatus !== $request->status) {
+                $request->update(['status' => $bookingStatus]);
+            }
         }
 
         $notify = match ($run->status) {

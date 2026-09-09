@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('parent_self_verifications')) {
+            return;
+        }
+
         Schema::table('parent_self_verifications', function (Blueprint $table) {
             if (!Schema::hasColumn('parent_self_verifications', 'account_type')) {
                 $table->string('account_type', 20)->default('parent')->after('user_id');
@@ -36,6 +40,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('parent_self_verifications')) {
+            return;
+        }
+
         Schema::table('parent_self_verifications', function (Blueprint $table) {
             if (Schema::hasColumn('parent_self_verifications', 'account_type')) {
                 $table->dropIndex(['account_type']);

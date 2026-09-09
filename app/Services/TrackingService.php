@@ -46,12 +46,16 @@ class TrackingService
      */
     public function payload(PickupRequest $pickupRequest): array
     {
-        $pickupRequest->loadMissing(['driver', 'stops', 'student']);
+        $pickupRequest->loadMissing(['driver.driverVerification', 'vehicle', 'stops', 'student']);
         $assigned = $pickupRequest->driver;
         $driver = app(CoverService::class)->driverForDate($pickupRequest) ?: $assigned;
+        if ($driver && ! $driver->relationLoaded('driverVerification')) {
+            $driver->load('driverVerification');
+        }
         $isCover = $driver && $assigned && (int) $driver->id !== (int) $assigned->id;
         $base = $pickupRequest->trackingApiArray();
         $geofence = (int) PlatformSetting::current()->geofence_meters;
+        $vehicle = $pickupRequest->vehicle;
 
         $trail = [];
         if ($driver) {
@@ -110,8 +114,14 @@ class TrackingService
                 'id' => $driver->id,
                 'name' => $driver->name,
                 'phone' => $driver->phone,
+                'photo' => $driver->driverVerification?->documentUrl($driver->driverVerification->selfie_photo),
                 'is_cover' => $isCover,
             ] : null,
+            'vehicle' => [
+                'id' => $vehicle?->id,
+                'name' => $vehicle?->name,
+                'license_plate' => $vehicle?->license_plate,
+            ],
             'passenger' => $pickupRequest->student?->name ?: $pickupRequest->requesterName(),
             'coming_from' => [
                 'point' => $pickupRequest->pickup_point,

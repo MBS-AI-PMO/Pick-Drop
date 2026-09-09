@@ -280,6 +280,16 @@ class AppNotificationService
     public function notifyPickupRequestStatus(PickupRequest $pickupRequest, string $status): void
     {
         $messages = [
+            'started' => [
+                'title' => 'Driver started trip',
+                'parent_body' => 'Your driver has started today\'s trip.',
+                'driver_body' => 'Trip started. Head to the pickup point.',
+            ],
+            'arrived' => [
+                'title' => 'Driver arrived',
+                'parent_body' => 'Your driver has arrived at the pickup point.',
+                'driver_body' => 'Arrival marked at the pickup point.',
+            ],
             'picked_up' => [
                 'title' => 'Student picked up',
                 'parent_body' => 'Your child has been picked up.',
