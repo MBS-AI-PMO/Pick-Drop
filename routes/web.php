@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\View;
 
 Route::get('/', function () {
     return view('pages.auth.login');
-})->name('login'); // default landing redirects to login
+});
 
 // Protected Admin Routes
 Route::middleware(['auth'])->group(function () {
@@ -174,7 +174,7 @@ Route::middleware(['auth'])->group(function () {
 
 // Auth Routes (Public)
 Route::group(['prefix' => 'auth'], function(){
-    Route::get('login', function () { return view('pages.auth.login'); })->name('auth.login');
+    Route::get('login', function () { return view('pages.auth.login'); })->name('login');
     Route::get('register', function () { return view('pages.auth.register'); })->name('auth.register');
     Route::get('forgot-password', function () { return view('pages.auth.forgot-password'); })->name('auth.forgot-password');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])
@@ -182,7 +182,7 @@ Route::group(['prefix' => 'auth'], function(){
 
     // Auth form submissions
     Route::post('login', [AuthController::class, 'login'])
-        ->name('login'); // Keep name as 'login' for compatibility with auth middleware & redirects
+        ->name('auth.login.submit');
 
     Route::post('register', [AuthController::class, 'register'])
         ->name('auth.register.submit');

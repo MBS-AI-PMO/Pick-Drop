@@ -214,7 +214,7 @@
         </a>
       </li>
       <li class="nav-item nav-item-logout">
-        <a href="{{ route('auth.login') }}" class="nav-link">
+        <a href="{{ route('login') }}" class="nav-link">
           <i class="link-icon" data-lucide="log-out"></i>
           <span class="link-title">Logout</span>
         </a>

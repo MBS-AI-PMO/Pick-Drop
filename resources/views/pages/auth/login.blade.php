@@ -122,6 +122,14 @@ body {
 .micro-anim:nth-child(3) { animation-delay: 0.2s; }
 .micro-anim:nth-child(4) { animation-delay: 0.3s; }
 
+@media (max-width: 575.98px) {
+    .auth-options-row {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+}
+
 @keyframes fadeIn {
     to {
         opacity: 1;
@@ -160,7 +168,7 @@ body {
             
             <!-- Sweet Alert Logic -->
             
-            <form class="forms-sample" method="POST" action="{{ route('login') }}">
+            <form class="forms-sample" method="POST" action="{{ route('auth.login.submit') }}">
                 @csrf
               <div class="mb-4 micro-anim">
                 <label for="userEmail" class="form-label fw-medium">Email address</label>
@@ -199,7 +207,7 @@ body {
                       </button>
                   </div>
               </div>
-              <div class="mb-4 d-flex justify-content-between align-items-center micro-anim">
+              <div class="mb-4 d-flex justify-content-between align-items-center micro-anim auth-options-row">
                 <div class="form-check">
                   <input
                       type="checkbox"

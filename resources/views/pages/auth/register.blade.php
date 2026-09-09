@@ -279,7 +279,7 @@ body {
                 </button>
               </div>
               
-              <p class="mt-4 text-center text-secondary micro-anim">Already have an account? <a href="{{ route('auth.login') }}" class="text-primary-custom">Sign in</a></p>
+              <p class="mt-4 text-center text-secondary micro-anim">Already have an account? <a href="{{ route('login') }}" class="text-primary-custom">Sign in</a></p>
             </form>
           </div>
         </div>

@@ -182,7 +182,7 @@ body {
               </div>
               
               <div class="text-center mt-4 micro-anim">
-                <a href="{{ route('auth.login') }}" class="text-secondary text-primary-custom d-inline-flex align-items-center gap-1">
+                <a href="{{ route('login') }}" class="text-secondary text-primary-custom d-inline-flex align-items-center gap-1">
                     <i data-lucide="arrow-left" class="icon-sm"></i> Back to Login
                 </a>
               </div>
