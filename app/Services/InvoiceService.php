@@ -640,7 +640,8 @@ class InvoiceService
                 'lng' => $stop->lng,
                 'time' => $stop->formattedTime(),
                 'area_id' => $stop->area_id,
-            ])->values()->all() ?: []
+            ])->values()->all() ?: [],
+            $pickupRequest->city_id ? (int) $pickupRequest->city_id : null
         );
 
         $invoice = $this->create([

@@ -50,6 +50,14 @@ class PickupRequestMatchingService
             return false;
         }
 
+        if (!$driver->assignedVehicle) {
+            return false;
+        }
+
+        if (! $driver->isOnDuty()) {
+            return false;
+        }
+
         return $driver->isOnboardingComplete();
     }
 

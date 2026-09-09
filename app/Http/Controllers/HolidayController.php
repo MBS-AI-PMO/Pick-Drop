@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use App\Models\Holiday;
+use App\Models\ShiftAttendance;
+use App\Models\ShiftDayRun;
+use App\Models\ShiftReplacement;
 use App\Services\ShiftOpsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -23,6 +26,29 @@ class HolidayController extends Controller
             ->get()
             ->groupBy(fn (Holiday $holiday) => $holiday->date?->toDateString());
 
+        $skipCounts = ShiftAttendance::query()
+            ->whereIn('status', [ShiftAttendance::SKIPPED, ShiftAttendance::HOLIDAY])
+            ->whereDate('date', '>=', $gridStart->toDateString())
+            ->whereDate('date', '<=', $gridEnd->toDateString())
+            ->selectRaw('DATE(date) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $coverCounts = ShiftReplacement::query()
+            ->whereDate('date', '>=', $gridStart->toDateString())
+            ->whereDate('date', '<=', $gridEnd->toDateString())
+            ->selectRaw('DATE(date) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $tripCounts = ShiftDayRun::query()
+            ->whereDate('date', '>=', $gridStart->toDateString())
+            ->whereDate('date', '<=', $gridEnd->toDateString())
+            ->whereNotIn('status', [ShiftDayRun::SKIPPED])
+            ->selectRaw('DATE(date) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
         $days = [];
         for ($day = $gridStart->copy(); $day->lte($gridEnd); $day->addDay()) {
             $key = $day->toDateString();
@@ -32,6 +58,9 @@ class HolidayController extends Controller
                 'in_month' => $day->month === $cursor->month,
                 'is_today' => $day->isToday(),
                 'holidays' => $monthHolidays->get($key, collect()),
+                'trips' => (int) ($tripCounts[$key] ?? 0),
+                'skips' => (int) ($skipCounts[$key] ?? 0),
+                'covers' => (int) ($coverCounts[$key] ?? 0),
             ];
         }
 

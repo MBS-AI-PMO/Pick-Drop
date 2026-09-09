@@ -53,6 +53,7 @@ Route::prefix('driver')->group(function () {
         // Profile (city_id, service_areas[], home_address, name, phone)
         Route::get('me', [ProfileController::class, 'show'])->name('api.driver.me.show');
         Route::put('me', [ProfileController::class, 'update'])->name('api.driver.me.update');
+        Route::put('me/duty', [ProfileController::class, 'updateDuty'])->name('api.driver.me.duty');
         Route::put('account/change-password', [AccountController::class, 'changePassword'])->name('api.driver.account.change-password');
         Route::get('account/payment-details', [AccountController::class, 'showPaymentDetails'])->name('api.driver.account.payment-details.show');
         Route::put('account/payment-details', [AccountController::class, 'updatePaymentDetails'])->name('api.driver.account.payment-details.update');
@@ -75,10 +76,12 @@ Route::prefix('driver')->group(function () {
         Route::post('requests/{pickupRequest}/messages', [MessageController::class, 'send'])->name('api.driver.requests.messages.send');
 
         // Assigned students / rides (daily pick-drop management)
-        Route::get('rides/today',          [RideController::class, 'today'])->name('api.driver.rides.today');        // aaj ke sab students / stops
-        Route::get('rides',                [RideController::class, 'index'])->name('api.driver.rides.index');        // history
-        Route::post('rides/{ride}/pickup', [RideController::class, 'markPickup'])->name('api.driver.rides.pickup');  // single student pickup done
-        Route::post('rides/{ride}/drop',   [RideController::class, 'markDrop'])->name('api.driver.rides.drop');      // single student drop done
+        Route::get('rides/today',          [RideController::class, 'today'])->name('api.driver.rides.today');
+        Route::get('rides',                [RideController::class, 'index'])->name('api.driver.rides.index');
+        Route::post('rides/{pickupRequest}/start', [RideController::class, 'start'])->name('api.driver.rides.start');
+        Route::post('rides/{pickupRequest}/arrive', [RideController::class, 'arrive'])->name('api.driver.rides.arrive');
+        Route::post('rides/{ride}/pickup', [RideController::class, 'markPickup'])->name('api.driver.rides.pickup');
+        Route::post('rides/{ride}/drop',   [RideController::class, 'markDrop'])->name('api.driver.rides.drop');
 
         // Live tracking (location + status like on_the_way, picked_all, dropped_all)
         Route::post('location/update', [RideController::class, 'updateLocation'])->name('api.driver.location.update'); // lat,lng

@@ -6,6 +6,11 @@
     'period' => $period,
     'from' => $period === 'custom' ? $from->toDateString() : null,
     'to' => $period === 'custom' ? $to->toDateString() : null,
+    'city_id' => $filters['city_id'] ?? null,
+    'driver_id' => $filters['driver_id'] ?? null,
+    'status' => $filters['status'] ?? null,
+    'type' => $filters['type'] ?? null,
+    'payment_status' => $filters['payment_status'] ?? null,
   ]);
   $maxTrend = max(1, collect($trend)->max('value') ?: 0);
   $statusColors = [
@@ -32,7 +37,7 @@
   <div class="pd-period-tabs" role="tablist">
     @foreach(['daily' => 'Today', 'weekly' => 'Last 7 days', 'monthly' => 'This month', 'custom' => 'Custom'] as $key => $label)
       <a class="pd-period-tab {{ $period === $key ? 'is-active' : '' }}"
-         href="{{ route('reports.index', $key === 'custom' ? ['period' => 'custom', 'from' => $from->toDateString(), 'to' => $to->toDateString()] : ['period' => $key]) }}">
+         href="{{ route('reports.index', array_merge($periodQuery, $key === 'custom' ? ['period' => 'custom', 'from' => $from->toDateString(), 'to' => $to->toDateString()] : ['period' => $key])) }}">
         {{ $label }}
       </a>
     @endforeach
@@ -41,6 +46,11 @@
   @if($period === 'custom')
     <form method="GET" action="{{ route('reports.index') }}" class="pd-report-dates">
       <input type="hidden" name="period" value="custom">
+      @foreach(['city_id', 'driver_id', 'status', 'type', 'payment_status'] as $keep)
+        @if(!empty($filters[$keep]))
+          <input type="hidden" name="{{ $keep }}" value="{{ $filters[$keep] }}">
+        @endif
+      @endforeach
       <input type="date" name="from" class="pd-date-input" value="{{ $from->toDateString() }}" max="{{ now()->toDateString() }}" aria-label="From date">
       <span class="pd-date-sep">to</span>
       <input type="date" name="to" class="pd-date-input" value="{{ $to->toDateString() }}" max="{{ now()->toDateString() }}" aria-label="To date">
@@ -48,6 +58,66 @@
     </form>
   @endif
 </div>
+
+<form method="GET" action="{{ route('reports.index') }}" class="card mb-4">
+  <div class="card-body py-3">
+    <input type="hidden" name="period" value="{{ $period }}">
+    @if($period === 'custom')
+      <input type="hidden" name="from" value="{{ $from->toDateString() }}">
+      <input type="hidden" name="to" value="{{ $to->toDateString() }}">
+    @endif
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label mb-1">City</label>
+        <select name="city_id" class="form-select form-select-sm">
+          <option value="">All cities</option>
+          @foreach($filterCities as $city)
+            <option value="{{ $city->id }}" @selected((int) ($filters['city_id'] ?? 0) === (int) $city->id)>{{ $city->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label mb-1">Driver</label>
+        <select name="driver_id" class="form-select form-select-sm">
+          <option value="">All drivers</option>
+          @foreach($filterDrivers as $driver)
+            <option value="{{ $driver->id }}" @selected((int) ($filters['driver_id'] ?? 0) === (int) $driver->id)>{{ $driver->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label mb-1">Status</label>
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All statuses</option>
+          @foreach(['pending' => 'Pending', 'accepted' => 'Accepted', 'picked_up' => 'Picked up', 'dropped' => 'Dropped', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $value => $label)
+            <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label mb-1">Type</label>
+        <select name="type" class="form-select form-select-sm">
+          <option value="">Parent & Self</option>
+          <option value="parent" @selected(($filters['type'] ?? '') === 'parent')>Parent</option>
+          <option value="self" @selected(($filters['type'] ?? '') === 'self')>Self</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label mb-1">Payment</label>
+        <select name="payment_status" class="form-select form-select-sm">
+          <option value="">All payments</option>
+          <option value="unpaid" @selected(($filters['payment_status'] ?? '') === 'unpaid')>Unpaid</option>
+          <option value="pending_confirmation" @selected(($filters['payment_status'] ?? '') === 'pending_confirmation')>Awaiting confirmation</option>
+          <option value="paid" @selected(($filters['payment_status'] ?? '') === 'paid')>Paid</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-fill">Filter</button>
+        <a href="{{ route('reports.index', ['period' => $period]) }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </div>
+  </div>
+</form>
 
 <div class="row g-3 mb-4">
   @php $tripDenom = max(1, (int) $kpis['total_trips']); @endphp
@@ -91,6 +161,49 @@
         <div>
           <h3>{{ number_format($kpis['cancelled']) }}</h3>
           <p class="dashboard-stat-label">Cancelled</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body">
+        <div>
+          <h3>PKR {{ number_format($kpis['revenue'] ?? 0, 0) }}</h3>
+          <p class="dashboard-stat-label">Customer payments</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body">
+        <div>
+          <h3>{{ number_format($kpis['pending_invoices'] ?? 0) }}</h3>
+          <p class="dashboard-stat-label">Pending invoices</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body">
+        <div>
+          <h3>PKR {{ number_format($kpis['driver_payouts'] ?? 0, 0) }}</h3>
+          <p class="dashboard-stat-label">Driver payments</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card dashboard-stat-card h-100">
+      <div class="card-body">
+        <div>
+          <h3>{{ number_format($kpis['sos'] ?? 0) }} / {{ number_format($kpis['complaints'] ?? 0) }}</h3>
+          <p class="dashboard-stat-label">SOS / complaints</p>
         </div>
       </div>
     </div>

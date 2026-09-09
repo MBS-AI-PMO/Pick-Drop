@@ -22,6 +22,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PickupRequestController;
 use App\Http\Controllers\IssueController as AdminIssueController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\FleetController;
 use App\Http\Controllers\SosAlertController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\SchoolController;
@@ -64,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
+    Route::get('/fleet/live', [FleetController::class, 'index'])->name('fleet.live.index');
+    Route::get('/fleet/live/data', [FleetController::class, 'live'])->name('fleet.live');
     Route::middleware('panel.admin')->group(function () {
         Route::get('/schools', [SchoolController::class, 'index'])->name('schools.index');
         Route::post('/schools', [SchoolController::class, 'store'])->name('schools.store');
@@ -89,6 +92,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('vehicle-categories', \App\Http\Controllers\VehicleCategoryController::class)->except(['create', 'show', 'edit']);
     Route::get('/locations/cities', [LocationController::class, 'citiesIndex'])->name('locations.cities.index');
     Route::get('/locations/areas', [LocationController::class, 'areasIndex'])->name('locations.areas.index');
+    Route::get('/locations/points', [LocationController::class, 'pointsIndex'])->name('locations.points.index');
     Route::post('/locations/cities', [LocationController::class, 'storeCity'])->name('locations.cities.store');
     Route::post('/locations/cities/import', [LocationController::class, 'importCities'])->name('locations.cities.import');
     Route::put('/locations/cities/{city}', [LocationController::class, 'updateCity'])->name('locations.cities.update');
@@ -96,12 +100,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/locations/areas', [LocationController::class, 'storeArea'])->name('locations.areas.store');
     Route::put('/locations/areas/{area}', [LocationController::class, 'updateArea'])->name('locations.areas.update');
     Route::delete('/locations/areas/{area}', [LocationController::class, 'destroyArea'])->name('locations.areas.destroy');
+    Route::post('/locations/points', [LocationController::class, 'storePoint'])->name('locations.points.store');
+    Route::put('/locations/points/{point}', [LocationController::class, 'updatePoint'])->name('locations.points.update');
+    Route::delete('/locations/points/{point}', [LocationController::class, 'destroyPoint'])->name('locations.points.destroy');
     Route::get('/routes', [SchoolRouteController::class, 'index'])->name('routes.index');
     Route::get('/routes/create', [SchoolRouteController::class, 'create'])->name('routes.create');
     Route::post('/routes', [SchoolRouteController::class, 'store'])->name('routes.store');
     Route::get('/routes/{route}/edit', [SchoolRouteController::class, 'edit'])->name('routes.edit');
     Route::put('/routes/{route}', [SchoolRouteController::class, 'update'])->name('routes.update');
     Route::delete('/routes/{route}', [SchoolRouteController::class, 'destroy'])->name('routes.destroy');
+    Route::post('/routes/{route}/stops', [SchoolRouteController::class, 'storeStop'])->name('routes.stops.store');
+    Route::put('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'updateStop'])->name('routes.stops.update');
+    Route::delete('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'destroyStop'])->name('routes.stops.destroy');
     Route::get('/payments', [InvoiceController::class, 'index'])->name('payments.index');
     Route::post('/payments/invoices', [InvoiceController::class, 'store'])->name('payments.store');
     Route::get('/payments/export', [InvoiceController::class, 'export'])->name('payments.export');

@@ -44,11 +44,15 @@ class PickupRequestAssignmentService
             }
 
             if (!$this->matcher->driverCanServe($driver, $row)) {
-                throw new RuntimeException('This driver cannot serve this request (city or area mismatch).');
+                throw new RuntimeException('This driver cannot serve this request (city, area, KYC, or vehicle mismatch).');
+            }
+
+            if (!$driver->assignedVehicle) {
+                throw new RuntimeException('This driver has no assigned vehicle.');
             }
 
             $row->driver_id = $driver->id;
-            $row->vehicle_id = $driver->assignedVehicle?->id;
+            $row->vehicle_id = $driver->assignedVehicle->id;
             $row->status = 'accepted';
             $row->assignment_source = $source;
             $row->match_expires_at = null;

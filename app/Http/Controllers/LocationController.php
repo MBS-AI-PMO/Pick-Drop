@@ -426,6 +426,113 @@ class LocationController extends Controller
         }
     }
 
+    public function pointsIndex(Request $request)
+    {
+        try {
+            $query = \App\Models\LocationPoint::with(['city', 'area']);
+
+            if ($request->filled('city_id')) {
+                $query->where('city_id', $request->city_id);
+            }
+            if ($request->filled('type')) {
+                $query->where('type', $request->type);
+            }
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
+            }
+
+            $points = $query->orderByDesc('id')->paginate(AppPagination::PER_PAGE)->withQueryString();
+            $cities = City::orderBy('name')->get(['id', 'name']);
+            $areas = Area::orderBy('name')->get(['id', 'city_id', 'name']);
+            $types = \App\Models\LocationPoint::TYPES;
+
+            return view('pickdrop.locations.points', compact('points', 'cities', 'areas', 'types'));
+        } catch (\Throwable $e) {
+            Log::error('Failed to load location points', ['error' => $e->getMessage()]);
+
+            return redirect()->back()->with('error', 'Failed to load pickup/drop points: ' . $e->getMessage());
+        }
+    }
+
+    public function storePoint(Request $request)
+    {
+        $data = $request->validate([
+            'city_id' => 'required|exists:cities,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:pickup,drop,both',
+            'address' => 'nullable|string|max:500',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'status' => 'nullable|string|max:20',
+        ]);
+
+        if (! empty($data['area_id'])) {
+            $area = Area::find($data['area_id']);
+            if ($area && (int) $area->city_id !== (int) $data['city_id']) {
+                return redirect()->back()->withInput()->with('error', 'Selected area does not belong to this city.');
+            }
+        }
+
+        \App\Models\LocationPoint::create([
+            'city_id' => $data['city_id'],
+            'area_id' => $data['area_id'] ?? null,
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'address' => $data['address'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'status' => $data['status'] ?? 'Active',
+        ]);
+
+        return redirect()->route('locations.points.index')->with('success', 'Pickup/drop point added.');
+    }
+
+    public function updatePoint(Request $request, \App\Models\LocationPoint $point)
+    {
+        $data = $request->validate([
+            'city_id' => 'required|exists:cities,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:pickup,drop,both',
+            'address' => 'nullable|string|max:500',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'status' => 'nullable|string|max:20',
+        ]);
+
+        if (! empty($data['area_id'])) {
+            $area = Area::find($data['area_id']);
+            if ($area && (int) $area->city_id !== (int) $data['city_id']) {
+                return redirect()->back()->withInput()->with('error', 'Selected area does not belong to this city.');
+            }
+        }
+
+        $point->update([
+            'city_id' => $data['city_id'],
+            'area_id' => $data['area_id'] ?? null,
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'address' => $data['address'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'status' => $data['status'] ?? 'Active',
+        ]);
+
+        return redirect()->route('locations.points.index')->with('success', 'Pickup/drop point updated.');
+    }
+
+    public function destroyPoint(\App\Models\LocationPoint $point)
+    {
+        $point->delete();
+
+        return redirect()->route('locations.points.index')->with('success', 'Pickup/drop point removed.');
+    }
+
     private function validateAreaInsideCity(City $city, float $areaLat, float $areaLng): array
     {
         // Fallback to distance-only validation if reverse geocoding is unavailable.

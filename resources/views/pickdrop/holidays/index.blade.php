@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
   <div>
     <h4 class="mb-1">Calendar</h4>
-    <p class="text-secondary mb-0">Announce holidays and off days. Matching pickups will be skipped.</p>
+    <p class="text-secondary mb-0">Holidays, scheduled trips, skips and cover drivers in one calendar.</p>
   </div>
   <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#announceOffDayModal">
     <i data-lucide="plus" class="icon-sm me-1"></i> Announce off day
@@ -42,6 +42,15 @@
               @foreach($day['holidays'] as $holiday)
                 <span class="pd-cal-chip pd-cal-chip-{{ $holiday->type }}">{{ $holiday->name }}</span>
               @endforeach
+              @if(($day['trips'] ?? 0) > 0)
+                <span class="pd-cal-chip pd-cal-chip-trip">{{ $day['trips'] }} trips</span>
+              @endif
+              @if(($day['skips'] ?? 0) > 0)
+                <span class="pd-cal-chip pd-cal-chip-skip">{{ $day['skips'] }} skip</span>
+              @endif
+              @if(($day['covers'] ?? 0) > 0)
+                <span class="pd-cal-chip pd-cal-chip-cover">{{ $day['covers'] }} cover</span>
+              @endif
             </button>
           @endforeach
         </div>
@@ -50,6 +59,9 @@
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-public"></span> Public holiday</span>
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-school"></span> Institution holiday</span>
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-custom"></span> Announced off day</span>
+          <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-trip"></span> Scheduled trips</span>
+          <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-skip"></span> Skips</span>
+          <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-cover"></span> Cover drivers</span>
         </div>
       </div>
     </div>
@@ -204,6 +216,9 @@
   .pd-cal-chip-public { background: #fde8ee; color: #9f1239; }
   .pd-cal-chip-school { background: #eef4ff; color: #1d4ed8; }
   .pd-cal-chip-custom { background: #fff4db; color: #92400e; }
+  .pd-cal-chip-trip { background: #e8f7ef; color: #166534; }
+  .pd-cal-chip-skip { background: #f3f4f6; color: #4b5563; }
+  .pd-cal-chip-cover { background: #ede9fe; color: #5b21b6; }
   .pd-cal-dot {
     width: 10px;
     height: 10px;

@@ -179,7 +179,8 @@ class RequestController extends BaseApiController
                 $validated['days'],
                 (int) $validated['duration_months'],
                 $validated['shift_start_date'],
-                $stopPayload
+                $stopPayload,
+                (int) $validated['city_id']
             );
 
             $defaultRoundTrip = $validated['service_type'] === PickupRequest::SERVICE_BOTH;

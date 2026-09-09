@@ -64,6 +64,7 @@ Route::prefix('parent')->group(function () {
         // Locations
         Route::get('cities', [LocationController::class, 'cities'])->name('api.parent.cities.index');
         Route::get('cities/{city}/areas', [LocationController::class, 'areas'])->name('api.parent.cities.areas');
+        Route::get('cities/{city}/points', [LocationController::class, 'points'])->name('api.parent.cities.points');
 
         // Pick-drop requests (trips)
         Route::get('requests', [RequestController::class, 'index'])->name('api.parent.requests.index');
@@ -163,6 +164,7 @@ Route::prefix('self')->group(function () {
         // Locations
         Route::get('cities', [LocationController::class, 'cities'])->name('api.self.cities.index');
         Route::get('cities/{city}/areas', [LocationController::class, 'areas'])->name('api.self.cities.areas');
+        Route::get('cities/{city}/points', [LocationController::class, 'points'])->name('api.self.cities.points');
 
         // Pick-drop requests (trips)
         Route::get('requests', [RequestController::class, 'index'])->name('api.self.requests.index');

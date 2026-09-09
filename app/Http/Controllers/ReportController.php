@@ -4,15 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\City;
+use App\Models\DriverPayrollBill;
 use App\Models\DriverVerification;
 use App\Models\DriverVehicleVerification;
+use App\Models\Invoice;
 use App\Models\IssueReport;
+use App\Models\Payment;
 use App\Models\PickupRequest;
 use App\Models\SchoolRoute;
+use App\Models\SosAlert;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\AppPagination;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -22,8 +27,10 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         [$period, $from, $to] = $this->resolvePeriod($request);
+        $filters = $this->resolveFilters($request);
 
         $tripQuery = PickupRequest::query()->whereBetween('created_at', [$from, $to]);
+        $this->applyFilters($tripQuery, $filters);
 
         $totalTrips = (clone $tripQuery)->count();
         $completedTrips = (clone $tripQuery)->where('status', 'completed')->count();
@@ -62,6 +69,23 @@ class ReportController extends Controller
             'pending' => $pendingTrips,
             'completion_rate' => $this->percentage($completedTrips, $totalTrips),
             'cancellation_rate' => $this->percentage($cancelledTrips, $totalTrips),
+            'revenue' => (float) Invoice::query()
+                ->where('status', Invoice::STATUS_PAID)
+                ->whereBetween('paid_at', [$from, $to])
+                ->sum('total'),
+            'pending_invoices' => (int) Invoice::query()
+                ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_OVERDUE])
+                ->count(),
+            'refunds' => (float) Payment::query()
+                ->where('status', Payment::STATUS_REFUNDED)
+                ->whereBetween('refunded_at', [$from, $to])
+                ->sum('amount'),
+            'driver_payouts' => (float) DriverPayrollBill::query()
+                ->where('status', DriverPayrollBill::STATUS_PAID)
+                ->whereBetween('paid_at', [$from, $to])
+                ->sum('calculated_amount'),
+            'sos' => (int) SosAlert::query()->whereBetween('created_at', [$from, $to])->count(),
+            'complaints' => (int) IssueReport::query()->whereBetween('created_at', [$from, $to])->count(),
         ];
 
         $snapshot = [
@@ -87,8 +111,9 @@ class ReportController extends Controller
         );
 
         $trips = PickupRequest::with(['parent', 'student', 'driver', 'city', 'area', 'vehicle'])
-            ->whereBetween('created_at', [$from, $to])
-            ->latest()
+            ->whereBetween('created_at', [$from, $to]);
+        $this->applyFilters($trips, $filters);
+        $trips = $trips->latest()
             ->paginate(AppPagination::PER_PAGE)
             ->withQueryString();
 
@@ -97,6 +122,12 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'periodLabel' => $this->periodLabel($period, $from, $to),
+            'filters' => $filters,
+            'filterCities' => City::query()->orderBy('name')->get(['id', 'name']),
+            'filterDrivers' => User::query()
+                ->whereRaw('LOWER(role) = ?', ['driver'])
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'kpis' => $kpis,
             'snapshot' => $snapshot,
             'trend' => $this->tripTrend($from, $to, $period),
@@ -110,25 +141,29 @@ class ReportController extends Controller
     public function export(Request $request): StreamedResponse
     {
         [$period, $from, $to] = $this->resolvePeriod($request);
+        $filters = $this->resolveFilters($request);
 
         $filename = 'pickdrop-trips-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.csv';
 
-        return response()->streamDownload(function () use ($from, $to) {
+        return response()->streamDownload(function () use ($from, $to, $filters) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, [
-                'ID', 'Type', 'Status', 'Parent', 'Student', 'Driver',
+                'ID', 'Type', 'Status', 'Payment', 'Parent', 'Student', 'Driver',
                 'City', 'Area', 'Pickup', 'Drop', 'Created at',
             ]);
 
-            PickupRequest::with(['parent', 'student', 'driver', 'city', 'area'])
-                ->whereBetween('created_at', [$from, $to])
-                ->orderByDesc('id')
+            $query = PickupRequest::with(['parent', 'student', 'driver', 'city', 'area'])
+                ->whereBetween('created_at', [$from, $to]);
+            $this->applyFilters($query, $filters);
+
+            $query->orderByDesc('id')
                 ->chunk(200, function ($rows) use ($handle) {
                     foreach ($rows as $trip) {
                         fputcsv($handle, [
                             $trip->id,
                             $trip->type,
                             $trip->status,
+                            $trip->payment_status,
                             $trip->parent?->name,
                             $trip->student?->name,
                             $trip->driver?->name,
@@ -187,6 +222,46 @@ class ReportController extends Controller
         }
 
         return [$period, $now->copy()->subDays(6)->startOfDay(), $now->copy()->endOfDay()];
+    }
+
+    /**
+     * @return array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}
+     */
+    private function resolveFilters(Request $request): array
+    {
+        $status = strtolower(trim($request->string('status')->toString()));
+        $type = strtolower(trim($request->string('type')->toString()));
+        $payment = strtolower(trim($request->string('payment_status')->toString()));
+
+        return [
+            'city_id' => $request->filled('city_id') ? $request->integer('city_id') : null,
+            'driver_id' => $request->filled('driver_id') ? $request->integer('driver_id') : null,
+            'status' => in_array($status, ['pending', 'accepted', 'picked_up', 'dropped', 'completed', 'cancelled'], true) ? $status : null,
+            'type' => in_array($type, ['parent', 'self'], true) ? $type : null,
+            'payment_status' => in_array($payment, ['unpaid', 'pending_confirmation', 'paid'], true) ? $payment : null,
+        ];
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        if ($filters['city_id']) {
+            $query->where('city_id', $filters['city_id']);
+        }
+        if ($filters['driver_id']) {
+            $query->where('driver_id', $filters['driver_id']);
+        }
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
+        }
+        if ($filters['type']) {
+            $query->where('type', $filters['type']);
+        }
+        if ($filters['payment_status']) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
     }
 
     private function periodLabel(string $period, Carbon $from, Carbon $to): string

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Holiday;
 use App\Models\PickDropCharge;
 use App\Models\PickupRequest;
 use Illuminate\Support\Carbon;
@@ -37,7 +38,8 @@ class ShiftFareService
         array $days,
         int $durationMonths,
         ?string $startDate = null,
-        array $stops = []
+        array $stops = [],
+        ?int $cityId = null
     ): array {
         $durationMonths = max(self::MIN_MONTHS, $durationMonths);
         $charge = PickDropCharge::query()->first();
@@ -54,7 +56,7 @@ class ShiftFareService
         $start = $startDate ? Carbon::parse($startDate)->startOfDay() : now()->startOfDay();
         $end = $start->copy()->addMonths($durationMonths);
         $distanceKm = $this->routeDistanceKm($pickupLat, $pickupLng, $dropLat, $dropLng, $stops);
-        $workingDays = $this->countWorkingDays($start, $end, $days);
+        $workingDays = $this->countWorkingDays($start, $end, $days, $cityId);
 
         if ($workingDays < 1) {
             throw new RuntimeException('Selected days do not fall within this shift period.');
@@ -107,7 +109,8 @@ class ShiftFareService
             $request->days ?? [],
             (int) ($request->duration_months ?: self::MIN_MONTHS),
             $start,
-            $stops
+            $stops,
+            $request->city_id ? (int) $request->city_id : null
         );
     }
 
@@ -174,7 +177,7 @@ class ShiftFareService
     /**
      * @param  list<string>  $days
      */
-    public function countWorkingDays(Carbon $start, Carbon $end, array $days): int
+    public function countWorkingDays(Carbon $start, Carbon $end, array $days, ?int $cityId = null): int
     {
         $selected = [];
         foreach ($days as $day) {
@@ -197,13 +200,43 @@ class ShiftFareService
             return 0;
         }
 
+        $holidays = $this->holidayDates($start, $end, $cityId);
+
         $count = 0;
         for ($cursor = $start->copy(); $cursor->lt($end); $cursor->addDay()) {
-            if (isset($selected[$cursor->dayOfWeek])) {
+            $dateKey = $cursor->toDateString();
+            if (isset($selected[$cursor->dayOfWeek]) && ! isset($holidays[$dateKey])) {
                 $count++;
             }
         }
 
         return $count;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function holidayDates(Carbon $start, Carbon $end, ?int $cityId): array
+    {
+        $dates = Holiday::query()
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<', $end->toDateString())
+            ->where(function ($q) use ($cityId) {
+                $q->whereNull('city_id');
+                if ($cityId) {
+                    $q->orWhere('city_id', $cityId);
+                }
+            })
+            ->pluck('date');
+
+        $map = [];
+        foreach ($dates as $date) {
+            $key = $date instanceof Carbon ? $date->toDateString() : substr((string) $date, 0, 10);
+            if ($key !== '') {
+                $map[$key] = true;
+            }
+        }
+
+        return $map;
     }
 }

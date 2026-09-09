@@ -19,6 +19,8 @@ class SchoolRoute extends Model
         'name',
         'shift',
         'vehicle_id',
+        'school_id',
+        'driver_id',
         'start_time',
         'end_time',
         'destination',
@@ -37,6 +39,16 @@ class SchoolRoute extends Model
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     public function stops()

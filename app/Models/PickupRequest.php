@@ -44,6 +44,8 @@ class PickupRequest extends Model
         'vehicle_id',
         'scheduled_date',
         'cancelled_at',
+        'cancelled_by',
+        'cancelled_by_role',
         'completed_at',
         'match_expires_at',
         'auto_assign_attempts',
@@ -436,14 +438,20 @@ class PickupRequest extends Model
      */
     public function trackingApiArray(): array
     {
-        $this->loadMissing('driver');
+        $this->loadMissing(['driver.driverVerification', 'vehicle']);
         $driver = $this->driver;
+        $verification = $driver?->driverVerification;
 
         return [
             'status' => $this->status,
             'driver_id' => $this->driver_id,
             'vehicle_id' => $this->vehicle_id,
             'driver_status' => $driver?->last_ride_status,
+            'driver_name' => $driver?->name,
+            'driver_phone' => $driver?->phone,
+            'driver_photo' => $verification?->documentUrl($verification->selfie_photo),
+            'vehicle_plate' => $this->vehicle?->license_plate,
+            'vehicle_name' => $this->vehicle?->name,
             'lat' => $driver?->last_lat !== null ? (float) $driver->last_lat : null,
             'lng' => $driver?->last_lng !== null ? (float) $driver->last_lng : null,
             'updated_at' => $driver?->last_location_at?->toIso8601String(),
@@ -578,6 +586,8 @@ class PickupRequest extends Model
             'assignment_source' => $this->assignment_source,
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
+            'cancelled_by' => $this->cancelled_by,
+            'cancelled_by_role' => $this->cancelled_by_role,
             'completed_at' => $this->completed_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

@@ -35,6 +35,7 @@ class ProfileController extends BaseApiController
                 'availability_hours.*.end' => ['required_with:availability_hours', 'date_format:H:i', 'after:availability_hours.*.start'],
                 'emergency_contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'emergency_contact_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+                'duty_status' => ['sometimes', 'in:on_duty,off_duty'],
             ]);
 
             if (array_key_exists('home_address', $validated)) {
@@ -119,6 +120,28 @@ class ProfileController extends BaseApiController
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to update profile');
+        }
+    }
+
+    public function updateDuty(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+                return $this->errorResponse('Only drivers can update duty status.', 403);
+            }
+
+            $validated = $request->validate([
+                'duty_status' => ['required', 'in:on_duty,off_duty'],
+            ]);
+
+            $user->update(['duty_status' => $validated['duty_status']]);
+
+            return $this->successResponse($user->fresh()->toDriverApiArray(), 'Duty status updated');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to update duty status');
         }
     }
 }

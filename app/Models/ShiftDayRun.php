@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 class ShiftDayRun extends Model
 {
     public const SCHEDULED = 'scheduled';
+    public const STARTED = 'started';
+    public const ARRIVED = 'arrived';
     public const SKIPPED = 'skipped';
     public const PICKED_UP = 'picked_up';
     public const DROPPED = 'dropped';
@@ -24,6 +26,8 @@ class ShiftDayRun extends Model
         'pickup_photo_path',
         'pickup_verified_at',
         'arrival_notified_at',
+        'started_at',
+        'arrived_at',
     ];
 
     protected function casts(): array
@@ -32,6 +36,8 @@ class ShiftDayRun extends Model
             'date' => 'date',
             'pickup_verified_at' => 'datetime',
             'arrival_notified_at' => 'datetime',
+            'started_at' => 'datetime',
+            'arrived_at' => 'datetime',
         ];
     }
 
@@ -65,6 +71,9 @@ class ShiftDayRun extends Model
             'pickup_otp' => $includeOtp ? $this->pickup_otp : null,
             'pickup_photo_url' => $this->photoUrl(),
             'pickup_verified_at' => $this->pickup_verified_at?->toIso8601String(),
+            'started_at' => $this->started_at?->toIso8601String(),
+            'arrived_at' => $this->arrived_at?->toIso8601String(),
+            'arrival_notified_at' => $this->arrival_notified_at?->toIso8601String(),
         ];
     }
 }

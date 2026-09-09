@@ -79,16 +79,39 @@
                 @php $shiftVal = old('shift', $route->shift); @endphp
                 <option value="morning" {{ $shiftVal === 'morning' ? 'selected' : '' }}>Morning</option>
                 <option value="afternoon" {{ $shiftVal === 'afternoon' ? 'selected' : '' }}>Afternoon</option>
+                <option value="evening" {{ $shiftVal === 'evening' ? 'selected' : '' }}>Evening</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Assign Vehicle <span class="text-danger">*</span></label>
+              <label class="form-label fw-semibold">Institution</label>
+              <select class="form-select" name="school_id">
+                <option value="">No linked institution</option>
+                @foreach(($schools ?? []) as $school)
+                  <option value="{{ $school->id }}" @selected((int) old('school_id', $route->school_id) === (int) $school->id)>
+                    {{ $school->name }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assign Vehicle</label>
               <select class="form-select" name="vehicle_id">
                 <option value="">Select vehicle</option>
                 @foreach($vehicles as $vehicle)
                   <option value="{{ $vehicle->id }}"
                           {{ (int) old('vehicle_id', $route->vehicle_id) === $vehicle->id ? 'selected' : '' }}>
                     {{ $vehicle->name }} ({{ $vehicle->license_plate }})
+                  </option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Assign Driver</label>
+              <select class="form-select" name="driver_id">
+                <option value="">Select driver</option>
+                @foreach(($drivers ?? []) as $driver)
+                  <option value="{{ $driver->id }}" @selected((int) old('driver_id', $route->driver_id) === (int) $driver->id)>
+                    {{ $driver->name }}
                   </option>
                 @endforeach
               </select>
@@ -128,9 +151,10 @@
           </div>
         </div>
       </div>
+      </form>
 
-      {{-- Route Stops Card --}}
-      <div class="card">
+      {{-- Route Stops Card (outside main form so stop forms are valid) --}}
+      <div class="card mt-4">
         <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
             <div class="w-32px h-32px rounded-2 d-flex align-items-center justify-content-center" style="background:rgba(var(--bs-success-rgb),0.1);">
@@ -138,45 +162,91 @@
             </div>
             <h6 class="mb-0 fw-bold">Route Stops</h6>
           </div>
-          <span class="badge bg-light text-secondary fs-12px">
-            Managed by parents/students via mobile app (read-only here)
-          </span>
+          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRouteStopModal">
+            <i data-lucide="plus" class="icon-sm me-1"></i> Add stop
+          </button>
         </div>
         <div class="card-body">
-          <div id="stopsContainer" class="d-flex flex-column gap-3">
+          <div class="d-flex flex-column gap-3">
             @forelse($route->stops as $index => $stop)
               <div class="stop-row border rounded-3 p-3 bg-light">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <span class="stop-number badge bg-primary rounded-pill px-2 py-1 fs-12px">
-                    Stop {{ $index + 1 }}
-                  </span>
-                </div>
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <p class="form-label fs-13px text-secondary mb-1">Stop Name / Location</p>
-                    <p class="mb-0 fw-semibold">{{ $stop->name }}</p>
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <div class="fw-semibold">{{ $index + 1 }}. {{ $stop->name }}</div>
+                    <div class="text-secondary small">
+                      {{ $stop->arrival_time ? \Carbon\Carbon::parse($stop->arrival_time)->format('g:i A') : 'No time' }}
+                      @if($stop->address) · {{ $stop->address }} @endif
+                    </div>
                   </div>
-                  <div class="col-md-3">
-                    <p class="form-label fs-13px text-secondary mb-1">Arrival Time</p>
-                    <p class="mb-0">
-                      {{ $stop->arrival_time ? \Carbon\Carbon::parse($stop->arrival_time)->format('g:i A') : '—' }}
-                    </p>
-                  </div>
-                  <div class="col-md-3">
-                    <p class="form-label fs-13px text-secondary mb-1">Order</p>
-                    <p class="mb-0">#{{ $stop->order }}</p>
+                  <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRouteStopModal{{ $stop->id }}">Edit</button>
+                    <form method="POST" action="{{ route('routes.stops.destroy', [$route, $stop]) }}" onsubmit="return confirm('Remove this stop?')">
+                      @csrf
+                      @method('DELETE')
+                      <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                    </form>
                   </div>
                 </div>
               </div>
             @empty
-              <p class="text-secondary fs-13px mb-0">
-                No stops have been added yet. Parents and students will add stops from the mobile app.
-              </p>
+              <p class="text-secondary fs-13px mb-0">No stops yet. Add fixed pickup points for this school route.</p>
             @endforelse
           </div>
         </div>
       </div>
-      </form>
+
+      @foreach($route->stops as $stop)
+        <div class="modal fade" id="editRouteStopModal{{ $stop->id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="POST" action="{{ route('routes.stops.update', [$route, $stop]) }}">
+                @csrf
+                @method('PUT')
+                <div class="modal-header"><h5 class="modal-title">Edit stop</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                  <label class="form-label">Name</label>
+                  <input type="text" name="name" class="form-control mb-2" value="{{ $stop->name }}" required>
+                  <label class="form-label">Address</label>
+                  <input type="text" name="address" class="form-control mb-2" value="{{ $stop->address }}">
+                  <label class="form-label">Arrival time</label>
+                  <input type="time" name="arrival_time" class="form-control mb-2" value="{{ $stop->arrival_time ? \Carbon\Carbon::parse($stop->arrival_time)->format('H:i') : '' }}">
+                  <div class="row g-2">
+                    <div class="col-6"><label class="form-label">Lat</label><input type="number" step="any" name="latitude" class="form-control" value="{{ $stop->latitude }}"></div>
+                    <div class="col-6"><label class="form-label">Lng</label><input type="number" step="any" name="longitude" class="form-control" value="{{ $stop->longitude }}"></div>
+                  </div>
+                  <label class="form-label mt-2">Order</label>
+                  <input type="number" name="order" class="form-control" value="{{ $stop->order }}" min="1">
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      @endforeach
+
+      <div class="modal fade" id="addRouteStopModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="POST" action="{{ route('routes.stops.store', $route) }}">
+              @csrf
+              <div class="modal-header"><h5 class="modal-title">Add route stop</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                <label class="form-label">Name</label>
+                <input type="text" name="name" class="form-control mb-2" required placeholder="e.g. G-10 Markaz">
+                <label class="form-label">Address</label>
+                <input type="text" name="address" class="form-control mb-2">
+                <label class="form-label">Arrival time</label>
+                <input type="time" name="arrival_time" class="form-control mb-2">
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label">Lat</label><input type="number" step="any" name="latitude" class="form-control"></div>
+                  <div class="col-6"><label class="form-label">Lng</label><input type="number" step="any" name="longitude" class="form-control"></div>
+                </div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Add stop</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
     {{-- Right Column: Summary & Actions --}}
@@ -204,9 +274,15 @@
                 <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#dbeafe;color:#1d4ed8;">Morning</span>
               @elseif($shift === 'afternoon')
                 <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#fef3c7;color:#92400e;">Afternoon</span>
+              @elseif($shift === 'evening')
+                <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#ede9fe;color:#5b21b6;">Evening</span>
               @else
                 <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#f3f4f6;color:#6b7280;">{{ $route->shift }}</span>
               @endif
+            </div>
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+              <span class="text-secondary fs-13px">Institution</span>
+              <span class="fw-semibold fs-13px">{{ $route->school?->name ?? '—' }}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Status</span>
