@@ -6,7 +6,14 @@
     <h4 class="mb-1">{{ $school->name }}</h4>
     <p class="text-secondary mb-0">{{ $school->categoryLabel() }} · {{ $school->city?->name ?: 'No city' }} · {{ $school->students->count() }} students</p>
   </div>
-  <a href="{{ route('schools.index') }}" class="btn btn-outline-secondary">Back</a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('schools.index') }}" class="btn btn-outline-secondary">Back</a>
+    <form action="{{ route('schools.destroy', $school) }}" method="POST" onsubmit="confirmDelete(event, this)">
+      @csrf
+      @method('DELETE')
+      <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
+  </div>
 </div>
 <div class="row g-3">
   <div class="col-lg-4">

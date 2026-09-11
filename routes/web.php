@@ -39,24 +39,33 @@ Route::middleware(['auth'])->group(function () {
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
     Route::get('/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
+    Route::delete('/login-logs/{loginLog}', [LoginLogController::class, 'destroy'])->name('login-logs.destroy');
+    Route::post('/login-logs/clear', [LoginLogController::class, 'clear'])->name('login-logs.clear');
     Route::get('/driver-verifications', [DriverVerificationController::class, 'index'])->name('driver-verifications.index');
     Route::get('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'show'])->name('driver-verifications.show');
     Route::post('/driver-verifications/{driverVerification}/status', [DriverVerificationController::class, 'updateStatus'])->name('driver-verifications.status');
     Route::post('/driver-verifications/{driverVerification}/approve', [DriverVerificationController::class, 'approve'])->name('driver-verifications.approve');
     Route::post('/driver-verifications/{driverVerification}/reject', [DriverVerificationController::class, 'reject'])->name('driver-verifications.reject');
+    Route::delete('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'destroy'])->name('driver-verifications.destroy');
     Route::get('/driver-verifications/{driverVerification}/document/{field}', [DriverVerificationController::class, 'document'])->name('driver-verifications.document');
     Route::get('/pickup-requests', [PickupRequestController::class, 'index'])->name('pickup-requests.index');
     Route::get('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'show'])->name('pickup-requests.show');
+    Route::delete('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'destroy'])->name('pickup-requests.destroy');
+    Route::post('/pickup-requests/clear', [PickupRequestController::class, 'clear'])->name('pickup-requests.clear');
     Route::post('/pickup-requests/{pickupRequest}/driver-payout', [PickupRequestController::class, 'markDriverPaid'])->name('pickup-requests.driver-payout');
     Route::post('/pickup-requests/{pickupRequest}/assign', [PickupRequestController::class, 'assignDriver'])->name('pickup-requests.assign');
     Route::post('/pickup-requests/{pickupRequest}/cover', [PickupRequestController::class, 'assignCover'])->name('pickup-requests.cover');
     Route::get('/issues', [AdminIssueController::class, 'index'])->name('issues.index');
     Route::get('/issues/{issueReport}', [AdminIssueController::class, 'show'])->name('issues.show');
     Route::post('/issues/{issueReport}/status', [AdminIssueController::class, 'updateStatus'])->name('issues.status');
+    Route::delete('/issues/{issueReport}', [AdminIssueController::class, 'destroy'])->name('issues.destroy');
+    Route::post('/issues/clear', [AdminIssueController::class, 'clear'])->name('issues.clear');
     Route::get('/sos', [SosAlertController::class, 'index'])->name('sos.index');
     Route::get('/sos/{sosAlert}', [SosAlertController::class, 'show'])->name('sos.show');
     Route::post('/sos/{sosAlert}/acknowledge', [SosAlertController::class, 'acknowledge'])->name('sos.acknowledge');
     Route::post('/sos/{sosAlert}/resolve', [SosAlertController::class, 'resolve'])->name('sos.resolve');
+    Route::delete('/sos/{sosAlert}', [SosAlertController::class, 'destroy'])->name('sos.destroy');
+    Route::post('/sos/clear', [SosAlertController::class, 'clear'])->name('sos.clear');
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
@@ -76,12 +85,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/parent-self-verifications/{parentSelfVerification}/status', [ParentSelfVerificationController::class, 'updateStatus'])->name('parent-self-verifications.status');
     Route::post('/parent-self-verifications/{parentSelfVerification}/approve', [ParentSelfVerificationController::class, 'approve'])->name('parent-self-verifications.approve');
     Route::post('/parent-self-verifications/{parentSelfVerification}/reject', [ParentSelfVerificationController::class, 'reject'])->name('parent-self-verifications.reject');
+    Route::delete('/parent-self-verifications/{parentSelfVerification}', [ParentSelfVerificationController::class, 'destroy'])->name('parent-self-verifications.destroy');
     Route::get('/parent-self-verifications/{parentSelfVerification}/document/{field}', [ParentSelfVerificationController::class, 'document'])->name('parent-self-verifications.document');
     Route::get('/vehicle-verifications', [VehicleVerificationController::class, 'index'])->name('vehicle-verifications.index');
     Route::get('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'show'])->name('vehicle-verifications.show');
     Route::post('/vehicle-verifications/{vehicleVerification}/status', [VehicleVerificationController::class, 'updateStatus'])->name('vehicle-verifications.status');
     Route::post('/vehicle-verifications/{vehicleVerification}/approve', [VehicleVerificationController::class, 'approve'])->name('vehicle-verifications.approve');
     Route::post('/vehicle-verifications/{vehicleVerification}/reject', [VehicleVerificationController::class, 'reject'])->name('vehicle-verifications.reject');
+    Route::delete('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'destroy'])->name('vehicle-verifications.destroy');
     Route::get('/vehicle-verifications/{vehicleVerification}/document/{field}', [VehicleVerificationController::class, 'document'])->name('vehicle-verifications.document');
     Route::resource('vehicles', \App\Http\Controllers\VehicleController::class)->except(['create', 'show', 'edit']);
     Route::resource('vehicle-categories', \App\Http\Controllers\VehicleCategoryController::class)->except(['create', 'show', 'edit']);
@@ -130,6 +141,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payrolls', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'index'])->name('payrolls.index');
     Route::post('/payrolls/recalculate', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'recalculate'])->name('payrolls.recalculate');
     Route::get('/payrolls/{payroll}', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'show'])->name('payrolls.show');
+    Route::delete('/payrolls/{payroll}', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'destroy'])->name('payrolls.destroy');
     Route::post('/payrolls/{payroll}/days', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'markDay'])->name('payrolls.days');
     Route::post('/payrolls/{payroll}/approve', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'approve'])->name('payrolls.approve');
     Route::post('/payrolls/{payroll}/pay', [\App\Http\Controllers\MonthlyDriverPayrollController::class, 'pay'])->name('payrolls.pay');
@@ -144,23 +156,30 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payroll', function () {
         return redirect()->route('driver-payroll.index');
     });
-    Route::get('/driver-payroll', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
-    Route::get('/driver-payroll/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
-    Route::post('/driver-payroll/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
-    Route::post('/driver-payroll/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
-    Route::get('/driver-payroll/{bill}', [DriverPayrollController::class, 'show'])
+    Route::get('/driver-payroll/{any?}', function ($any = null) {
+        $target = $any ? '/driver-payments/'.$any : '/driver-payments';
+        $query = request()->getQueryString();
+
+        return redirect($query ? $target.'?'.$query : $target, 301);
+    })->where('any', '.*');
+    Route::get('/driver-payments', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
+    Route::get('/driver-payments/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
+    Route::post('/driver-payments/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
+    Route::post('/driver-payments/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
+    Route::get('/driver-payments/{bill}', [DriverPayrollController::class, 'show'])
         ->whereNumber('bill')
         ->name('driver-payroll.show');
-    Route::post('/driver-payroll/{bill}/approve', [DriverPayrollController::class, 'approve'])
+    Route::post('/driver-payments/{bill}/approve', [DriverPayrollController::class, 'approve'])
         ->whereNumber('bill')
         ->name('driver-payroll.approve');
-    Route::post('/driver-payroll/{bill}/pay', [DriverPayrollController::class, 'pay'])
+    Route::post('/driver-payments/{bill}/pay', [DriverPayrollController::class, 'pay'])
         ->whereNumber('bill')
         ->name('driver-payroll.pay');
-    Route::post('/driver-payroll/{bill}/reject', [DriverPayrollController::class, 'reject'])
+    Route::post('/driver-payments/{bill}/reject', [DriverPayrollController::class, 'reject'])
         ->whereNumber('bill')
         ->name('driver-payroll.reject');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
         ->name('notifications.clear');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])

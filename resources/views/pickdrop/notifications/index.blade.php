@@ -8,8 +8,7 @@
             <h4 class="notification-page__title mb-0">Notification History</h4>
             @if($notifications->total() > 0)
                 <a href="{{ route('notifications.clear') }}"
-                    class="btn btn-sm btn-outline-danger notification-clear-btn"
-                    onclick="return confirm('Clear all notifications?')">
+                    class="btn btn-sm btn-outline-danger notification-clear-btn">
                     <i data-lucide="trash-2" class="icon-xs"></i>
                     Clear all
                 </a>
@@ -25,6 +24,7 @@
                         <th>Type</th>
                         <th>Status</th>
                         <th>Date</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
 
@@ -60,10 +60,19 @@
                                     <span>{{ $notification->created_at->format('h:i A') }}</span>
                                 </div>
                             </td>
+                            <td class="text-center">
+                                <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                                        <i data-lucide="trash-2"></i>
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5">
+                            <td colspan="6">
                                 <div class="notification-empty-state notification-empty-state--page">
                                     <span class="notification-empty-state__icon">
                                         <i data-lucide="bell-off"></i>

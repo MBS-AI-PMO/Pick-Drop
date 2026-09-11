@@ -39,14 +39,15 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+            // Port 465 requires smtps; 587 typically uses smtp + STARTTLS.
+            'scheme' => env('MAIL_SCHEME', ((int) env('MAIL_PORT', 2525) === 465) ? 'smtps' : null),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
-            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'timeout' => 30,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', 'localhost'),
         ],
 
         'ses' => [

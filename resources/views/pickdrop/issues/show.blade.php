@@ -7,7 +7,14 @@
     <h4 class="mb-1">Complaint #{{ $issue->id }}</h4>
     <p class="text-secondary mb-0">{{ $issue->subject }}</p>
   </div>
-  <a href="{{ route('issues.index') }}" class="btn btn-outline-secondary">Back</a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('issues.index') }}" class="btn btn-outline-secondary">Back</a>
+    <form action="{{ route('issues.destroy', $issue) }}" method="POST" onsubmit="confirmDelete(event, this)">
+      @csrf
+      @method('DELETE')
+      <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
+  </div>
 </div>
 
 <div class="row g-3">

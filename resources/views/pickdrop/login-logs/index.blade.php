@@ -7,6 +7,15 @@
     <h4 class="mb-1">Login logs</h4>
     <p class="text-secondary mb-0">Record of every successful or failed login across admin and apps.</p>
   </div>
+  @if(($logs->total() ?? 0) > 0)
+    <form action="{{ route('login-logs.clear') }}" method="POST">
+      @csrf
+      <button type="submit" class="btn btn-outline-danger">
+        <i data-lucide="trash-2" class="icon-xs"></i>
+        Clear all
+      </button>
+    </form>
+  @endif
 </div>
 
 <div class="card mb-3">
@@ -54,6 +63,7 @@
             <th class="py-3">Channel</th>
             <th class="py-3">IP</th>
             <th class="py-3">Status</th>
+            <th class="py-3 text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -76,10 +86,22 @@
                   <span class="badge bg-danger">{{ $log->statusLabel() }}</span>
                 @endif
               </td>
+              <td class="text-center">
+                <div class="action-btns">
+                  <form action="{{ route('login-logs.destroy', $log) }}" method="POST"
+                        class="d-inline" onsubmit="confirmDelete(event, this)">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="text-center py-5 text-muted">No login logs yet.</td>
+              <td colspan="7" class="text-center py-5 text-muted">No login logs yet.</td>
             </tr>
           @endforelse
         </tbody>

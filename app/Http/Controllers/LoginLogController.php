@@ -36,4 +36,22 @@ class LoginLogController extends Controller
 
         return view('pickdrop.login-logs.index', compact('logs'));
     }
+
+    public function destroy(LoginLog $loginLog)
+    {
+        $loginLog->delete();
+
+        return redirect()
+            ->route('login-logs.index')
+            ->with('success', 'Login log deleted.');
+    }
+
+    public function clear()
+    {
+        LoginLog::query()->delete();
+
+        return redirect()
+            ->route('login-logs.index')
+            ->with('success', 'All login logs cleared.');
+    }
 }

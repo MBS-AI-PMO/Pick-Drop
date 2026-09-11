@@ -17,6 +17,15 @@
   </div>
 </div>
 
+<ul class="nav nav-pills gap-2 mb-4">
+  <li class="nav-item">
+    <a class="nav-link" href="{{ route('driver-payroll.index') }}">Payment bills</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active" href="{{ route('payrolls.index', ['month' => $month]) }}">Monthly payroll</a>
+  </li>
+</ul>
+
 <div class="card mb-3">
   <div class="card-body py-3">
     <div class="row g-3 align-items-center">
@@ -94,7 +103,7 @@
             <th>Earned so far</th>
             <th>If they finish remaining</th>
             <th>Status</th>
-            <th></th>
+            <th class="text-center pe-3">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -134,8 +143,20 @@
                 @endphp
                 <span class="badge rounded-pill px-3 py-2" style="{{ $style }}">{{ $payroll->phaseLabel() }}</span>
               </td>
-              <td class="text-end pe-3">
-                <a href="{{ route('payrolls.show', $payroll) }}" class="btn btn-sm btn-dark">Manage days</a>
+              <td class="text-center pe-3">
+                <div class="action-btns justify-content-center">
+                  <a href="{{ route('payrolls.show', $payroll) }}" class="action-btn action-btn-view" title="Manage days">
+                    <i data-lucide="eye"></i>
+                  </a>
+                  <form action="{{ route('payrolls.destroy', $payroll) }}" method="POST"
+                        class="d-inline" onsubmit="confirmDelete(event, this)">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
           @empty

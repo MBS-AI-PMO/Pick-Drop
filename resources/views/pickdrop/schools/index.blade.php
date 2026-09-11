@@ -75,7 +75,7 @@
               <th>City</th>
               <th>Students</th>
               <th>Status</th>
-              <th></th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -86,7 +86,21 @@
                 <td>{{ $school->city?->name ?: '—' }}</td>
                 <td>{{ $school->students_count }}</td>
                 <td>{{ $school->status }}</td>
-                <td><a href="{{ route('schools.show', $school) }}">View</a></td>
+                <td class="text-center">
+                  <div class="action-btns">
+                    <a href="{{ route('schools.show', $school) }}" class="action-btn action-btn-view" title="View">
+                      <i data-lucide="eye"></i>
+                    </a>
+                    <form action="{{ route('schools.destroy', $school) }}" method="POST"
+                          class="d-inline" onsubmit="confirmDelete(event, this)">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                        <i data-lucide="trash-2"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
               </tr>
             @empty
               <tr><td colspan="6" class="text-center py-4 text-muted">No institutions yet.</td></tr>

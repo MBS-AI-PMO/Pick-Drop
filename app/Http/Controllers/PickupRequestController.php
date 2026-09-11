@@ -211,4 +211,43 @@ class PickupRequestController extends Controller
             ->route('pickup-requests.show', $pickupRequest)
             ->with('success', 'Alternative driver assigned for ' . $date . '.');
     }
+
+    public function destroy(PickupRequest $pickupRequest)
+    {
+        try {
+            $pickupRequest->delete();
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('success', 'Pickup request deleted.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete pickup request', [
+                'id' => $pickupRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('error', 'Failed to delete pickup request: ' . $e->getMessage());
+        }
+    }
+
+    public function clear()
+    {
+        try {
+            PickupRequest::query()->delete();
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('success', 'All pickup requests cleared.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to clear pickup requests', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('error', 'Failed to clear pickup requests: ' . $e->getMessage());
+        }
+    }
 }

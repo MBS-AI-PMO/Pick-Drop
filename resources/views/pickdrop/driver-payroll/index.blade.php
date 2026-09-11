@@ -10,6 +10,15 @@
   </div>
 </div>
 
+<ul class="nav nav-pills gap-2 mb-4">
+  <li class="nav-item">
+    <a class="nav-link active" href="{{ route('driver-payroll.index') }}">Payment bills</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{ route('payrolls.index') }}">Monthly payroll</a>
+  </li>
+</ul>
+
 <div class="row g-3 mb-4">
   <div class="col-md-4">
     <div class="card h-100">

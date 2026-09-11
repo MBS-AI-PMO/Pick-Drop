@@ -13,10 +13,18 @@ class NotificationController extends Controller
 
         return view('pickdrop.notifications.index', compact('notifications'));
     }
-    public function clear()
-{
-    Notification::query()->delete();
 
-    return redirect()->back()->with('success', 'All notifications cleared successfully.');
-}
+    public function destroy(Notification $notification)
+    {
+        $notification->delete();
+
+        return redirect()->back();
+    }
+
+    public function clear()
+    {
+        Notification::query()->delete();
+
+        return redirect()->back()->with('success', 'All notifications cleared successfully.');
+    }
 }

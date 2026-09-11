@@ -147,6 +147,17 @@ class MonthlyDriverPayrollController extends Controller
         return back()->with('success', 'Driver marked as paid PKR ' . number_format((float) $payroll->net, 2) . '.');
     }
 
+    public function destroy(DriverPayroll $payroll)
+    {
+        $month = $payroll->month;
+        $payroll->items()->delete();
+        $payroll->delete();
+
+        return redirect()
+            ->route('payrolls.index', ['month' => $month])
+            ->with('success', 'Payroll record deleted.');
+    }
+
     private function month(Request $request): string
     {
         $value = (string) $request->input('month', $request->query('month', now()->format('Y-m')));

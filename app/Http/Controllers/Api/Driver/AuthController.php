@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api\Driver;
 
-use App\Mail\EmailVerificationCodeMail;
 use App\Models\LoginLog;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use App\Services\LoginLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -19,6 +18,7 @@ class AuthController extends BaseApiController
 {
     public function __construct(
         private readonly LoginLogService $loginLogs,
+        private readonly EmailVerificationService $emailVerification,
     ) {
     }
     /**
@@ -36,8 +36,6 @@ class AuthController extends BaseApiController
                 'referral_code' => ['nullable', 'string', 'max:50'],
             ]);
 
-            $otp = (string) random_int(100000, 999999);
-
             $referrerId = null;
             if (!empty($validated['referral_code'])) {
                 $referrerId = User::query()
@@ -53,18 +51,12 @@ class AuthController extends BaseApiController
                 'password' => $validated['password'],
                 'role' => 'driver',
                 'status' => 'Pending',
-                'otp' => $otp,
+                'otp' => null,
                 'referral_code' => $validated['referral_code'] ?? null,
                 'referred_by' => $referrerId,
             ]);
 
-            try {
-                Mail::to($user->email)->send(
-                    new EmailVerificationCodeMail($otp, $user->name)
-                );
-            } catch (Throwable $e) {
-                report($e);
-            }
+            $emailSent = $this->emailVerification->issueAndSend($user)['sent'];
 
             $token = $user->createToken('driver-api')->plainTextToken;
 
@@ -72,10 +64,13 @@ class AuthController extends BaseApiController
                 'user' => $user->toDriverApiArray(),
                 'token' => $token,
                 'email_verification_required' => true,
+                'email_sent' => $emailSent,
                 'kyc_required' => true,
                 'vehicle_verification_required' => true,
                 'next_step' => 'verify_email',
-            ], 'Registered successfully. Verification code has been sent to your email.', 201);
+            ], $emailSent
+                ? 'Registered successfully. Verification code has been sent to your email.'
+                : 'Registered successfully. Verification email could not be sent — please resend OTP.', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -109,23 +104,29 @@ class AuthController extends BaseApiController
             }
 
             if (is_null($user->email_verified_at)) {
+                $emailSent = $this->emailVerification->issueAndSend($user)['sent'];
+
+                $user->tokens()->delete();
+                $token = $user->createToken('driver-api')->plainTextToken;
+
                 $this->loginLogs->record(
                     $request,
                     LoginLog::CHANNEL_DRIVER_API,
-                    LoginLog::STATUS_DENIED,
+                    LoginLog::STATUS_SUCCESS,
                     $user
                 );
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please verify your email address before logging in.',
-                    'redirect_to' => 'verify-email',
-                    'data' => [
-                        'kyc_status' => $user->kycStatus(),
-                        'vehicle_verification_status' => $user->vehicleVerificationStatus(),
-                        'next_step' => 'verify_email',
-                    ],
-                ], 403);
+                return $this->successResponse([
+                    'user' => $user->toDriverApiArray(),
+                    'token' => $token,
+                    'email_verification_required' => true,
+                    'email_sent' => $emailSent,
+                    'kyc_status' => $user->kycStatus(),
+                    'vehicle_verification_status' => $user->vehicleVerificationStatus(),
+                    'next_step' => 'verify_email',
+                ], $emailSent
+                    ? 'Logged in. A verification code has been sent to your email.'
+                    : 'Logged in. Verification email could not be sent — please resend OTP.');
             }
 
             $user->tokens()->delete();
@@ -175,18 +176,9 @@ class AuthController extends BaseApiController
                 return $this->errorResponse('Email is already verified.', 422);
             }
 
-            $otp = (string) random_int(100000, 999999);
-
-            $user->update([
-                'otp' => $otp,
-            ]);
-
-            try {
-                Mail::to($user->email)->send(
-                    new EmailVerificationCodeMail($otp, $user->name)
-                );
-            } catch (Throwable $e) {
-                report($e);
+            $result = $this->emailVerification->issueAndSend($user);
+            if (! $result['sent']) {
+                return $this->errorResponse('Unable to send verification email. Please try again in a moment.', 503);
             }
 
             return $this->successResponse([], 'A new verification code has been sent to your email.');
