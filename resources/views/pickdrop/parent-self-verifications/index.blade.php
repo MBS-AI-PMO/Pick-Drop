@@ -94,6 +94,14 @@
                   <a href="{{ route('parent-self-verifications.show', $item) }}" class="action-btn action-btn-view" title="View">
                     <i data-lucide="eye"></i>
                   </a>
+                  <form action="{{ route('parent-self-verifications.destroy', $item) }}" method="POST"
+                        class="d-inline" onsubmit="confirmDelete(event, this)">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>

@@ -184,4 +184,13 @@ class DriverVerificationController extends Controller
 
         return Storage::disk('public')->response($path);
     }
+
+    public function destroy(DriverVerification $driverVerification)
+    {
+        $driverVerification->delete();
+
+        return redirect()
+            ->route('driver-verifications.index')
+            ->with('success', 'Driver verification deleted.');
+    }
 }

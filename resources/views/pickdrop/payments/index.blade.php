@@ -155,7 +155,7 @@
                         onsubmit="confirmDelete(event, this)">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="action-btn action-btn-view" title="Delete">
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
                       <i data-lucide="trash-2"></i>
                     </button>
                   </form>

@@ -47,6 +47,11 @@
     @else
       <span class="badge rounded-pill px-3 py-2" style="background:#d1fae5;color:#065f46;">Paid {{ $payroll->paid_at?->format('d M Y') }}</span>
     @endunless
+    <form method="POST" action="{{ route('payrolls.destroy', $payroll) }}" onsubmit="confirmDelete(event, this)">
+      @csrf
+      @method('DELETE')
+      <button class="btn btn-outline-danger" type="submit">Delete</button>
+    </form>
   </div>
 </div>
 

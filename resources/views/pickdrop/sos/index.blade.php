@@ -7,6 +7,15 @@
     <h4 class="mb-1">SOS alerts</h4>
     <p class="text-secondary mb-0">Emergency reports from parents, self users, and drivers</p>
   </div>
+  @if(($counts['all'] ?? 0) > 0)
+    <form action="{{ route('sos.clear') }}" method="POST">
+      @csrf
+      <button type="submit" class="btn btn-outline-danger">
+        <i data-lucide="trash-2" class="icon-xs"></i>
+        Clear all
+      </button>
+    </form>
+  @endif
 </div>
 
 <div class="row g-3 mb-3">
@@ -68,9 +77,19 @@
               <td>{{ $item->message ?: '—' }}</td>
               <td>{{ ucfirst($item->status) }}</td>
               <td class="text-center">
-                <a href="{{ route('sos.show', $item) }}" class="action-btn action-btn-view" title="View">
-                  <i data-lucide="eye"></i>
-                </a>
+                <div class="action-btns">
+                  <a href="{{ route('sos.show', $item) }}" class="action-btn action-btn-view" title="View">
+                    <i data-lucide="eye"></i>
+                  </a>
+                  <form action="{{ route('sos.destroy', $item) }}" method="POST"
+                        class="d-inline" onsubmit="confirmDelete(event, this)">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="action-btn action-btn-delete" title="Delete">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
           @empty

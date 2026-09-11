@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api\ParentSelf;
 
 use App\Http\Controllers\Api\ParentSelf\BaseApiController;
-use App\Mail\EmailVerificationCodeMail;
 use App\Models\LoginLog;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use App\Services\LoginLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +21,7 @@ class AuthController extends BaseApiController
 {
     public function __construct(
         private readonly LoginLogService $loginLogs,
+        private readonly EmailVerificationService $emailVerification,
     ) {
     }
     public function register(Request $request): JsonResponse
@@ -47,7 +47,7 @@ class AuthController extends BaseApiController
                         ->value('id');
                 }
 
-                $u = User::create([
+                return User::create([
                     'name'     => $validated['name'],
                     'email'    => $validated['email'],
                     'phone'    => $validated['contact'] ?? null,
@@ -60,10 +60,9 @@ class AuthController extends BaseApiController
                         'contact' => $validated['contact'] ?? null,
                     ],
                 ]);
-                $this->storeEmailVerificationCodeAndNotify($u);
-
-                return $u;
             });
+
+            $emailSent = $this->emailVerification->issueAndSend($user)['sent'];
 
             $token = $user->createToken('parent-self-api')->plainTextToken;
 
@@ -71,9 +70,12 @@ class AuthController extends BaseApiController
                 'user'  => $user->toParentSelfApiArray(),
                 'token' => $token,
                 'email_verification_required' => true,
+                'email_sent' => $emailSent,
                 'kyc_required' => true,
                 'next_step' => 'verify_email',
-            ], 'Registered successfully. A verification code has been sent to your email.', 201);
+            ], $emailSent
+                ? 'Registered successfully. A verification code has been sent to your email.'
+                : 'Registered successfully. Verification email could not be sent — please use resend.', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (Throwable $e) {
@@ -119,13 +121,18 @@ class AuthController extends BaseApiController
             );
 
             if (is_null($user->email_verified_at)) {
+                $emailSent = $this->emailVerification->issueAndSend($user)['sent'];
+
                 return $this->successResponse([
                     'user' => $user->toParentSelfApiArray(),
                     'token' => $token,
                     'email_verification_required' => true,
+                    'email_sent' => $emailSent,
                     'kyc_status' => $user->parentSelfKycStatus(),
                     'next_step' => 'verify_email',
-                ], 'Logged in. Please verify your email address before continuing.');
+                ], $emailSent
+                    ? 'Logged in. A verification code has been sent to your email.'
+                    : 'Logged in. Verification email could not be sent — please use resend.');
             }
 
             return $this->successResponse([
@@ -224,12 +231,17 @@ class AuthController extends BaseApiController
                 ], 'Email already verified');
             }
 
-            $this->storeEmailVerificationCodeAndNotify($user);
+            $result = $this->emailVerification->issueAndSend($user);
+            if (! $result['sent']) {
+                throw new RuntimeException('Unable to send verification email. Please try again in a moment.');
+            }
 
             return $this->successResponse([
-                'expires_in_minutes' => 30,
+                'expires_in_minutes' => $result['expires_in_minutes'],
                 'next_step' => 'verify_email',
             ], 'Verification code sent to your email');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 503);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to send verification');
         }
@@ -342,32 +354,4 @@ class AuthController extends BaseApiController
         }
     }
 
-    /**
-     * Persist a new 6-digit code and email it to the user.
-     */
-    private function storeEmailVerificationCodeAndNotify(User $user): void
-    {
-        DB::table('email_verification_tokens')
-            ->where('user_id', $user->id)
-            ->whereNull('used_at')
-            ->delete();
-
-        $code = (string) random_int(100000, 999999);
-
-        DB::table('email_verification_tokens')->insert([
-            'user_id' => $user->id,
-            'code' => $code,
-            'expires_at' => now()->addMinutes(30),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        try {
-            Mail::to($user->email)->send(new EmailVerificationCodeMail($code, $user->name));
-        } catch (Throwable $e) {
-            report($e);
-            // Registration must not fail if SMTP is misconfigured.
-            // Code is still stored and can be resent later.
-        }
-    }
 }

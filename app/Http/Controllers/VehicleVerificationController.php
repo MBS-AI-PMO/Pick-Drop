@@ -188,4 +188,13 @@ class VehicleVerificationController extends Controller
 
         return Storage::disk('public')->response($path);
     }
+
+    public function destroy(DriverVehicleVerification $vehicleVerification)
+    {
+        $vehicleVerification->delete();
+
+        return redirect()
+            ->route('vehicle-verifications.index')
+            ->with('success', 'Vehicle verification deleted.');
+    }
 }

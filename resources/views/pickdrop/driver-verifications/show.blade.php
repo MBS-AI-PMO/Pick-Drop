@@ -234,6 +234,16 @@
             Decline
           </button>
         </form>
+
+        <form method="POST" action="{{ route('driver-verifications.destroy', $verification) }}" class="mt-3"
+              onsubmit="confirmDelete(event, this)">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="btn btn-danger w-100">
+            <i data-lucide="trash-2" class="icon-xs"></i>
+            Delete record
+          </button>
+        </form>
       </div>
     </div>
   </div>

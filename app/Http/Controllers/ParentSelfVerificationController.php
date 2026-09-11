@@ -215,4 +215,13 @@ class ParentSelfVerificationController extends Controller
 
         return Storage::disk('public')->response($path);
     }
+
+    public function destroy(ParentSelfVerification $parentSelfVerification)
+    {
+        $parentSelfVerification->delete();
+
+        return redirect()
+            ->route('parent-self-verifications.index')
+            ->with('success', 'Parent / self verification deleted.');
+    }
 }

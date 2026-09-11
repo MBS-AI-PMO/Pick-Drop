@@ -20,6 +20,11 @@
       {{ $requestItem->statusLabel() }}
     </span>
     <a href="{{ route('pickup-requests.index') }}" class="btn btn-outline-secondary">Back to list</a>
+    <form action="{{ route('pickup-requests.destroy', $requestItem) }}" method="POST" onsubmit="confirmDelete(event, this)">
+      @csrf
+      @method('DELETE')
+      <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
   </div>
 </div>
 

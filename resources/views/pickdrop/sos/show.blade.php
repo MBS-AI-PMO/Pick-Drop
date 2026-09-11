@@ -65,11 +65,16 @@
           </form>
         @endif
         @if($alert->status !== 'resolved')
-          <form method="POST" action="{{ route('sos.resolve', $alert) }}">
+          <form method="POST" action="{{ route('sos.resolve', $alert) }}" class="mb-2">
             @csrf
             <button class="btn btn-dark w-100" type="submit">Mark resolved</button>
           </form>
         @endif
+        <form method="POST" action="{{ route('sos.destroy', $alert) }}" onsubmit="confirmDelete(event, this)">
+          @csrf
+          @method('DELETE')
+          <button class="btn btn-outline-danger w-100" type="submit">Delete</button>
+        </form>
         @if($alert->handler)
           <small class="text-muted d-block mt-2">Handled by {{ $alert->handler->name }}</small>
         @endif

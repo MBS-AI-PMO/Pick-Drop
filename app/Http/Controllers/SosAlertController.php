@@ -58,4 +58,22 @@ class SosAlertController extends Controller
 
         return back()->with('success', 'SOS marked resolved.');
     }
+
+    public function destroy(SosAlert $sosAlert)
+    {
+        $sosAlert->delete();
+
+        return redirect()
+            ->route('sos.index')
+            ->with('success', 'SOS alert deleted.');
+    }
+
+    public function clear()
+    {
+        SosAlert::query()->delete();
+
+        return redirect()
+            ->route('sos.index')
+            ->with('success', 'All SOS alerts cleared.');
+    }
 }

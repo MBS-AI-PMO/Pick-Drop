@@ -37,53 +37,70 @@
       {{-- Notifications --}}
       <li class="nav-item dropdown pd-notify">
         @php
-          $notifications = \App\Models\Notification::latest()->take(4)->get();
+          $notifications = \App\Models\Notification::latest()->take(5)->get();
           $unreadNotificationsCount = \App\Models\Notification::where('is_read', false)->count();
+          $notifyBadge = $unreadNotificationsCount > 99 ? '99+' : (string) $unreadNotificationsCount;
         @endphp
         <a class="nav-link pd-icon-btn dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <i data-lucide="bell"></i>
           @if($unreadNotificationsCount > 0)
-            <span class="pd-notify-dot" aria-hidden="true"></span>
+            <span class="pd-notify-count" aria-label="{{ $unreadNotificationsCount }} unread">{{ $notifyBadge }}</span>
           @endif
         </a>
         <div class="dropdown-menu dropdown-menu-end notification-dropdown p-0" aria-labelledby="notificationDropdown">
           <div class="notification-dropdown__header">
-            <h6 class="notification-dropdown__title mb-0">Alerts</h6>
-            <div class="d-flex align-items-center gap-2">
+            <div class="notification-dropdown__heading">
+              <h6 class="notification-dropdown__title mb-0">Notifications</h6>
               @if($unreadNotificationsCount > 0)
                 <span class="notification-count-badge">{{ $unreadNotificationsCount }} new</span>
               @endif
-              <a href="{{ route('notifications.clear') }}"
-                class="notification-clear-link"
-                onclick="return confirm('Clear all notifications?')">
+            </div>
+            @if($notifications->isNotEmpty())
+              <a href="{{ route('notifications.clear') }}" class="notification-clear-link">
                 Clear all
               </a>
-            </div>
+            @endif
           </div>
 
           <div class="notification-dropdown__body">
             @forelse($notifications as $notification)
               @php
                 $notificationType = strtolower($notification->type ?? 'info');
-                $notificationIcon = $notificationType === 'success' ? 'check-circle' : ($notificationType === 'warning' ? 'alert-triangle' : 'bell');
+                $notificationIcon = match ($notificationType) {
+                  'success' => 'check-circle-2',
+                  'warning', 'danger' => 'alert-triangle',
+                  default => 'bell',
+                };
               @endphp
 
-              <a href="{{ route('notifications.index') }}" class="notification-dropdown__item {{ $notification->is_read ? '' : 'is-unread' }}">
-                <span class="notification-dropdown__icon notification-dropdown__icon--{{ $notificationType }}">
-                  <i class="icon-sm" data-lucide="{{ $notificationIcon }}"></i>
-                </span>
-
-                <span class="notification-dropdown__content">
-                  <span class="notification-dropdown__item-title">{{ $notification->title }}</span>
-                  <span class="notification-dropdown__message">
-                    {{ \Illuminate\Support\Str::limit($notification->message, 48) }}
+              <div class="notification-dropdown__card {{ $notification->is_read ? '' : 'is-unread' }}">
+                <a href="{{ route('notifications.index') }}" class="notification-dropdown__main">
+                  <span class="notification-dropdown__icon notification-dropdown__icon--{{ $notificationType }}">
+                    <i class="icon-sm" data-lucide="{{ $notificationIcon }}"></i>
                   </span>
-                  <span class="notification-dropdown__time">
-                    <i data-lucide="clock" class="icon-xs"></i>
-                    {{ $notification->created_at->diffForHumans() }}
+                  <span class="notification-dropdown__content">
+                    <span class="notification-dropdown__top">
+                      <span class="notification-dropdown__item-title">{{ $notification->title }}</span>
+                      @unless($notification->is_read)
+                        <span class="notification-dropdown__dot" aria-hidden="true"></span>
+                      @endunless
+                    </span>
+                    <span class="notification-dropdown__message">
+                      {{ \Illuminate\Support\Str::limit($notification->message, 72) }}
+                    </span>
+                    <span class="notification-dropdown__time">
+                      {{ $notification->created_at->diffForHumans() }}
+                    </span>
                   </span>
-                </span>
-              </a>
+                </a>
+                <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="notification-dropdown__delete">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit" class="notification-delete-btn" title="Delete" onclick="event.stopPropagation();">
+                    <i data-lucide="x" class="icon-xs"></i>
+                  </button>
+                </form>
+              </div>
             @empty
               <div class="notification-empty-state">
                 <span class="notification-empty-state__icon">
@@ -97,7 +114,7 @@
 
           <div class="notification-dropdown__footer">
             <a href="{{ route('notifications.index') }}" class="notification-view-all">
-              View history
+              View all history
               <i data-lucide="arrow-right" class="icon-xs"></i>
             </a>
           </div>

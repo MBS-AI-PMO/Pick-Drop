@@ -85,4 +85,22 @@ class IssueController extends Controller
             ->route('issues.show', $issueReport)
             ->with('success', 'Issue updated.');
     }
+
+    public function destroy(IssueReport $issueReport)
+    {
+        $issueReport->delete();
+
+        return redirect()
+            ->route('issues.index')
+            ->with('success', 'Complaint deleted.');
+    }
+
+    public function clear()
+    {
+        IssueReport::query()->delete();
+
+        return redirect()
+            ->route('issues.index')
+            ->with('success', 'All complaints cleared.');
+    }
 }
