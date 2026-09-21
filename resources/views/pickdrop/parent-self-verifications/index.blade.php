@@ -66,8 +66,18 @@
             <tr>
               <td class="ps-4">{{ $verifications->firstItem() + $loop->index }}</td>
               <td>
-                <div class="fw-semibold">{{ $item->full_name }}</div>
-                <small class="text-muted">{{ $item->user?->email }}</small>
+                <div class="d-flex align-items-center gap-2">
+                  @if($item->selfie_photo)
+                    <img src="{{ route('parent-self-verifications.document', [$item, 'selfie_photo']) }}"
+                         alt="Profile"
+                         class="rounded-circle border flex-shrink-0"
+                         style="width:36px;height:36px;object-fit:cover;">
+                  @endif
+                  <div>
+                    <div class="fw-semibold">{{ $item->full_name }}</div>
+                    <small class="text-muted">{{ $item->user?->email }}</small>
+                  </div>
+                </div>
               </td>
               <td>
                 @if($item->account_type === 'self')

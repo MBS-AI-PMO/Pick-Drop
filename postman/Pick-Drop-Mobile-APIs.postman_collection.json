@@ -3,7 +3,7 @@
     "_postman_id": "3a1c1a6c-aecf-4a9f-b69b-0a22db524001",
     "name": "Pick-Drop Mobile APIs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Collection for Parent, Self, and Driver mobile APIs.\n\nSource of truth: routes/api.php (includes routes/driver.php + routes/parent.php).\n\nParent/Self register: a 6-digit email verification code is sent to the given email. Use POST .../email/verify with body {\"code\":\"123456\"} after login. With MAIL_MAILER=log, read the code from storage/logs/laravel.log.\n\nRequests support service_type: both | pickup_only | drop_only and multi-stop via stops[].\nDriver service-areas / profile support available_seats + availability_hours."
+    "description": "Collection for Parent, Self, and Driver mobile APIs.\n\nSource of truth: routes/api.php (includes routes/driver.php + routes/parent.php).\n\nParent/Self register: a 6-digit email verification code is sent to the given email. Use POST .../email/verify with body {\"code\":\"123456\"} after login. With MAIL_MAILER=log, read the code from storage/logs/laravel.log.\n\nPhone verify: POST .../phone/verify/send (no body; uses account phone), then POST .../phone/verify with {\"code\":\"123456\"}.\n\nKYC / vehicle / bank pay use multipart form-data — attach the file fields in Postman before sending.\n\nParent students: create with name/grade/school/emergency only — city, area, pickup/drop are on the pick-drop request.\nRequests support trip_mode: round_trip | one_way (or round_trip bool), service_type: both | pickup_only | drop_only, and multi-stop via stops[]. Round trip return swaps points (evening pickup = morning drop). List filter: ?trip_mode=round_trip|one_way.\nDriver service-areas / profile support available_seats + availability_hours."
   },
   "variable": [
     { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
@@ -21,7 +21,9 @@
     { "key": "bill_id", "value": "1" },
     { "key": "payroll_id", "value": "1" },
     { "key": "replacement_id", "value": "1" },
-    { "key": "email_verification_code", "value": "123456" }
+    { "key": "email_verification_code", "value": "123456" },
+    { "key": "phone_verification_code", "value": "123456" },
+    { "key": "school_id", "value": "1" }
   ],
   "item": [
     {
@@ -43,22 +45,41 @@
 
         { "name": "Email Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/email/verify/send" } },
         { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{email_verification_code}}\"\n}" }, "url": "{{base_url}}/parent/email/verify" } },
-        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\"\n}" }, "url": "{{base_url}}/parent/phone/verify/send" } },
-        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\",\n  \"code\": \"123456\"\n}" }, "url": "{{base_url}}/parent/phone/verify" } },
+        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/phone/verify/send" } },
+        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{phone_verification_code}}\"\n}" }, "url": "{{base_url}}/parent/phone/verify" } },
 
         { "name": "KYC Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/verification" } },
-        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach required KYC image files as documented in VerificationController.", "type": "text" }] }, "url": "{{base_url}}/parent/verification" } },
+        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "father_name", "value": "Ahmed Khan", "type": "text" },
+          { "key": "date_of_birth", "value": "1990-05-15", "type": "text" },
+          { "key": "gender", "value": "male", "type": "text" },
+          { "key": "nationality", "value": "Pakistani", "type": "text" },
+          { "key": "address", "value": "G-10 Islamabad", "type": "text" },
+          { "key": "country", "value": "Pakistan", "type": "text" },
+          { "key": "city_id", "value": "{{city_id}}", "type": "text" },
+          { "key": "complete_address", "value": "House 12, Street 4, G-10/1", "type": "text" },
+          { "key": "postal_code", "value": "44000", "type": "text" },
+          { "key": "cnic_number", "value": "35202-1234567-1", "type": "text" },
+          { "key": "cnic_front", "type": "file", "src": [] },
+          { "key": "cnic_back", "type": "file", "src": [] },
+          { "key": "selfie_photo", "type": "file", "src": [] },
+          { "key": "terms_accepted", "value": "1", "type": "text" }
+        ] }, "url": "{{base_url}}/parent/verification" } },
 
         { "name": "Payment Methods", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/payment-methods" } },
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices/{{invoice_id}}" } },
         { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/stripe" } },
-        { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach bank transfer proof image as required by payBank.", "type": "text" }] }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/bank" } },
-        { "name": "Invoices - Pay JazzCash", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\"\n}" }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/jazzcash" } },
-        { "name": "Invoices - Pay EasyPaisa", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\"\n}" }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/easypaisa" } },
+        { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "reference", "value": "TRX-123456", "type": "text" },
+          { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
+          { "key": "proof", "type": "file", "src": [] }
+        ] }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/bank" } },
+        { "name": "Invoices - Pay JazzCash", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/jazzcash" } },
+        { "name": "Invoices - Pay EasyPaisa", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/easypaisa" } },
 
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/me" } },
-        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parent Updated\",\n  \"address\": \"F-11 Islamabad\",\n  \"contact\": \"03111234567\"\n}" }, "url": "{{base_url}}/parent/me" } },
+        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parent Updated\",\n  \"email\": \"parent@example.com\",\n  \"address\": \"F-11 Islamabad\",\n  \"contact\": \"03111234567\",\n  \"emergency_contact_name\": \"Sara Khan\",\n  \"emergency_contact_phone\": \"03001112233\"\n}" }, "url": "{{base_url}}/parent/me" } },
         { "name": "Account - Change Password", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"123456\",\n  \"password\": \"newpass123\",\n  \"password_confirmation\": \"newpass123\"\n}" }, "url": "{{base_url}}/parent/account/change-password" } },
         { "name": "Account - Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"password\": \"newpass123\"\n}" }, "url": "{{base_url}}/parent/account" } },
 
@@ -67,15 +88,15 @@
         { "name": "Locations - Points by City", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/cities/{{city_id}}/points" } },
 
         { "name": "Students - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students" } },
-        { "name": "Students - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali\",\n  \"grade\": \"5\",\n  \"school_name\": \"ABC School\",\n  \"school_location\": \"Blue Area\",\n  \"city_id\": {{city_id}},\n  \"pickup_area_id\": {{area_id}},\n  \"pickup_location\": \"Street 10\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"pickup_time\": \"07:30\",\n  \"dropoff_time\": \"14:30\"\n}" }, "url": "{{base_url}}/parent/students" } },
+        { "name": "Students - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali\",\n  \"grade\": \"5\",\n  \"school_id\": {{school_id}},\n  \"school_name\": \"ABC School\",\n  \"school_location\": \"Blue Area\",\n  \"emergency_name\": \"Sara Khan\",\n  \"emergency_phone\": \"03001112233\",\n  \"emergency_relation\": \"mother\"\n}" }, "url": "{{base_url}}/parent/students" } },
         { "name": "Students - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students/{{student_id}}" } },
-        { "name": "Students - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"grade\": \"6\",\n  \"pickup_time\": \"07:45\"\n}" }, "url": "{{base_url}}/parent/students/{{student_id}}" } },
+        { "name": "Students - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali Updated\",\n  \"grade\": \"6\",\n  \"school_id\": {{school_id}},\n  \"school_name\": \"ABC School\",\n  \"school_location\": \"Blue Area\",\n  \"status\": \"active\",\n  \"emergency_name\": \"Sara Khan\",\n  \"emergency_phone\": \"03001112233\",\n  \"emergency_relation\": \"mother\"\n}" }, "url": "{{base_url}}/parent/students/{{student_id}}" } },
         { "name": "Students - Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/students/{{student_id}}" } },
 
         { "name": "Requests - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests" } },
-        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"parent\",\n  \"student_id\": {{student_id}},\n  \"city_id\": {{city_id}},\n  \"service_type\": \"both\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"duration_months\": 1,\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Home Gate\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"07:30\", \"area_id\": {{area_id}} },\n    { \"type\": \"drop\", \"point\": \"School Main Gate\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"08:10\", \"area_id\": {{area_id}} }\n  ]\n}" }, "url": "{{base_url}}/parent/requests" } },
+        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"parent\",\n  \"student_id\": {{student_id}},\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"drop_area_id\": {{area_id}},\n  \"service_type\": \"both\",\n  \"trip_mode\": \"round_trip\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"duration_months\": 1,\n  \"passenger_count\": 1,\n  \"round_trip\": true,\n  \"shift_start_date\": \"2026-09-15\",\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Home Gate\", \"name\": \"Home\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"07:30\", \"sequence\": 1, \"area_id\": {{area_id}}, \"notes\": \"Near gate\" },\n    { \"type\": \"drop\", \"point\": \"School Main Gate\", \"name\": \"School\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"08:10\", \"sequence\": 2, \"area_id\": {{area_id}}, \"notes\": null }\n  ]\n}" }, "url": "{{base_url}}/parent/requests" } },
         { "name": "Requests - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}" } },
-        { "name": "Requests - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_time\": \"07:45\"\n}" }, "url": "{{base_url}}/parent/requests/{{request_id}}" } },
+        { "name": "Requests - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"drop_area_id\": {{area_id}},\n  \"service_type\": \"both\",\n  \"pickup_time\": \"07:45\",\n  \"drop_time\": \"08:15\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"duration_months\": 1,\n  \"shift_start_date\": \"2026-09-15\",\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Home Gate\", \"name\": \"Home\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"07:45\", \"sequence\": 1, \"area_id\": {{area_id}} },\n    { \"type\": \"drop\", \"point\": \"School Main Gate\", \"name\": \"School\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"08:15\", \"sequence\": 2, \"area_id\": {{area_id}} }\n  ]\n}" }, "url": "{{base_url}}/parent/requests/{{request_id}}" } },
         { "name": "Requests - Cancel", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}" } },
         { "name": "Requests - Driver Info", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}/driver" } },
         { "name": "Requests - Tracking", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/requests/{{request_id}}/tracking" } },
@@ -124,11 +145,26 @@
 
         { "name": "Email Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/email/verify/send" } },
         { "name": "Email Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{email_verification_code}}\"\n}" }, "url": "{{base_url}}/self/email/verify" } },
-        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03009998888\"\n}" }, "url": "{{base_url}}/self/phone/verify/send" } },
-        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03009998888\",\n  \"code\": \"123456\"\n}" }, "url": "{{base_url}}/self/phone/verify" } },
+        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/phone/verify/send" } },
+        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{phone_verification_code}}\"\n}" }, "url": "{{base_url}}/self/phone/verify" } },
 
         { "name": "KYC Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/verification" } },
-        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach required KYC image files as documented in VerificationController.", "type": "text" }] }, "url": "{{base_url}}/self/verification" } },
+        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "father_name", "value": "Ahmed Khan", "type": "text" },
+          { "key": "date_of_birth", "value": "1992-08-20", "type": "text" },
+          { "key": "gender", "value": "male", "type": "text" },
+          { "key": "nationality", "value": "Pakistani", "type": "text" },
+          { "key": "address", "value": "G-11 Islamabad", "type": "text" },
+          { "key": "country", "value": "Pakistan", "type": "text" },
+          { "key": "city_id", "value": "{{city_id}}", "type": "text" },
+          { "key": "complete_address", "value": "House 8, Street 2, G-11/2", "type": "text" },
+          { "key": "postal_code", "value": "44000", "type": "text" },
+          { "key": "cnic_number", "value": "35202-7654321-2", "type": "text" },
+          { "key": "cnic_front", "type": "file", "src": [] },
+          { "key": "cnic_back", "type": "file", "src": [] },
+          { "key": "selfie_photo", "type": "file", "src": [] },
+          { "key": "terms_accepted", "value": "1", "type": "text" }
+        ] }, "url": "{{base_url}}/self/verification" } },
 
         { "name": "Commute Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/commute-profile" } },
         { "name": "Commute Profile - Save", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"city_id\": {{city_id}},\n  \"pickup_area_id\": {{area_id}},\n  \"pickup_point\": \"Home\",\n  \"pickup_lat\": 33.6844,\n  \"pickup_lng\": 73.0479,\n  \"office_name\": \"Office\",\n  \"drop_area_id\": {{area_id}},\n  \"drop_point\": \"Office Gate\",\n  \"drop_lat\": 33.7000,\n  \"drop_lng\": 73.0600,\n  \"pickup_time\": \"08:00\",\n  \"drop_time\": \"09:00\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"]\n}" }, "url": "{{base_url}}/self/commute-profile" } },
@@ -137,12 +173,16 @@
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices/{{invoice_id}}" } },
         { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/stripe" } },
-        { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach bank transfer proof image as required by payBank.", "type": "text" }] }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/bank" } },
-        { "name": "Invoices - Pay JazzCash", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03009998888\"\n}" }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/jazzcash" } },
-        { "name": "Invoices - Pay EasyPaisa", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03009998888\"\n}" }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/easypaisa" } },
+        { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "reference", "value": "TRX-654321", "type": "text" },
+          { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
+          { "key": "proof", "type": "file", "src": [] }
+        ] }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/bank" } },
+        { "name": "Invoices - Pay JazzCash", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/jazzcash" } },
+        { "name": "Invoices - Pay EasyPaisa", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/easypaisa" } },
 
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/me" } },
-        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Self Updated\",\n  \"address\": \"F-10 Islamabad\",\n  \"contact\": \"03001112222\"\n}" }, "url": "{{base_url}}/self/me" } },
+        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Self Updated\",\n  \"email\": \"self@example.com\",\n  \"address\": \"F-10 Islamabad\",\n  \"contact\": \"03001112222\",\n  \"emergency_contact_name\": \"Ali Khan\",\n  \"emergency_contact_phone\": \"03009998877\"\n}" }, "url": "{{base_url}}/self/me" } },
         { "name": "Account - Change Password", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"123456\",\n  \"password\": \"newpass123\",\n  \"password_confirmation\": \"newpass123\"\n}" }, "url": "{{base_url}}/self/account/change-password" } },
         { "name": "Account - Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"password\": \"newpass123\"\n}" }, "url": "{{base_url}}/self/account" } },
 
@@ -151,14 +191,14 @@
         { "name": "Locations - Points by City", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/cities/{{city_id}}/points" } },
 
         { "name": "Requests - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests" } },
-        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"self\",\n  \"city_id\": {{city_id}},\n  \"service_type\": \"both\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Office\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"18:00\", \"area_id\": {{area_id}} },\n    { \"type\": \"drop\", \"point\": \"Home\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"18:45\", \"area_id\": {{area_id}} }\n  ]\n}" }, "url": "{{base_url}}/self/requests" } },
+        { "name": "Requests - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"self\",\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"drop_area_id\": {{area_id}},\n  \"service_type\": \"both\",\n  \"trip_mode\": \"round_trip\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"duration_months\": 1,\n  \"passenger_count\": 1,\n  \"round_trip\": true,\n  \"shift_start_date\": \"2026-09-15\",\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Office\", \"name\": \"Office\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"18:00\", \"sequence\": 1, \"area_id\": {{area_id}}, \"notes\": null },\n    { \"type\": \"drop\", \"point\": \"Home\", \"name\": \"Home\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"18:45\", \"sequence\": 2, \"area_id\": {{area_id}}, \"notes\": null }\n  ]\n}" }, "url": "{{base_url}}/self/requests" } },
         { "name": "Requests - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}" } },
-        { "name": "Requests - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_time\": \"18:15\"\n}" }, "url": "{{base_url}}/self/requests/{{request_id}}" } },
+        { "name": "Requests - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"city_id\": {{city_id}},\n  \"area_id\": {{area_id}},\n  \"drop_area_id\": {{area_id}},\n  \"service_type\": \"both\",\n  \"pickup_time\": \"18:15\",\n  \"drop_time\": \"19:00\",\n  \"days\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"duration_months\": 1,\n  \"shift_start_date\": \"2026-09-15\",\n  \"stops\": [\n    { \"type\": \"pickup\", \"point\": \"Office\", \"name\": \"Office\", \"lat\": 33.6844, \"lng\": 73.0479, \"time\": \"18:15\", \"sequence\": 1, \"area_id\": {{area_id}} },\n    { \"type\": \"drop\", \"point\": \"Home\", \"name\": \"Home\", \"lat\": 33.7000, \"lng\": 73.0600, \"time\": \"19:00\", \"sequence\": 2, \"area_id\": {{area_id}} }\n  ]\n}" }, "url": "{{base_url}}/self/requests/{{request_id}}" } },
         { "name": "Requests - Cancel", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}" } },
         { "name": "Requests - Driver Info", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}/driver" } },
         { "name": "Requests - Tracking", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}/tracking" } },
         { "name": "Requests - Replacements", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}/replacements" } },
-        { "name": "Requests - Renew", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"duration_months\": 1\n}" }, "url": "{{base_url}}/self/requests/{{request_id}}/renew" } },
+        { "name": "Requests - Renew", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"duration_months\": 1,\n  \"auto_renew\": false\n}" }, "url": "{{base_url}}/self/requests/{{request_id}}/renew" } },
         { "name": "Requests - Auto Renew", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"enabled\": true\n}" }, "url": "{{base_url}}/self/requests/{{request_id}}/auto-renew" } },
         { "name": "Requests - Decline Renewal", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}/decline-renewal" } },
         { "name": "Requests - Attendance List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/requests/{{request_id}}/attendance" } },
@@ -188,7 +228,7 @@
         { "name": "Notifications - Mark Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/notifications/{{notification_id}}/read" } },
         { "name": "Notifications - Mark All Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/notifications/mark-all-read" } },
         { "name": "Notification Preferences - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/notification-preferences" } },
-        { "name": "Notification Preferences - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"new_messages\": true,\n  \"weekly_updates\": true,\n  \"promotions\": false\n}" }, "url": "{{base_url}}/self/notification-preferences" } }
+        { "name": "Notification Preferences - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"push_enabled\": true,\n  \"email_enabled\": true,\n  \"new_messages\": true,\n  \"child_activity\": true,\n  \"school_alerts\": true,\n  \"payment_reminders\": true,\n  \"weekly_updates\": true,\n  \"promotions\": false\n}" }, "url": "{{base_url}}/self/notification-preferences" } }
       ]
     },
     {
@@ -206,12 +246,42 @@
         { "name": "Locations - Areas by City", "request": { "method": "GET", "header": [], "url": "{{base_url}}/driver/cities/{{city_id}}/areas" } },
 
         { "name": "KYC Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/verification" } },
-        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach CNIC/license/selfie images + fields from VerificationController.", "type": "text" }] }, "url": "{{base_url}}/driver/verification" } },
+        { "name": "KYC Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "father_name", "value": "Imran Ali", "type": "text" },
+          { "key": "date_of_birth", "value": "1988-03-10", "type": "text" },
+          { "key": "addres  AQ  qaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                                                                                                                                                                                                                                                                                                                                                                                                            s", "value": "G-10 Islamabad", "type": "text" },
+          { "key": "city_id", "value": "{{city_id}}", "type": "text" },
+          { "key": "service_areas", "value": "[{{area_id}}]", "type": "text" },
+          { "key": "cnic_number", "value": "35202-1111111-1", "type": "text" },
+          { "key": "cnic_front", "type": "file", "src": [] },
+          { "key": "cnic_back", "type": "file", "src": [] },
+          { "key": "selfie_photo", "type": "file", "src": [] },
+          { "key": "license_number", "value": "ICT-DL-123456", "type": "text" },
+          { "key": "license_front", "type": "file", "src": [] },
+          { "key": "license_back", "type": "file", "src": [] },
+          { "key": "license_expiry", "value": "2028-12-31", "type": "text" },
+          { "key": "terms_accepted", "value": "1", "type": "text" }
+        ] }, "url": "{{base_url}}/driver/verification" } },
         { "name": "Vehicle Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/vehicle-verification" } },
-        { "name": "Vehicle Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "note", "value": "Attach vehicle document images + fields from VehicleVerificationController.", "type": "text" }] }, "url": "{{base_url}}/driver/vehicle-verification" } },
+        { "name": "Vehicle Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "vehicle_category_id", "value": "1", "type": "text" },
+          { "key": "vehicle_name", "value": "Suzuki WagonR", "type": "text" },
+          { "key": "vehicle_model", "value": "2022", "type": "text" },
+          { "key": "vehicle_color", "value": "White", "type": "text" },
+          { "key": "license_plate", "value": "ICT-1234", "type": "text" },
+          { "key": "registration_card_front", "type": "file", "src": [] },
+          { "key": "registration_card_back", "type": "file", "src": [] },
+          { "key": "vehicle_front_photo", "type": "file", "src": [] },
+          { "key": "vehicle_back_photo", "type": "file", "src": [] },
+          { "key": "number_plate_photo", "type": "file", "src": [] },
+          { "key": "owner_name", "value": "Driver User", "type": "text" },
+          { "key": "owner_cnic_number", "value": "35202-1111111-1", "type": "text" },
+          { "key": "owner_document_front", "type": "file", "src": [] },
+          { "key": "owner_document_back", "type": "file", "src": [] }
+        ] }, "url": "{{base_url}}/driver/vehicle-verification" } },
 
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/me" } },
-        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver Updated\",\n  \"home_address\": \"G-10 Islamabad\",\n  \"city_id\": {{city_id}},\n  \"service_areas\": [{{area_id}}],\n  \"available_seats\": 3,\n  \"availability_hours\": [\n    { \"day\": \"monday\", \"start\": \"07:00\", \"end\": \"10:00\" },\n    { \"day\": \"tuesday\", \"start\": \"07:00\", \"end\": \"10:00\" }\n  ]\n}" }, "url": "{{base_url}}/driver/me" } },
+        { "name": "Profile - Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Driver Updated\",\n  \"phone\": \"03001234567\",\n  \"home_address\": \"G-10 Islamabad\",\n  \"city_id\": {{city_id}},\n  \"service_areas\": [{{area_id}}],\n  \"available_seats\": 3,\n  \"availability_hours\": [\n    { \"day\": \"monday\", \"start\": \"07:00\", \"end\": \"10:00\" },\n    { \"day\": \"tuesday\", \"start\": \"07:00\", \"end\": \"10:00\" }\n  ],\n  \"emergency_contact_name\": \"Fatima Ali\",\n  \"emergency_contact_phone\": \"03009876543\",\n  \"duty_status\": \"on_duty\"\n}" }, "url": "{{base_url}}/driver/me" } },
         { "name": "Profile - Duty Status", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"duty_status\": \"on_duty\"\n}" }, "url": "{{base_url}}/driver/me/duty" } },
 
         { "name": "Account - Change Password", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"123456\",\n  \"password\": \"newpass123\",\n  \"password_confirmation\": \"newpass123\"\n}" }, "url": "{{base_url}}/driver/account/change-password" } },
@@ -239,21 +309,27 @@
         { "name": "Rides - History", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides" } },
         { "name": "Rides - Start", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{pickup_request_id}}/start" } },
         { "name": "Rides - Arrive", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{pickup_request_id}}/arrive" } },
-        { "name": "Rides - Mark Pickup", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{ride_id}}/pickup" } },
-        { "name": "Rides - Mark Drop", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/{{ride_id}}/drop" } },
+        { "name": "Rides - Mark Pickup", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "otp", "value": "123456", "type": "text" },
+          { "key": "photo", "type": "file", "src": [] }
+        ] }, "url": "{{base_url}}/driver/rides/{{ride_id}}/pickup" } },
+        { "name": "Rides - Mark Drop", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [
+          { "key": "otp", "value": "123456", "type": "text" },
+          { "key": "photo", "type": "file", "src": [] }
+        ] }, "url": "{{base_url}}/driver/rides/{{ride_id}}/drop" } },
 
         { "name": "Location - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/location/update" } },
         { "name": "Status - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"on_the_way\"\n}" }, "url": "{{base_url}}/driver/status/update" } },
 
-        { "name": "Issues - Report", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"delay\",\n  \"reason\": \"Traffic jam\"\n}" }, "url": "{{base_url}}/driver/issues" } },
+        { "name": "Issues - Report", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_request_id\": {{pickup_request_id}},\n  \"type\": \"delay\",\n  \"reason\": \"Traffic jam\",\n  \"eta_change\": 15\n}" }, "url": "{{base_url}}/driver/issues" } },
         { "name": "Issues - Today", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/issues/today" } },
 
         { "name": "Notifications - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/notifications" } },
         { "name": "Notifications - Mark Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/notifications/{{notification_id}}/read" } },
         { "name": "Notifications - Mark All Read", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/notifications/mark-all-read" } },
 
-        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\"\n}" }, "url": "{{base_url}}/driver/phone/verify/send" } },
-        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"03001234567\",\n  \"code\": \"123456\"\n}" }, "url": "{{base_url}}/driver/phone/verify" } },
+        { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/phone/verify/send" } },
+        { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{phone_verification_code}}\"\n}" }, "url": "{{base_url}}/driver/phone/verify" } },
 
         { "name": "SOS - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_request_id\": {{pickup_request_id}},\n  \"message\": \"Emergency\",\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/sos" } },
         { "name": "Holidays", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/holidays" } },

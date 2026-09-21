@@ -107,9 +107,17 @@
             @endforeach
           </select>
         </div>
+        <div class="col-12 col-md-2">
+          <select class="form-select" name="trip_mode" onchange="this.form.submit()">
+            <option value="">All trip modes</option>
+            @foreach(\App\Models\PickupRequest::tripModeOptions() as $value => $label)
+              <option value="{{ $value }}" {{ request('trip_mode') === $value ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+          </select>
+        </div>
         <div class="col-auto">
           <button type="submit" class="btn btn-outline-secondary">Filter</button>
-          @if(request('search') || request('status') || request('type') || request('city_id'))
+          @if(request('search') || request('status') || request('type') || request('city_id') || request('trip_mode'))
             <a href="{{ route('pickup-requests.index') }}" class="btn btn-outline-danger ms-1">Clear</a>
           @endif
         </div>
@@ -127,6 +135,7 @@
             <th class="ps-4 py-3">Request</th>
             <th class="py-3">Requested by</th>
             <th class="py-3">Type</th>
+            <th class="py-3">Trip</th>
             <th class="py-3">Pickup → Drop</th>
             <th class="py-3">Driver</th>
             <th class="py-3">Submitted</th>
@@ -154,6 +163,13 @@
                   <span class="badge bg-info text-dark">Self</span>
                 @else
                   <span class="badge bg-primary">Parent</span>
+                @endif
+              </td>
+              <td>
+                @if($item->tripMode() === \App\Models\PickupRequest::TRIP_ROUND)
+                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Ana-jana</span>
+                @else
+                  <span class="badge bg-secondary">One way</span>
                 @endif
               </td>
               <td>
@@ -200,7 +216,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="text-center py-5 text-muted">No pickup requests found.</td>
+              <td colspan="10" class="text-center py-5 text-muted">No pickup requests found.</td>
             </tr>
           @endforelse
         </tbody>

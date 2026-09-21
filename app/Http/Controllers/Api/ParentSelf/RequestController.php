@@ -29,6 +29,28 @@ class RequestController extends BaseApiController
                 $q->where('status', $request->string('status'));
             }
 
+            if ($request->filled('trip_mode')) {
+                $mode = strtolower((string) $request->string('trip_mode'));
+                if ($mode === PickupRequest::TRIP_ONE_WAY) {
+                    $q->where(function ($inner) {
+                        $inner->where('round_trip', false)
+                            ->orWhereIn('service_type', [
+                                PickupRequest::SERVICE_PICKUP_ONLY,
+                                PickupRequest::SERVICE_DROP_ONLY,
+                            ]);
+                    });
+                } elseif ($mode === PickupRequest::TRIP_ROUND) {
+                    $q->where(function ($inner) {
+                        $inner->where(function ($r) {
+                            $r->whereNull('round_trip')->orWhere('round_trip', true);
+                        })->where(function ($s) {
+                            $s->whereNull('service_type')
+                                ->orWhere('service_type', PickupRequest::SERVICE_BOTH);
+                        });
+                    });
+                }
+            }
+
             $requests = $q->paginate(\App\Support\AppPagination::PER_PAGE);
             $requests->getCollection()->transform(fn (PickupRequest $row) => $row->toApiArray());
 
@@ -53,6 +75,7 @@ class RequestController extends BaseApiController
             }
 
             $this->applyLocationDefaults($request, $user);
+            $this->normalizeTripModeInput($request);
 
             $hasStops = is_array($request->input('stops')) && count($request->input('stops')) >= 1;
             $serviceType = strtolower((string) $request->input('service_type', PickupRequest::SERVICE_BOTH));
@@ -66,14 +89,27 @@ class RequestController extends BaseApiController
 
             $needPickup = ! $hasStops && $serviceType !== PickupRequest::SERVICE_DROP_ONLY;
             $needDrop = ! $hasStops && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY;
+            $isParentRequest = $this->expectedAccountType($request) === 'parent'
+                || strcasecmp((string) $request->input('type'), 'parent') === 0;
 
             $validated = $request->validate([
                 'type'       => ['required', 'in:parent,self'],
                 'service_type' => ['nullable', 'in:both,pickup_only,drop_only'],
+                'trip_mode' => ['nullable', 'in:round_trip,one_way'],
                 'student_id' => ['nullable', 'integer', 'exists:students,id'],
                 'city_id'    => ['required', 'integer', 'exists:cities,id'],
-                'area_id'    => [$hasStops || $serviceType === PickupRequest::SERVICE_DROP_ONLY ? 'nullable' : 'required', 'integer', 'exists:areas,id'],
-                'drop_area_id' => ['nullable', 'integer', 'exists:areas,id'],
+                'area_id'    => [
+                    $hasStops || $serviceType === PickupRequest::SERVICE_DROP_ONLY ? 'nullable' : 'required',
+                    'integer',
+                    'exists:areas,id',
+                ],
+                'drop_area_id' => [
+                    $needDrop || ($isParentRequest && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY)
+                        ? 'required'
+                        : 'nullable',
+                    'integer',
+                    'exists:areas,id',
+                ],
                 'pickup_point' => [$needPickup ? 'required' : 'nullable', 'string', 'max:255'],
                 'pickup_lat'   => [$needPickup ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
                 'pickup_lng'   => [$needPickup ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
@@ -102,6 +138,7 @@ class RequestController extends BaseApiController
             ]);
 
             $validated['service_type'] = $validated['service_type'] ?? $serviceType;
+            $validated = $this->applyTripModeToValidated($validated);
 
             if (empty($validated['duration_months'])) {
                 $validated['duration_months'] = 1;
@@ -180,10 +217,10 @@ class RequestController extends BaseApiController
                 (int) $validated['duration_months'],
                 $validated['shift_start_date'],
                 $stopPayload,
-                (int) $validated['city_id']
+                (int) $validated['city_id'],
+                (bool) ($validated['round_trip'] ?? ($validated['service_type'] === PickupRequest::SERVICE_BOTH))
             );
 
-            $defaultRoundTrip = $validated['service_type'] === PickupRequest::SERVICE_BOTH;
             $req = PickupRequest::create([
                 'type' => $validated['type'],
                 'service_type' => $validated['service_type'],
@@ -207,9 +244,7 @@ class RequestController extends BaseApiController
                 'shift_end_date' => $quote['shift_end_date'],
                 'distance_km' => $quote['distance_km'],
                 'trip_count' => $quote['trip_count'],
-                'round_trip' => array_key_exists('round_trip', $validated)
-                    ? (bool) $validated['round_trip']
-                    : $defaultRoundTrip,
+                'round_trip' => (bool) ($validated['round_trip'] ?? ($validated['service_type'] === PickupRequest::SERVICE_BOTH)),
                 'estimated_amount' => $quote['estimated_amount'],
                 'driver_monthly_rate' => $quote['driver_monthly_rate'],
                 'driver_payout_amount' => $quote['driver_payout_amount'],
@@ -270,6 +305,8 @@ class RequestController extends BaseApiController
                 return $this->errorResponse('Request cannot be updated after acceptance', 422);
             }
 
+            $this->normalizeTripModeInput($request);
+
             $validated = $request->validate([
                 'pickup_point' => ['sometimes', 'string', 'max:255'],
                 'pickup_lat'   => ['sometimes', 'numeric', 'between:-90,90'],
@@ -289,6 +326,8 @@ class RequestController extends BaseApiController
                 'duration_months' => ['sometimes', 'integer', 'min:1', 'max:24'],
                 'shift_start_date' => ['sometimes', 'nullable', 'date'],
                 'service_type' => ['sometimes', 'in:both,pickup_only,drop_only'],
+                'trip_mode' => ['sometimes', 'in:round_trip,one_way'],
+                'round_trip' => ['sometimes', 'boolean'],
                 'stops' => ['sometimes', 'array', 'min:1', 'max:20'],
                 'stops.*.type' => ['required_with:stops', 'in:pickup,drop'],
                 'stops.*.point' => ['required_with:stops', 'string', 'max:255'],
@@ -300,6 +339,8 @@ class RequestController extends BaseApiController
                 'stops.*.area_id' => ['nullable', 'integer', 'exists:areas,id'],
                 'stops.*.notes' => ['nullable', 'string', 'max:500'],
             ]);
+
+            $validated = $this->applyTripModeToValidated($validated);
 
             if (array_key_exists('student_id', $validated) && !empty($validated['student_id'])) {
                 $student = Student::where('id', $validated['student_id'])
@@ -358,7 +399,7 @@ class RequestController extends BaseApiController
                 || array_key_exists('stops', $validated)
             );
 
-            $pickupRequest->fill(collect($validated)->except('stops')->all());
+            $pickupRequest->fill(collect($validated)->except(['stops', 'trip_mode'])->all());
 
             $this->assertAreaBelongsToCity(
                 (int) $pickupRequest->city_id,
@@ -626,25 +667,23 @@ class RequestController extends BaseApiController
 
         if ($user->isParentAccount() && $request->filled('student_id')) {
             $student = Student::query()
+                ->with('school')
                 ->where('id', $request->integer('student_id'))
                 ->where('parent_id', $user->id)
                 ->first();
 
             if ($student) {
-                $defaults = [
-                    'city_id' => $student->city_id,
-                    'area_id' => $student->pickup_area_id,
-                ];
+                // City/area/pickup come from the request form — not child profile.
+                // Only soft-fill school as drop label if parent did not send one.
+                $defaults = [];
+                if ($student->school?->city_id) {
+                    $defaults['city_id'] = $student->school->city_id;
+                }
 
                 if (!$hasStops) {
-                    $defaults = array_merge($defaults, [
-                        'pickup_point' => $student->pickup_location,
-                        'pickup_lat' => $student->pickup_lat,
-                        'pickup_lng' => $student->pickup_lng,
-                        'drop_point' => $student->school_location ?: $student->school_name,
-                        'pickup_time' => $this->formatHm($student->pickup_time),
-                        'drop_time' => $this->formatHm($student->dropoff_time),
-                    ]);
+                    $defaults['drop_point'] = $student->school_location
+                        ?: $student->school_name
+                        ?: $student->school?->name;
                 }
             }
         }
@@ -729,6 +768,55 @@ class RequestController extends BaseApiController
         }
 
         return substr((string) $value, 0, 5);
+    }
+
+    /**
+     * Accept trip_mode as a friendly alias for round_trip / service_type.
+     */
+    private function normalizeTripModeInput(Request $request): void
+    {
+        $mode = strtolower(trim((string) $request->input('trip_mode', '')));
+        if ($mode === '') {
+            return;
+        }
+
+        if ($mode === PickupRequest::TRIP_ONE_WAY) {
+            $request->merge([
+                'trip_mode' => PickupRequest::TRIP_ONE_WAY,
+                'round_trip' => false,
+            ]);
+            return;
+        }
+
+        if ($mode === PickupRequest::TRIP_ROUND) {
+            $request->merge([
+                'trip_mode' => PickupRequest::TRIP_ROUND,
+                'round_trip' => true,
+                'service_type' => $request->input('service_type', PickupRequest::SERVICE_BOTH),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applyTripModeToValidated(array $validated): array
+    {
+        $mode = strtolower(trim((string) ($validated['trip_mode'] ?? '')));
+
+        if ($mode === PickupRequest::TRIP_ONE_WAY) {
+            $validated['round_trip'] = false;
+        } elseif ($mode === PickupRequest::TRIP_ROUND) {
+            $validated['round_trip'] = true;
+            $validated['service_type'] = $validated['service_type'] ?? PickupRequest::SERVICE_BOTH;
+        } elseif (array_key_exists('round_trip', $validated)) {
+            $validated['round_trip'] = (bool) $validated['round_trip'];
+        }
+
+        unset($validated['trip_mode']);
+
+        return $validated;
     }
 }
 
