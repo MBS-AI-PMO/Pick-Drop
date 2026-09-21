@@ -39,7 +39,8 @@ class ShiftFareService
         int $durationMonths,
         ?string $startDate = null,
         array $stops = [],
-        ?int $cityId = null
+        ?int $cityId = null,
+        ?bool $roundTrip = null
     ): array {
         $durationMonths = max(self::MIN_MONTHS, $durationMonths);
         $charge = PickDropCharge::query()->first();
@@ -65,7 +66,11 @@ class ShiftFareService
         $pickupCount = collect($stops)->where('type', 'pickup')->count();
         $dropCount = collect($stops)->where('type', 'drop')->count();
         $oneSided = ($pickupCount === 0 && $dropCount > 0) || ($dropCount === 0 && $pickupCount > 0);
-        $tripMultiplier = ($oneSided || count($stops) > 2) ? 1 : 2;
+        $isRoundTrip = $roundTrip;
+        if ($isRoundTrip === null) {
+            $isRoundTrip = ! $oneSided && count($stops) <= 2;
+        }
+        $tripMultiplier = ($oneSided || count($stops) > 2 || ! $isRoundTrip) ? 1 : 2;
         $tripCount = $workingDays * $tripMultiplier;
         $perTrip = round($distanceKm * $rate, 2);
         $amount = round($perTrip * $tripCount, 2);
@@ -110,7 +115,8 @@ class ShiftFareService
             (int) ($request->duration_months ?: self::MIN_MONTHS),
             $start,
             $stops,
-            $request->city_id ? (int) $request->city_id : null
+            $request->city_id ? (int) $request->city_id : null,
+            $request->tripMode() === PickupRequest::TRIP_ROUND
         );
     }
 
