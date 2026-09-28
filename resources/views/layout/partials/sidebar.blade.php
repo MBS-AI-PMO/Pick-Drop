@@ -14,7 +14,6 @@
 <nav class="sidebar pd-sidebar">
   <div class="sidebar-header">
     <a href="{{ route('dashboard') }}" class="pd-brand" aria-label="PickDrop">
-      <span class="pd-brand__mark">P</span>
       <span class="pd-brand__text">Pick<span>Drop</span></span>
     </a>
     <div class="sidebar-toggler not-active" aria-label="Toggle sidebar">

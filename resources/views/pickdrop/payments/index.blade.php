@@ -26,6 +26,9 @@
     <p class="text-secondary mb-0">Issue invoices and record bank payments. Invoice PDFs are emailed automatically when a payment is made.</p>
   </div>
   <div class="d-flex gap-2">
+    <a href="{{ route('payments.screenshots') }}" class="btn btn-outline-dark">
+      <i data-lucide="image" class="icon-xs me-1"></i> Screenshots
+    </a>
     <a href="{{ route('payments.settings') }}" class="btn btn-outline-dark">
       <i data-lucide="settings" class="icon-xs me-1"></i> Bank account
     </a>

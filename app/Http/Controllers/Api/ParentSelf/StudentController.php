@@ -45,13 +45,6 @@ class StudentController extends BaseApiController
                 'school_id' => ['nullable', 'integer', 'exists:schools,id'],
                 'school_name' => ['nullable', 'string', 'max:255'],
                 'school_location' => ['nullable', 'string', 'max:255'],
-                'city_id' => ['nullable', 'integer', 'exists:cities,id'],
-                'pickup_area_id' => ['nullable', 'integer', 'exists:areas,id'],
-                'pickup_location' => ['nullable', 'string', 'max:255'],
-                'pickup_lat' => ['nullable', 'numeric', 'between:-90,90'],
-                'pickup_lng' => ['nullable', 'numeric', 'between:-180,180'],
-                'pickup_time' => ['nullable', 'date_format:H:i'],
-                'dropoff_time' => ['nullable', 'date_format:H:i'],
                 'emergency_name' => ['nullable', 'string', 'max:255'],
                 'emergency_phone' => ['nullable', 'string', 'max:30'],
                 'emergency_relation' => ['nullable', 'string', 'max:50'],
@@ -59,23 +52,11 @@ class StudentController extends BaseApiController
 
             $validated = $this->applySelectedInstitution($validated);
 
-            if (!empty($validated['city_id']) && !empty($validated['pickup_area_id'])) {
-                $this->assertAreaBelongsToCity(
-                    (int) $validated['city_id'],
-                    (int) $validated['pickup_area_id'],
-                    'pickup_area_id'
-                );
-            } elseif (!empty($validated['pickup_area_id']) && empty($validated['city_id'])) {
-                throw ValidationException::withMessages([
-                    'city_id' => ['Select a city first, then choose an area of that city.'],
-                ]);
-            }
-
             $student = Student::create(array_merge($validated, [
                 'parent_id' => $request->user()->id,
                 'status' => 'active',
             ]));
-            $student->load(['city', 'pickupArea']);
+            $student->load(['city', 'pickupArea', 'school']);
             $user = $request->user()->fresh();
 
             return $this->successResponse([
@@ -83,6 +64,7 @@ class StudentController extends BaseApiController
                 'next_step' => $user->parentSelfNextStep(),
                 'onboarding_complete' => $user->isParentSelfOnboardingComplete(),
                 'children_count' => $user->students()->count(),
+                'note' => 'Transportation (city, area, pickup/drop) is set when creating a pick-drop request — not on child profile.',
             ], 'Student created', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
@@ -121,13 +103,6 @@ class StudentController extends BaseApiController
                 'school_id' => ['sometimes', 'nullable', 'integer', 'exists:schools,id'],
                 'school_name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'school_location' => ['sometimes', 'nullable', 'string', 'max:255'],
-                'city_id' => ['sometimes', 'nullable', 'integer', 'exists:cities,id'],
-                'pickup_area_id' => ['sometimes', 'nullable', 'integer', 'exists:areas,id'],
-                'pickup_location' => ['sometimes', 'nullable', 'string', 'max:255'],
-                'pickup_lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
-                'pickup_lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
-                'pickup_time' => ['sometimes', 'nullable', 'date_format:H:i'],
-                'dropoff_time' => ['sometimes', 'nullable', 'date_format:H:i'],
                 'status' => ['sometimes', 'in:active,inactive'],
                 'emergency_name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'emergency_phone' => ['sometimes', 'nullable', 'string', 'max:30'],
@@ -137,20 +112,8 @@ class StudentController extends BaseApiController
             $validated = $this->applySelectedInstitution($validated);
 
             $student->fill($validated);
-
-            $cityId = (int) ($student->city_id ?? 0);
-            $areaId = (int) ($student->pickup_area_id ?? 0);
-            if ($areaId > 0 && $cityId === 0) {
-                throw ValidationException::withMessages([
-                    'city_id' => ['Select a city first, then choose an area of that city.'],
-                ]);
-            }
-            if ($cityId > 0 && $areaId > 0) {
-                $this->assertAreaBelongsToCity($cityId, $areaId, 'pickup_area_id');
-            }
-
             $student->save();
-            $student->load(['city', 'pickupArea']);
+            $student->load(['city', 'pickupArea', 'school']);
 
             return $this->successResponse($student, 'Student updated');
         } catch (ValidationException $e) {

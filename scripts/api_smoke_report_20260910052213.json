@@ -1,0 +1,392 @@
+{
+    "base": "http:\/\/127.0.0.1\/Pick-Drop\/public\/api",
+    "pass": 50,
+    "fail": 0,
+    "accounts": {
+        "parentEmail": "parent.smoke.20260910052213@test.local",
+        "selfEmail": "self.smoke.20260910052213@test.local",
+        "driverEmail": "driver.smoke.20260910052213@test.local",
+        "parentPass": "Secret123!",
+        "selfPass": "Secret123!",
+        "driverPass": "Secret123!",
+        "driverPhone": "03010052213"
+    },
+    "db": {
+        "parent_user": {
+            "id": 49,
+            "email": "parent.smoke.20260910052213@test.local",
+            "role": "parent"
+        },
+        "self_user": {
+            "id": 50,
+            "email": "self.smoke.20260910052213@test.local",
+            "role": "self"
+        },
+        "driver_user": {
+            "id": 51,
+            "email": "driver.smoke.20260910052213@test.local",
+            "role": "driver"
+        },
+        "students": 1,
+        "parent_requests": 1,
+        "self_requests": 1,
+        "parent_kyc": 1,
+        "self_kyc": 1,
+        "driver_kyc": 1,
+        "driver_vehicle": 1,
+        "commute": 1,
+        "sos": 2
+    },
+    "results": [
+        {
+            "name": "GET \/ping",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"status\":\"ok\"}"
+        },
+        {
+            "name": "POST \/parent\/register",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. A verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.local\",\"phone\":null,\"role\":\"parent\",\"status\":\"Pending\",\"referred_by\":null,\"details\":{\"address\":\"Te..."
+        },
+        {
+            "name": "POST \/parent\/email\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=699128",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please complete identity verification.\",\"data\":{\"user\":{\"id\":49,\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified..."
+        },
+        {
+            "name": "GET \/parent\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile\",\"data\":{\"id\":49,\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:21.000000Z\",\"phone_verified_at\":null,\"phone_o..."
+        },
+        {
+            "name": "GET \/parent\/cities",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cities\",\"data\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"city_id\":1..."
+        },
+        {
+            "name": "GET \/parent\/cities\/{id}\/areas",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Areas\",\"data\":[{\"id\":4,\"city_id\":3,\"name\":\"Bahria town islamabad, Civic Center Bahria Town Civic Center Bahria Town, Rawalpindi\",\"latitude\":\"33.5508705\",\"longitude\":\"73.1239034\",\"status\":\"Active\"},{\"id\":1,\"city_id\":3,\"name\":\"F-6\",\"latitude\":\"33.7299427\"..."
+        },
+        {
+            "name": "GET \/parent\/schools",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Institutions\",\"data\":[{\"id\":1,\"name\":\"Virtual University of Pakistan\",\"category\":\"university\",\"category_label\":\"University\",\"city_id\":19,\"city\":\"islamabad\",\"address\":\"Saddar Rawalpindi\",\"phone\":\"051-2378191\",\"status\":\"Active\"}]}"
+        },
+        {
+            "name": "POST \/parent\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "35202-3242544-1",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"account_type\":\"parent\",\"prefill\":{\"full_name\":\"Smoke Parent\",\"phone\":null,\"email\":\"parent.smoke.20260910052213@test.local\",\"address\":\"Street 1, F-6 Islam..."
+        },
+        {
+            "name": "POST \/parent\/students",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Student created\",\"data\":{\"student\":{\"name\":\"Smoke Kid\",\"grade\":\"5\",\"school_id\":1,\"city_id\":3,\"pickup_area_id\":1,\"pickup_location\":\"Home Gate F-6\",\"pickup_lat\":33.7294,\"pickup_lng\":73.0931,\"pickup_time\":\"07:30\",\"dropoff_time\":\"14:00\",\"emergency_name\":\"Un..."
+        },
+        {
+            "name": "GET \/parent\/students",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Students for this parent\",\"data\":{\"current_page\":1,\"data\":[{\"id\":8,\"parent_id\":49,\"name\":\"Smoke Kid\",\"grade\":\"5\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_location\":\"Saddar Rawalpindi\",\"city_id\":3,\"pickup_area_id\":1,\"pickup_lo..."
+        },
+        {
+            "name": "POST \/parent\/requests",
+            "status": 201,
+            "ok": true,
+            "note": "req_id=16",
+            "body": "{\"success\":true,\"message\":\"Request created. Drivers in this city and area can now see it.\",\"data\":{\"id\":16,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":49,\"parent\":{\"id\":49,\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.local\",\"phone\":null..."
+        },
+        {
+            "name": "GET \/parent\/requests",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Requests\",\"data\":{\"current_page\":1,\"data\":[{\"id\":16,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":49,\"parent\":null,\"student_id\":8,\"student\":{\"id\":8,\"parent_id\":49,\"name\":\"Smoke Kid\",\"grade\":\"5\",\"school_name\":\"Virtual University of..."
+        },
+        {
+            "name": "GET \/parent\/notifications",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notifications\",\"data\":{\"current_page\":1,\"data\":[{\"id\":48,\"user_id\":49,\"type\":\"pickup_request_submitted\",\"title\":\"Request submitted\",\"body\":\"Your pickup request for F-6 is waiting for a driver.\",\"data\":{\"pickup_request_id\":16,\"status\":\"pending\",\"area_id\"..."
+        },
+        {
+            "name": "GET \/parent\/holidays",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Holidays\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/parent\/trips\/recent",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Recent trips\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/trips\\\/recent?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/trips\\\/recent?pag..."
+        },
+        {
+            "name": "GET \/parent\/wallet",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Wallet\",\"data\":{\"balance\":0,\"transactions\":[]}}"
+        },
+        {
+            "name": "GET \/parent\/invoices",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Invoices\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/invoices?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/invoices?page=1\",\"links\":[..."
+        },
+        {
+            "name": "POST \/parent\/sos",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS sent. Admin and related users have been notified.\",\"data\":{\"id\":5,\"pickup_request_id\":null,\"lat\":33.7294,\"lng\":73.0931,\"message\":\"Smoke test SOS parent\",\"status\":\"open\",\"created_at\":\"2026-09-10T05:22:32+00:00\",\"acknowledged_at\":null,\"resolved_at\":nu..."
+        },
+        {
+            "name": "POST \/parent\/issues",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Issue reported\",\"data\":{\"id\":4,\"pickup_request_id\":null,\"type\":\"other\",\"eta_minutes\":null,\"subject\":\"Smoke issue\",\"description\":\"Automated smoke test issue\",\"status\":\"open\",\"admin_notes\":null,\"resolved_at\":null,\"created_at\":\"2026-09-10T05:22:33+00:00\"}}"
+        },
+        {
+            "name": "POST \/parent\/device-token",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Device registered for push\",\"data\":{\"user_id\":49,\"token\":\"smoke-fcm-parent-20260910052213\",\"platform\":\"android\",\"updated_at\":\"2026-09-10T05:22:34.000000Z\",\"created_at\":\"2026-09-10T05:22:34.000000Z\",\"id\":4}}"
+        },
+        {
+            "name": "POST \/parent\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":49,\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:21.000000Z\",\"phone_ver..."
+        },
+        {
+            "name": "POST \/self\/register",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. A verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"role\":\"self\",\"status\":\"Pending\",\"referred_by\":null,\"details\":{\"address\":\"Office R..."
+        },
+        {
+            "name": "POST \/self\/email\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please complete identity verification.\",\"data\":{\"user\":{\"id\":50,\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\"..."
+        },
+        {
+            "name": "POST \/self\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"account_type\":\"self\",\"prefill\":{\"full_name\":\"Smoke Self\",\"phone\":null,\"email\":\"self.smoke.20260910052213@test.local\",\"address\":\"Street 9, F-7 Islamabad\",..."
+        },
+        {
+            "name": "POST \/self\/commute-profile",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Pickup, drop location and office timing saved\",\"data\":{\"next_step\":\"create_request\",\"onboarding_complete\":true,\"commute_profile\":{\"id\":5,\"city_id\":3,\"city\":{\"id\":3,\"name\":\"Islamabad\",\"latitude\":\"33.6931000\",\"longitude\":\"73.0639000\",\"status\":\"Active\",\"cr..."
+        },
+        {
+            "name": "GET \/self\/commute-profile",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Commute profile\",\"data\":{\"next_step\":\"create_request\",\"cities\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73...."
+        },
+        {
+            "name": "POST \/self\/requests",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Request created. Drivers in this city and area can now see it.\",\"data\":{\"id\":17,\"type\":\"self\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":50,\"parent\":{\"id\":50,\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"emer..."
+        },
+        {
+            "name": "GET \/self\/requests",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Requests\",\"data\":{\"current_page\":1,\"data\":[{\"id\":17,\"type\":\"self\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":50,\"parent\":null,\"student_id\":null,\"student\":null,\"driver_id\":null,\"driver\":null,\"vehicle_id\":null,\"vehicle\":null,\"city_id\":3,\"city\":{..."
+        },
+        {
+            "name": "GET \/self\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile\",\"data\":{\"id\":50,\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:43.000000Z\",\"phone_verified_at\":null,\"phone_otp_e..."
+        },
+        {
+            "name": "POST \/self\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":50,\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:43.000000Z\",\"phone_verifie..."
+        },
+        {
+            "name": "POST \/driver\/register",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. Verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Smoke Driver\",\"email\":\"driver.smoke.20260910052213@test.local\",\"phone\":\"03010052213\",\"role\":\"driver\",\"status\":\"Pending\",\"referral_code\":null,\"referred_by\":n..."
+        },
+        {
+            "name": "POST \/driver\/verify-email",
+            "status": 200,
+            "ok": true,
+            "note": "otp=352644",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please verify your phone number.\",\"data\":{\"kyc_status\":\"not_submitted\",\"kyc_required\":true,\"vehicle_verification_status\":\"not_submitted\",\"vehicle_verification_required\":true,\"next_step\":\"verify_phone\"}}"
+        },
+        {
+            "name": "GET \/driver\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver profile\",\"data\":{\"id\":51,\"name\":\"Smoke Driver\",\"email\":\"driver.smoke.20260910052213@test.local\",\"phone\":\"03010052213\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:57.000000Z\",\"phone_verified_a..."
+        },
+        {
+            "name": "GET \/driver\/cities",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cities\",\"data\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"city_id\":1..."
+        },
+        {
+            "name": "POST \/driver\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"vehicle_verification_status\":\"not_submitted\",\"prefill\":{\"full_name\":\"Smoke Driver\",\"phone\":\"03010052213\",\"email\":\"driver.smoke.20260910052213@test.local\"..."
+        },
+        {
+            "name": "POST \/driver\/vehicle-verification",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Vehicle verification submitted successfully. Status: Pending Approval.\",\"data\":{\"vehicle_verification_status\":\"pending\",\"next_step\":\"vehicle_verification_pending\",\"vehicle_verification\":{\"id\":4,\"status\":\"pending\",\"rejection_reason\":null,\"vehicle_categor..."
+        },
+        {
+            "name": "PUT \/driver\/me\/duty",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Duty status updated\",\"data\":{\"id\":51,\"name\":\"Smoke Driver\",\"email\":\"driver.smoke.20260910052213@test.local\",\"phone\":\"03010052213\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:57.000000Z\",\"phone_verif..."
+        },
+        {
+            "name": "POST \/driver\/location\/update",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Location updated\",\"data\":{\"lat\":33.7294,\"lng\":73.0931,\"updated_at\":\"2026-09-10T05:23:02+00:00\"}}"
+        },
+        {
+            "name": "GET \/driver\/requests\/available",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Available requests\",\"data\":[{\"id\":17,\"type\":\"self\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":50,\"parent\":{\"id\":50,\"name\":\"Smoke Self\",\"email\":\"self.smoke.20260910052213@test.local\",\"phone\":null,\"emergency_contact_name\":null,\"emergency_contact..."
+        },
+        {
+            "name": "GET \/driver\/requests\/accepted",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Accepted requests\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/driver\/rides",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Rides history\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/rides?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/rides?page=1\",\"links\":[{..."
+        },
+        {
+            "name": "GET \/driver\/rides\/today",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Today's rides\",\"data\":{\"date\":\"2026-09-10\",\"weekday\":\"thursday\",\"optimized\":true,\"round_trip_rule\":\"Drop every passenger back at the same pickup point.\",\"summary\":{\"total\":0,\"pending\":0,\"done\":0,\"pickups\":0,\"drops\":0,\"passengers\":0},\"trips\":[],\"stops\":[..."
+        },
+        {
+            "name": "GET \/driver\/earnings",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Earnings\",\"data\":{\"currency\":\"PKR\",\"this_month\":{\"total\":0,\"paid\":0,\"unpaid\":0},\"all_time\":{\"total\":0,\"paid\":0,\"unpaid\":0},\"payroll\":{\"pending_amount\":0,\"paid_amount\":0,\"recent_bills\":[]},\"completed_days\":0,\"shifts\":[],\"latest_payroll\":null}}"
+        },
+        {
+            "name": "GET \/driver\/notifications",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notifications\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/notifications?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/notifications?pa..."
+        },
+        {
+            "name": "GET \/driver\/payroll",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver payments\",\"data\":{\"currency\":\"PKR\",\"summary\":{\"total_requested\":0,\"pending_amount\":0,\"paid_amount\":0,\"pending_count\":0,\"paid_count\":0},\"bills\":[],\"shifts\":[]}}"
+        },
+        {
+            "name": "POST \/driver\/sos",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS sent\",\"data\":{\"id\":6,\"pickup_request_id\":null,\"lat\":33.7294,\"lng\":73.0931,\"message\":\"Smoke SOS driver\",\"status\":\"open\",\"created_at\":\"2026-09-10T05:23:08+00:00\",\"acknowledged_at\":null,\"resolved_at\":null}}"
+        },
+        {
+            "name": "PUT \/driver\/account\/payment-details",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payment account updated\",\"data\":{\"payment_account\":{\"bank_name\":\"HBL\",\"account_title\":\"Smoke Driver\",\"account_number\":\"1234567890123\",\"iban\":\"PK00HABB0000001234567890\"},\"has_payment_account\":true}}"
+        },
+        {
+            "name": "GET \/driver\/account\/payment-details",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payment account details\",\"data\":{\"payment_account\":{\"bank_name\":\"HBL\",\"account_title\":\"Smoke Driver\",\"account_number\":\"1234567890123\",\"iban\":\"PK00HABB0000001234567890\"},\"has_payment_account\":true,\"banks\":[\"HBL — Habib Bank\",\"UBL — United Bank\",\"MCB ..."
+        },
+        {
+            "name": "POST \/driver\/requests\/{id}\/accept",
+            "status": 200,
+            "ok": true,
+            "note": "req=16",
+            "body": "{\"success\":true,\"message\":\"Request accepted. Customer must pay the advance fee before the shift can start.\",\"data\":{\"id\":16,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"accepted\",\"parent_id\":49,\"parent\":{\"id\":49,\"name\":\"Smoke Parent\",\"email\":\"parent.smoke.20260910052213@test.l..."
+        },
+        {
+            "name": "POST \/driver\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":51,\"name\":\"Smoke Driver\",\"email\":\"driver.smoke.20260910052213@test.local\",\"phone\":\"03010052213\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-10T05:22:57.000000Z\",\"..."
+        }
+    ]
+}

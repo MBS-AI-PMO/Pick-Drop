@@ -114,8 +114,15 @@
             <small class="text-muted">{{ $requestItem->shift_start_date?->format('d M Y') ?: '—' }} → {{ $requestItem->shift_end_date?->format('d M Y') ?: '—' }}</small>
           </div>
           <div class="col-md-6">
-            <label class="text-muted small">Round trip</label>
-            <div class="fw-semibold">{{ $requestItem->round_trip !== false ? 'Yes — drop back at the same pickup point' : 'One way' }}</div>
+            <label class="text-muted small">Trip mode</label>
+            <div class="fw-semibold">{{ $requestItem->tripModeLabel() }}</div>
+            <small class="text-muted">
+              @if($requestItem->tripMode() === \App\Models\PickupRequest::TRIP_ROUND)
+                Subah A→B, wapsi B→A (drop point se pickup, morning pickup pe drop)
+              @else
+                Sirf ek taraf — return nahi
+              @endif
+            </small>
           </div>
         </div>
       </div>

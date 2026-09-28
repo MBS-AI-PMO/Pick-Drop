@@ -72,9 +72,24 @@ class InvoiceController extends BaseApiController
             $platform = \App\Models\PlatformSetting::current();
 
             return $this->successResponse([
-                'stripe_enabled' => $settings->hasStripe(),
-                'jazzcash_enabled' => (bool) $platform->jazzcash_enabled,
-                'easypaisa_enabled' => (bool) $platform->easypaisa_enabled,
+                'currency' => 'PKR',
+                'screenshot' => [
+                    'id' => 'screenshot',
+                    'enabled' => true,
+                    'label' => 'Payment screenshot',
+                    'fields' => [
+                        ['key' => 'proof', 'label' => 'Payment screenshot', 'required' => true],
+                        ['key' => 'method', 'label' => 'How you paid', 'required' => false, 'options' => ['bank_transfer', 'jazzcash', 'easypaisa', 'manual']],
+                        ['key' => 'reference', 'label' => 'Transaction reference', 'required' => false],
+                        ['key' => 'notes', 'label' => 'Note', 'required' => false],
+                    ],
+                    'statuses' => [
+                        ['key' => 'pending', 'label' => 'Pending', 'meaning' => 'Screenshot has not been sent yet.'],
+                        ['key' => 'not_received', 'label' => 'Not received', 'meaning' => 'Screenshot sent. Admin has not confirmed it yet.'],
+                        ['key' => 'received', 'label' => 'Received', 'meaning' => 'Admin confirmed the payment was received.'],
+                    ],
+                    'hint' => 'Pay by bank, JazzCash, or EasyPaisa, then upload the screenshot. Status stays pending until the screenshot is sent.',
+                ],
                 'bank' => $settings->bankDetails(),
                 'banks' => \App\Support\PakistaniBanks::names(),
                 'company' => [
@@ -119,7 +134,7 @@ class InvoiceController extends BaseApiController
         }
     }
 
-    public function payJazzcash(Request $request, Invoice $invoice): JsonResponse
+    public function payScreenshot(Request $request, Invoice $invoice): JsonResponse
     {
         try {
             $denied = $this->denyInvoiceOwner($request, $invoice);
@@ -127,17 +142,40 @@ class InvoiceController extends BaseApiController
                 return $denied;
             }
 
-            $payload = app(\App\Services\LocalPaymentService::class)->jazzcashCheckout($invoice);
+            $validated = $request->validate([
+                'proof' => ['required', 'image', 'max:5120'],
+                'method' => ['nullable', 'in:bank_transfer,jazzcash,easypaisa,manual'],
+                'reference' => ['nullable', 'string', 'max:100'],
+                'notes' => ['nullable', 'string', 'max:500'],
+            ]);
 
-            return $this->successResponse($payload, 'JazzCash checkout created. Post fields to checkout_url.');
+            $payment = $this->invoices->submitPaymentScreenshot(
+                $invoice,
+                $request->file('proof'),
+                $validated['method'] ?? \App\Models\Payment::METHOD_MANUAL,
+                $validated['reference'] ?? null,
+                $validated['notes'] ?? null
+            );
+
+            $fresh = $invoice->fresh(['items', 'payments', 'student']);
+
+            return $this->successResponse([
+                'receipt_status' => $fresh->receiptStatus(),
+                'receipt_status_label' => 'Not received',
+                'paid' => false,
+                'payment' => $payment->toApiArray(),
+                'invoice' => $fresh->toApiArray(),
+            ], 'Screenshot sent. Status is not received until admin confirms.');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), 422);
         } catch (Throwable $e) {
-            return $this->handleException($e, 'Unable to start JazzCash payment');
+            return $this->handleException($e, 'Unable to submit payment screenshot');
         }
     }
 
-    public function payEasypaisa(Request $request, Invoice $invoice): JsonResponse
+    public function payStatus(Request $request, Invoice $invoice): JsonResponse
     {
         try {
             $denied = $this->denyInvoiceOwner($request, $invoice);
@@ -145,13 +183,22 @@ class InvoiceController extends BaseApiController
                 return $denied;
             }
 
-            $payload = app(\App\Services\LocalPaymentService::class)->easypaisaCheckout($invoice);
+            $invoice->loadMissing('payments');
+            $receipt = $invoice->receiptStatus();
 
-            return $this->successResponse($payload, 'EasyPaisa checkout created. Post fields to checkout_url.');
-        } catch (RuntimeException $e) {
-            return $this->errorResponse($e->getMessage(), 422);
+            return $this->successResponse([
+                'receipt_status' => $receipt,
+                'receipt_status_label' => match ($receipt) {
+                    \App\Models\Payment::RECEIPT_RECEIVED => 'Received',
+                    \App\Models\Payment::RECEIPT_NOT_RECEIVED => 'Not received',
+                    default => 'Pending',
+                },
+                'paid' => $invoice->isPaid(),
+                'status' => $invoice->status,
+                'invoice' => $invoice->toApiArray(),
+            ], 'Payment receipt status');
         } catch (Throwable $e) {
-            return $this->handleException($e, 'Unable to start EasyPaisa payment');
+            return $this->handleException($e, 'Unable to check payment status');
         }
     }
 
@@ -164,22 +211,28 @@ class InvoiceController extends BaseApiController
             }
 
             $validated = $request->validate([
-                'reference' => ['required', 'string', 'max:100'],
+                'reference' => ['nullable', 'string', 'max:100'],
                 'notes' => ['nullable', 'string', 'max:500'],
-                'proof' => ['nullable', 'image', 'max:5120'],
+                'proof' => ['required', 'image', 'max:5120'],
             ]);
 
-            $payment = $this->invoices->submitBankTransfer(
+            $payment = $this->invoices->submitPaymentScreenshot(
                 $invoice,
-                $validated['reference'],
                 $request->file('proof'),
+                \App\Models\Payment::METHOD_BANK,
+                $validated['reference'] ?? null,
                 $validated['notes'] ?? null
             );
 
+            $fresh = $invoice->fresh(['items', 'payments', 'student']);
+
             return $this->successResponse([
+                'receipt_status' => $fresh->receiptStatus(),
+                'receipt_status_label' => 'Not received',
+                'paid' => false,
                 'payment' => $payment->toApiArray(),
-                'invoice' => $invoice->fresh(['items', 'payments', 'student'])->toApiArray(),
-            ], 'Bank transfer submitted. Invoice PDF has been emailed. We will confirm once the amount is received.');
+                'invoice' => $fresh->toApiArray(),
+            ], 'Screenshot sent. Status is not received until admin confirms.');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
         } catch (RuntimeException $e) {

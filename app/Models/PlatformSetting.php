@@ -19,10 +19,12 @@ class PlatformSetting extends Model
         'jazzcash_password',
         'jazzcash_integrity_salt',
         'jazzcash_return_url',
+        'jazzcash_sandbox',
         'easypaisa_enabled',
         'easypaisa_store_id',
         'easypaisa_hash_key',
         'easypaisa_return_url',
+        'easypaisa_sandbox',
         'cancel_hours',
         'cancel_fee_percent',
         'geofence_meters',
@@ -36,7 +38,9 @@ class PlatformSetting extends Model
             'sms_enabled' => 'boolean',
             'fcm_enabled' => 'boolean',
             'jazzcash_enabled' => 'boolean',
+            'jazzcash_sandbox' => 'boolean',
             'easypaisa_enabled' => 'boolean',
+            'easypaisa_sandbox' => 'boolean',
             'pickup_otp_enabled' => 'boolean',
             'sms_api_key' => 'encrypted',
             'fcm_server_key' => 'encrypted',
@@ -60,5 +64,20 @@ class PlatformSetting extends Model
                 'pickup_otp_enabled' => true,
             ]
         );
+    }
+
+    public function jazzcashReady(): bool
+    {
+        return (bool) $this->jazzcash_enabled
+            && filled($this->jazzcash_merchant_id)
+            && filled($this->jazzcash_password)
+            && filled($this->jazzcash_integrity_salt);
+    }
+
+    public function easypaisaReady(): bool
+    {
+        return (bool) $this->easypaisa_enabled
+            && filled($this->easypaisa_store_id)
+            && filled($this->easypaisa_hash_key);
     }
 }

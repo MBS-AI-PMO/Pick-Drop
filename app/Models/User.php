@@ -314,6 +314,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Profile picture URL from the verified KYC selfie (parent/self or driver).
+     */
+    public function profilePhotoUrl(): ?string
+    {
+        if ($this->isParentSelf()) {
+            $this->loadMissing('parentSelfVerification');
+            $verification = $this->parentSelfVerification;
+
+            return $verification?->documentUrl($verification->selfie_photo);
+        }
+
+        $this->loadMissing('driverVerification');
+        $verification = $this->driverVerification;
+
+        return $verification?->documentUrl($verification->selfie_photo);
+    }
+
+    /**
      * Parent / Self API payload with onboarding status.
      *
      * @return array<string, mixed>
@@ -332,6 +350,7 @@ class User extends Authenticatable
         $base = $this->toArray();
         $base['address'] = $details['address'] ?? null;
         $base['contact'] = $this->phone ?? ($details['contact'] ?? null);
+        $base['profile_photo'] = $this->profilePhotoUrl();
         $base['account_type'] = strtolower(trim((string) $this->role));
         $base['kyc_status'] = $this->parentSelfKycStatus();
         $base['next_step'] = $this->parentSelfNextStep();
@@ -563,6 +582,7 @@ class User extends Authenticatable
         $base['vehicle_seat_capacity'] = $this->vehicleSeatCapacity();
         $base['effective_available_seats'] = $this->effectiveAvailableSeats();
         $base['availability_hours'] = $this->normalizedAvailabilityHours();
+        $base['profile_photo'] = $this->profilePhotoUrl();
         $base['kyc_status'] = $this->kycStatus();
         $base['vehicle_verification_status'] = $this->vehicleVerificationStatus();
         $base['service_areas_setup'] = $this->hasServiceAreas();

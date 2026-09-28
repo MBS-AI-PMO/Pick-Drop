@@ -30,6 +30,28 @@ class PickupRequestController extends Controller
                 $query->where('city_id', $request->integer('city_id'));
             }
 
+            if ($request->filled('trip_mode')) {
+                $mode = strtolower((string) $request->trip_mode);
+                if ($mode === PickupRequest::TRIP_ONE_WAY) {
+                    $query->where(function ($inner) {
+                        $inner->where('round_trip', false)
+                            ->orWhereIn('service_type', [
+                                PickupRequest::SERVICE_PICKUP_ONLY,
+                                PickupRequest::SERVICE_DROP_ONLY,
+                            ]);
+                    });
+                } elseif ($mode === PickupRequest::TRIP_ROUND) {
+                    $query->where(function ($inner) {
+                        $inner->where(function ($r) {
+                            $r->whereNull('round_trip')->orWhere('round_trip', true);
+                        })->where(function ($s) {
+                            $s->whereNull('service_type')
+                                ->orWhere('service_type', PickupRequest::SERVICE_BOTH);
+                        });
+                    });
+                }
+            }
+
             if ($request->filled('search')) {
                 $search = trim((string) $request->search);
                 $query->where(function ($q) use ($search) {

@@ -36,6 +36,7 @@ class Invoice extends Model
         'payment_method',
         'stripe_checkout_session_id',
         'stripe_payment_intent_id',
+        'gateway_txn_ref',
         'notes',
         'terms',
         'kind',
@@ -98,6 +99,21 @@ class Invoice extends Model
     public function isPaid(): bool
     {
         return $this->status === self::STATUS_PAID;
+    }
+
+    public function receiptStatus(): string
+    {
+        $this->loadMissing('payments');
+        $latest = $this->payments->sortByDesc('id')->first(function (Payment $payment) {
+            return filled($payment->proof_path)
+                || in_array($payment->receiptStatus(), [Payment::RECEIPT_NOT_RECEIVED, Payment::RECEIPT_RECEIVED], true);
+        });
+
+        if (! $latest) {
+            return Payment::RECEIPT_PENDING;
+        }
+
+        return $latest->receiptStatus();
     }
 
     public function hasPendingBankTransfer(): bool
@@ -197,9 +213,14 @@ class Invoice extends Model
                 'unit_price' => (float) $item->unit_price,
                 'total' => (float) $item->total,
             ])->values()->all(),
-            'payable' => $this->isPayable(),
-            'stripe_enabled' => PaymentSetting::current()->hasStripe(),
-            'bank' => $this->isPayable() ? $settings->bankDetails() : null,
+            'payable' => $this->isPayable() && $this->receiptStatus() !== Payment::RECEIPT_NOT_RECEIVED && $this->receiptStatus() !== Payment::RECEIPT_RECEIVED,
+            'receipt_status' => $this->receiptStatus(),
+            'receipt_status_label' => match ($this->receiptStatus()) {
+                Payment::RECEIPT_RECEIVED => 'Received',
+                Payment::RECEIPT_NOT_RECEIVED => 'Not received',
+                default => 'Pending',
+            },
+            'bank' => $settings->bankDetails(),
             'payments' => $this->payments->map(fn (Payment $p) => $p->toApiArray())->values()->all(),
         ];
     }

@@ -29,10 +29,12 @@ class PlatformSettingController extends Controller
             'jazzcash_password' => ['nullable', 'string', 'max:255'],
             'jazzcash_integrity_salt' => ['nullable', 'string', 'max:255'],
             'jazzcash_return_url' => ['nullable', 'url', 'max:500'],
+            'jazzcash_sandbox' => ['nullable', 'boolean'],
             'easypaisa_enabled' => ['nullable', 'boolean'],
             'easypaisa_store_id' => ['nullable', 'string', 'max:50'],
             'easypaisa_hash_key' => ['nullable', 'string', 'max:255'],
             'easypaisa_return_url' => ['nullable', 'url', 'max:500'],
+            'easypaisa_sandbox' => ['nullable', 'boolean'],
             'cancel_hours' => ['required', 'integer', 'min:0', 'max:168'],
             'cancel_fee_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'geofence_meters' => ['required', 'integer', 'min:50', 'max:5000'],
@@ -50,7 +52,9 @@ class PlatformSettingController extends Controller
         $validated['sms_enabled'] = $request->boolean('sms_enabled');
         $validated['fcm_enabled'] = $request->boolean('fcm_enabled');
         $validated['jazzcash_enabled'] = $request->boolean('jazzcash_enabled');
+        $validated['jazzcash_sandbox'] = $request->boolean('jazzcash_sandbox');
         $validated['easypaisa_enabled'] = $request->boolean('easypaisa_enabled');
+        $validated['easypaisa_sandbox'] = $request->boolean('easypaisa_sandbox');
         $validated['pickup_otp_enabled'] = $request->boolean('pickup_otp_enabled');
 
         $settings->update($validated);

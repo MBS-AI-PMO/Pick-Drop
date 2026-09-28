@@ -1,0 +1,717 @@
+{
+    "base": "http:\/\/127.0.0.1\/Pick-Drop\/public\/api",
+    "pass": 93,
+    "fail": 0,
+    "people": {
+        "parent": {
+            "name": "Ayesha Khan",
+            "email": "ayesha.khan.20260915115026@pickdrop.test",
+            "phone": "03015115026",
+            "password": "Ayesha@2026",
+            "address": "House 14, Street 7, F-8\/1 Islamabad",
+            "child": "Hassan Khan",
+            "emergency": {
+                "name": "Imran Khan",
+                "phone": "03025551234",
+                "relation": "father"
+            }
+        },
+        "self": {
+            "name": "Bilal Ahmed",
+            "email": "bilal.ahmed.20260915115026@pickdrop.test",
+            "phone": "03025115026",
+            "password": "Bilal@2026",
+            "address": "Flat 3B, G-11\/2 Islamabad"
+        },
+        "driver": {
+            "name": "Usman Ali",
+            "email": "usman.ali.20260915115026@pickdrop.test",
+            "phone": "03035115026",
+            "password": "Usman@2026",
+            "address": "Street 22, I-8\/3 Islamabad"
+        }
+    },
+    "db": {
+        "parent_user": {
+            "id": 59,
+            "name": "Ayesha Khan",
+            "email": "ayesha.khan.20260915115026@pickdrop.test",
+            "role": "parent"
+        },
+        "self_user": {
+            "id": 60,
+            "name": "Bilal Ahmed",
+            "email": "bilal.ahmed.20260915115026@pickdrop.test",
+            "role": "self"
+        },
+        "driver_user": {
+            "id": 61,
+            "name": "Usman Ali",
+            "email": "usman.ali.20260915115026@pickdrop.test",
+            "role": "driver"
+        },
+        "students": 1,
+        "parent_requests": 1,
+        "self_requests": 1,
+        "parent_kyc": 1,
+        "self_kyc": 1,
+        "driver_kyc": 1,
+        "driver_vehicle": 1,
+        "commute": 1,
+        "messages": 2,
+        "sos": 3
+    },
+    "results": [
+        {
+            "name": "GET \/ping",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"status\":\"ok\"}"
+        },
+        {
+            "name": "POST \/parent\/register",
+            "status": 201,
+            "ok": true,
+            "note": "ayesha.khan.20260915115026@pickdrop.test",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. A verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"role\":\"parent\",\"status\":\"Pending\",\"referred_by\":null,\"details\":{\"address\":\"House 14, Street 7, F-8\\\/1 Islam..."
+        },
+        {
+            "name": "POST \/parent\/email\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=681685",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please verify your phone number.\",\"data\":{\"user\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:50:39.000000Z\",\"..."
+        },
+        {
+            "name": "POST \/parent\/phone\/verify\/send",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Verification code sent to your phone. A copy was also emailed.\",\"data\":{\"expires_in_minutes\":10,\"next_step\":\"verify_phone\"}}"
+        },
+        {
+            "name": "POST \/parent\/phone\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=940630",
+            "body": "{\"success\":true,\"message\":\"Phone verified successfully.\",\"data\":{\"user\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:50:39.000000Z\",\"phone_verified_at\":\"2026-09-15T11..."
+        },
+        {
+            "name": "GET \/parent\/verification",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Identity verification status\",\"data\":{\"kyc_status\":\"not_submitted\",\"account_type\":\"parent\",\"prefill\":{\"full_name\":\"Ayesha Khan\",\"phone\":\"03015115026\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"address\":\"House 14, Street 7, F-8\\\/1 Islamabad\",\"readonly_fields\":[\"full_name\",\"phone\",\"ema..."
+        },
+        {
+            "name": "GET \/parent\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile\",\"data\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:50:39.000000Z\",\"phone_verified_at\":\"2026-09-15T11:50:50.000000Z\",\"phone_otp_ex..."
+        },
+        {
+            "name": "PUT \/parent\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile updated\",\"data\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":\"Imran Khan\",\"emergency_contact_phone\":\"03025551234\",\"email_verified_at\":\"2026-09-15T11:50:39.000000Z\",\"phone_verified_at\":\"2026-09-15T11:50:..."
+        },
+        {
+            "name": "GET \/parent\/cities",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cities\",\"data\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"city_id\":10,\"name\":\"FDA City\",\"latitude\":\"31.51772..."
+        },
+        {
+            "name": "GET \/parent\/cities\/{id}\/areas",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Areas\",\"data\":[{\"id\":4,\"city_id\":3,\"name\":\"Bahria town islamabad, Civic Center Bahria Town Civic Center Bahria Town, Rawalpindi\",\"latitude\":\"33.5508705\",\"longitude\":\"73.1239034\",\"status\":\"Active\"},{\"id\":1,\"city_id\":3,\"name\":\"F-6\",\"latitude\":\"33.7299427\",\"longitude\":\"73.0763135\",\"status\":\"Acti..."
+        },
+        {
+            "name": "GET \/parent\/cities\/{id}\/points",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Pickup\\\/drop points\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/parent\/schools",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Institutions\",\"data\":[{\"id\":1,\"name\":\"Virtual University of Pakistan\",\"category\":\"university\",\"category_label\":\"University\",\"city_id\":19,\"city\":\"islamabad\",\"address\":\"Saddar Rawalpindi\",\"phone\":\"051-2378191\",\"status\":\"Active\"}]}"
+        },
+        {
+            "name": "POST \/parent\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "35202-4424794-1",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"account_type\":\"parent\",\"prefill\":{\"full_name\":\"Ayesha Khan\",\"phone\":\"03015115026\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"address\":\"House 14, Street 7, F-8\\\/1 Islamabad\",\"readonly_f..."
+        },
+        {
+            "name": "GET \/parent\/verification (after submit)",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Identity verification status\",\"data\":{\"kyc_status\":\"pending\",\"account_type\":\"parent\",\"prefill\":{\"full_name\":\"Ayesha Khan\",\"phone\":\"03015115026\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"address\":\"House 14, Street 7, F-8\\\/1 Islamabad\",\"readonly_fields\":[\"full_name\",\"phone\",\"email\"]},..."
+        },
+        {
+            "name": "POST \/parent\/students",
+            "status": 201,
+            "ok": true,
+            "note": "child=Hassan Khan",
+            "body": "{\"success\":true,\"message\":\"Student created\",\"data\":{\"student\":{\"name\":\"Hassan Khan\",\"grade\":\"5\",\"school_id\":1,\"school_name\":\"Virtual University of Pakistan\",\"school_location\":\"F-7\",\"city_id\":3,\"pickup_area_id\":1,\"pickup_location\":\"Home Gate F-8\",\"pickup_lat\":33.7294,\"pickup_lng\":73.0931,\"pickup_time\":\"07:30\",\"dropoff_t..."
+        },
+        {
+            "name": "GET \/parent\/students",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Students for this parent\",\"data\":{\"current_page\":1,\"data\":[{\"id\":10,\"parent_id\":59,\"name\":\"Hassan Khan\",\"grade\":\"5\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_location\":\"F-7\",\"city_id\":3,\"pickup_area_id\":1,\"pickup_location\":\"Home Gate F-8\",\"pickup_lat\":33.7294,\"picku..."
+        },
+        {
+            "name": "GET \/parent\/students\/{id}",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Student detail\",\"data\":{\"id\":10,\"parent_id\":59,\"name\":\"Hassan Khan\",\"grade\":\"5\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_location\":\"F-7\",\"city_id\":3,\"pickup_area_id\":1,\"pickup_location\":\"Home Gate F-8\",\"pickup_lat\":33.7294,\"pickup_lng\":73.0931,\"pickup_time\":\"07:30:..."
+        },
+        {
+            "name": "PUT \/parent\/students\/{id}",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Student updated\",\"data\":{\"id\":10,\"parent_id\":59,\"name\":\"Hassan Khan\",\"grade\":\"6\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_location\":\"F-7\",\"city_id\":3,\"pickup_area_id\":1,\"pickup_location\":\"Home Gate F-8\",\"pickup_lat\":33.7294,\"pickup_lng\":73.0931,\"pickup_time\":\"07:40..."
+        },
+        {
+            "name": "POST \/parent\/requests",
+            "status": 201,
+            "ok": true,
+            "note": "req_id=20",
+            "body": "{\"success\":true,\"message\":\"Request created. Drivers in this city and area can now see it.\",\"data\":{\"id\":20,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":59,\"parent\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":\"Imr..."
+        },
+        {
+            "name": "GET \/parent\/requests",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Requests\",\"data\":{\"current_page\":1,\"data\":[{\"id\":20,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":59,\"parent\":null,\"student_id\":10,\"student\":{\"id\":10,\"parent_id\":59,\"name\":\"Hassan Khan\",\"grade\":\"6\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_loc..."
+        },
+        {
+            "name": "GET \/parent\/requests\/{id}",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Request detail\",\"data\":{\"id\":20,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":59,\"parent\":null,\"student_id\":10,\"student\":{\"id\":10,\"parent_id\":59,\"name\":\"Hassan Khan\",\"grade\":\"6\",\"school_name\":\"Virtual University of Pakistan\",\"school_id\":1,\"school_location\":\"F-7\",\"city_i..."
+        },
+        {
+            "name": "GET \/parent\/requests\/{id}\/cancellation-preview",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cancellation preview\",\"data\":{\"allowed\":true,\"booking_status\":\"pending\",\"payment_status\":\"unpaid\",\"cancel_hours\":24,\"fee_percent\":0,\"fee\":0,\"cancellation_charge\":0,\"within_window\":false,\"hours_left\":19,\"completed_days\":0,\"skipped_days\":0,\"holiday_days\":0,\"remaining_days\":22,\"refund_amount\":0,..."
+        },
+        {
+            "name": "GET \/parent\/notifications",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notifications\",\"data\":{\"current_page\":1,\"data\":[{\"id\":65,\"user_id\":59,\"type\":\"pickup_request_submitted\",\"title\":\"Request submitted\",\"body\":\"Your pickup request for F-6 is waiting for a driver.\",\"data\":{\"pickup_request_id\":20,\"status\":\"pending\",\"area_id\":1,\"drop_area_id\":2,\"city_id\":3},\"read_a..."
+        },
+        {
+            "name": "GET \/parent\/notification-preferences",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notification preferences\",\"data\":{\"user_id\":59,\"push_enabled\":true,\"email_enabled\":true,\"new_messages\":true,\"child_activity\":true,\"school_alerts\":true,\"payment_reminders\":true,\"weekly_updates\":false,\"promotions\":false,\"updated_at\":\"2026-09-15T11:50:59.000000Z\",\"created_at\":\"2026-09-15T11:50:5..."
+        },
+        {
+            "name": "PUT \/parent\/notification-preferences",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notification preferences updated\",\"data\":{\"id\":4,\"user_id\":59,\"push_enabled\":true,\"email_enabled\":true,\"new_messages\":true,\"child_activity\":true,\"school_alerts\":true,\"payment_reminders\":true,\"weekly_updates\":false,\"promotions\":false,\"created_at\":\"2026-09-15T11:50:59.000000Z\",\"updated_at\":\"202..."
+        },
+        {
+            "name": "GET \/parent\/holidays",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Holidays\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/parent\/trips\/recent",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Recent trips\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/trips\\\/recent?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/trips\\\/recent?page=1\",\"links\":[{\"url\":null,\"label\":\"&laqu..."
+        },
+        {
+            "name": "GET \/parent\/trips\/today-status",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Today status\",\"data\":{\"date\":\"2026-09-15\",\"shifts\":[]}}"
+        },
+        {
+            "name": "GET \/parent\/wallet",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Wallet\",\"data\":{\"balance\":0,\"transactions\":[]}}"
+        },
+        {
+            "name": "GET \/parent\/payment-methods",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payment methods\",\"data\":{\"stripe_enabled\":false,\"jazzcash_enabled\":false,\"easypaisa_enabled\":false,\"bank\":{\"enabled\":true,\"bank_name\":\"UBL — United Bank\",\"account_title\":\"Saqib Malik\",\"account_number\":\"03359276370\",\"iban\":\"87612735t815813774t1874\",\"swift\":\"546\",\"branch\":\"isl\"},\"banks\":[\"HBL..."
+        },
+        {
+            "name": "GET \/parent\/invoices",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Invoices\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/invoices?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/parent\\\/invoices?page=1\",\"links\":[{\"url\":null,\"label\":\"&laquo; Previous\",\"..."
+        },
+        {
+            "name": "POST \/parent\/sos",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS sent. Admin and related users have been notified.\",\"data\":{\"id\":9,\"pickup_request_id\":20,\"lat\":33.7294,\"lng\":73.0931,\"message\":\"Ayesha Khan emergency test\",\"status\":\"open\",\"created_at\":\"2026-09-15T11:51:03+00:00\",\"acknowledged_at\":null,\"resolved_at\":null}}"
+        },
+        {
+            "name": "GET \/parent\/sos",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS alerts\",\"data\":{\"current_page\":1,\"data\":[{\"id\":9,\"pickup_request_id\":20,\"lat\":33.7294,\"lng\":73.0931,\"message\":\"Ayesha Khan emergency test\",\"status\":\"open\",\"created_at\":\"2026-09-15T11:51:03+00:00\",\"acknowledged_at\":null,\"resolved_at\":null}],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/..."
+        },
+        {
+            "name": "POST \/parent\/issues",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Issue reported\",\"data\":{\"id\":6,\"pickup_request_id\":20,\"type\":\"general\",\"eta_minutes\":null,\"subject\":\"Late pickup concern\",\"description\":\"Testing issue report for Hassan Khan route\",\"status\":\"open\",\"admin_notes\":null,\"resolved_at\":null,\"created_at\":\"2026-09-15T11:51:04+00:00\"}}"
+        },
+        {
+            "name": "GET \/parent\/issues",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Issues\",\"data\":{\"current_page\":1,\"data\":[{\"id\":6,\"pickup_request_id\":20,\"type\":\"general\",\"eta_minutes\":null,\"subject\":\"Late pickup concern\",\"description\":\"Testing issue report for Hassan Khan route\",\"status\":\"open\",\"admin_notes\":null,\"resolved_at\":null,\"created_at\":\"2026-09-15T11:51:04+00:00\"..."
+        },
+        {
+            "name": "POST \/parent\/device-token",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Device registered for push\",\"data\":{\"user_id\":59,\"token\":\"fcm-ayesha-20260915115026\",\"platform\":\"android\",\"updated_at\":\"2026-09-15T11:51:05.000000Z\",\"created_at\":\"2026-09-15T11:51:05.000000Z\",\"id\":8}}"
+        },
+        {
+            "name": "POST \/parent\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":\"Imran Khan\",\"emergency_contact_phone\":\"03025551234\",\"email_verified_at\":\"2026-09-15T11:50:39.000000Z\",\"phone_verified_at\":\"20..."
+        },
+        {
+            "name": "POST \/self\/register",
+            "status": 201,
+            "ok": true,
+            "note": "bilal.ahmed.20260915115026@pickdrop.test",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. A verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"role\":\"self\",\"status\":\"Pending\",\"referred_by\":null,\"details\":{\"address\":\"Flat 3B, G-11\\\/2 Islamabad\",\"conta..."
+        },
+        {
+            "name": "POST \/self\/email\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=197779",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please verify your phone number.\",\"data\":{\"user\":{\"id\":60,\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:17.000000Z\",\"..."
+        },
+        {
+            "name": "POST \/self\/phone\/verify\/send",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Verification code sent to your phone. A copy was also emailed.\",\"data\":{\"expires_in_minutes\":10,\"next_step\":\"verify_phone\"}}"
+        },
+        {
+            "name": "POST \/self\/phone\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=750000",
+            "body": "{\"success\":true,\"message\":\"Phone verified successfully.\",\"data\":{\"user\":{\"id\":60,\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:17.000000Z\",\"phone_verified_at\":\"2026-09-15T11..."
+        },
+        {
+            "name": "GET \/self\/verification",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Identity verification status\",\"data\":{\"kyc_status\":\"not_submitted\",\"account_type\":\"self\",\"prefill\":{\"full_name\":\"Bilal Ahmed\",\"phone\":\"03025115026\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"address\":\"Flat 3B, G-11\\\/2 Islamabad\",\"readonly_fields\":[\"full_name\",\"phone\",\"email\"]},\"city_..."
+        },
+        {
+            "name": "POST \/self\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "35202-9746444-3",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"account_type\":\"self\",\"prefill\":{\"full_name\":\"Bilal Ahmed\",\"phone\":\"03025115026\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"address\":\"Flat 3B, G-11\\\/2 Islamabad\",\"readonly_fields\":[\"ful..."
+        },
+        {
+            "name": "POST \/self\/commute-profile",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Pickup, drop location and office timing saved\",\"data\":{\"next_step\":\"create_request\",\"onboarding_complete\":true,\"commute_profile\":{\"id\":7,\"city_id\":3,\"city\":{\"id\":3,\"name\":\"Islamabad\",\"latitude\":\"33.6931000\",\"longitude\":\"73.0639000\",\"status\":\"Active\",\"created_at\":\"2026-04-17T00:41:29.000000Z\",..."
+        },
+        {
+            "name": "GET \/self\/commute-profile",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Commute profile\",\"data\":{\"next_step\":\"create_request\",\"cities\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"ci..."
+        },
+        {
+            "name": "POST \/self\/requests",
+            "status": 201,
+            "ok": true,
+            "note": "req_id=21",
+            "body": "{\"success\":true,\"message\":\"Request created. Drivers in this city and area can now see it.\",\"data\":{\"id\":21,\"type\":\"self\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":60,\"parent\":{\"id\":60,\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"emergency_contact_name\":null,\"..."
+        },
+        {
+            "name": "GET \/self\/requests",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Requests\",\"data\":{\"current_page\":1,\"data\":[{\"id\":21,\"type\":\"self\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":60,\"parent\":null,\"student_id\":null,\"student\":null,\"driver_id\":null,\"driver\":null,\"vehicle_id\":null,\"vehicle\":null,\"city_id\":3,\"city\":{\"id\":3,\"name\":\"Islamabad\",\"latitude\":\"33..."
+        },
+        {
+            "name": "GET \/self\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile\",\"data\":{\"id\":60,\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:17.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:28.000000Z\",\"phone_otp_ex..."
+        },
+        {
+            "name": "GET \/self\/wallet",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Wallet\",\"data\":{\"balance\":0,\"transactions\":[]}}"
+        },
+        {
+            "name": "GET \/self\/invoices",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Invoices\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/self\\\/invoices?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/self\\\/invoices?page=1\",\"links\":[{\"url\":null,\"label\":\"&laquo; Previous\",\"acti..."
+        },
+        {
+            "name": "GET \/self\/holidays",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Holidays\",\"data\":[]}"
+        },
+        {
+            "name": "POST \/self\/sos",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS sent. Admin and related users have been notified.\",\"data\":{\"id\":10,\"pickup_request_id\":null,\"lat\":33.668,\"lng\":73.048,\"message\":\"Bilal Ahmed SOS test\",\"status\":\"open\",\"created_at\":\"2026-09-15T11:51:33+00:00\",\"acknowledged_at\":null,\"resolved_at\":null}}"
+        },
+        {
+            "name": "POST \/self\/device-token",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Device registered for push\",\"data\":{\"user_id\":60,\"token\":\"fcm-bilal-20260915115026\",\"platform\":\"ios\",\"updated_at\":\"2026-09-15T11:51:34.000000Z\",\"created_at\":\"2026-09-15T11:51:34.000000Z\",\"id\":9}}"
+        },
+        {
+            "name": "POST \/self\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":60,\"name\":\"Bilal Ahmed\",\"email\":\"bilal.ahmed.20260915115026@pickdrop.test\",\"phone\":\"03025115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:17.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:28..."
+        },
+        {
+            "name": "POST \/driver\/register",
+            "status": 201,
+            "ok": true,
+            "note": "usman.ali.20260915115026@pickdrop.test",
+            "body": "{\"success\":true,\"message\":\"Registered successfully. Verification code has been sent to your email.\",\"data\":{\"user\":{\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"role\":\"driver\",\"status\":\"Pending\",\"referral_code\":null,\"referred_by\":null,\"updated_at\":\"2026-09-15T11:51:36.00000..."
+        },
+        {
+            "name": "POST \/driver\/verify-email",
+            "status": 200,
+            "ok": true,
+            "note": "otp=784034",
+            "body": "{\"success\":true,\"message\":\"Email verified successfully. Please verify your phone number.\",\"data\":{\"kyc_status\":\"not_submitted\",\"kyc_required\":true,\"vehicle_verification_status\":\"not_submitted\",\"vehicle_verification_required\":true,\"next_step\":\"verify_phone\"}}"
+        },
+        {
+            "name": "POST \/driver\/phone\/verify\/send",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Verification code sent to your phone. A copy was also emailed.\",\"data\":{\"expires_in_minutes\":10,\"next_step\":\"verify_phone\"}}"
+        },
+        {
+            "name": "POST \/driver\/phone\/verify",
+            "status": 200,
+            "ok": true,
+            "note": "code=680491",
+            "body": "{\"success\":true,\"message\":\"Phone verified successfully.\",\"data\":{\"user\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:..."
+        },
+        {
+            "name": "GET \/driver\/verification",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver verification status\",\"data\":{\"kyc_status\":\"not_submitted\",\"vehicle_verification_status\":\"not_submitted\",\"prefill\":{\"full_name\":\"Usman Ali\",\"phone\":\"03035115026\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"readonly_fields\":[\"full_name\",\"phone\",\"email\"]},\"city_id\":null,\"cities\":[{\"..."
+        },
+        {
+            "name": "GET \/driver\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver profile\",\"data\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":null,\"emergency_contact_phone\":null,\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:57.000000Z\",\"phone_otp..."
+        },
+        {
+            "name": "GET \/driver\/cities",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cities\",\"data\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"city_id\":10,\"name\":\"FDA City\",\"latitude\":\"31.51772..."
+        },
+        {
+            "name": "GET \/driver\/cities\/{id}\/areas",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Areas\",\"data\":[{\"id\":4,\"city_id\":3,\"name\":\"Bahria town islamabad, Civic Center Bahria Town Civic Center Bahria Town, Rawalpindi\",\"latitude\":\"33.5508705\",\"longitude\":\"73.1239034\",\"status\":\"Active\"},{\"id\":1,\"city_id\":3,\"name\":\"F-6\",\"latitude\":\"33.7299427\",\"longitude\":\"73.0763135\",\"status\":\"Acti..."
+        },
+        {
+            "name": "POST \/driver\/verification (KYC)",
+            "status": 201,
+            "ok": true,
+            "note": "35202-8650111-5",
+            "body": "{\"success\":true,\"message\":\"Verification submitted successfully. Status: Pending Verification.\",\"data\":{\"kyc_status\":\"pending\",\"vehicle_verification_status\":\"not_submitted\",\"prefill\":{\"full_name\":\"Usman Ali\",\"phone\":\"03035115026\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"readonly_fields\":[\"full_name\",\"phone\",\"em..."
+        },
+        {
+            "name": "GET \/driver\/vehicle-verification",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver vehicle verification status\",\"data\":{\"vehicle_verification_status\":\"not_submitted\",\"service_areas_setup\":true,\"onboarding_complete\":false,\"next_step\":\"vehicle_verification_submit\",\"vehicle_verification\":null}}"
+        },
+        {
+            "name": "POST \/driver\/vehicle-verification",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Vehicle verification submitted successfully. Status: Pending Approval.\",\"data\":{\"vehicle_verification_status\":\"pending\",\"next_step\":\"vehicle_verification_pending\",\"vehicle_verification\":{\"id\":6,\"status\":\"pending\",\"rejection_reason\":null,\"vehicle_category_id\":null,\"vehicle_category\":null,\"vehi..."
+        },
+        {
+            "name": "PUT \/driver\/me",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Profile updated\",\"data\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":\"Saima Ali\",\"emergency_contact_phone\":\"03098887766\",\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:57.00..."
+        },
+        {
+            "name": "PUT \/driver\/me\/duty",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Duty status updated\",\"data\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":\"Saima Ali\",\"emergency_contact_phone\":\"03098887766\",\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51:5..."
+        },
+        {
+            "name": "POST \/driver\/location\/update",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Location updated\",\"data\":{\"lat\":33.7294,\"lng\":73.0931,\"updated_at\":\"2026-09-15T11:52:02+00:00\"}}"
+        },
+        {
+            "name": "POST \/driver\/service-areas",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"City, service areas, seats and availability updated successfully.\",\"data\":{\"city_id\":3,\"city\":{\"id\":3,\"name\":\"Islamabad\",\"latitude\":\"33.6931000\",\"longitude\":\"73.0639000\",\"status\":\"Active\",\"created_at\":\"2026-04-17T00:41:29.000000Z\",\"updated_at\":\"2026-04-23T03:43:27.000000Z\"},\"selected_area_ids..."
+        },
+        {
+            "name": "GET \/driver\/service-areas",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Service areas\",\"data\":{\"cities\":[{\"id\":10,\"name\":\"Faisalabad\",\"latitude\":\"31.4167000\",\"longitude\":\"73.0911000\",\"status\":\"Active\",\"areas\":[{\"id\":13,\"city_id\":10,\"name\":\"Citi Housing\",\"latitude\":\"31.4883344\",\"longitude\":\"73.0617793\",\"status\":\"Active\"},{\"id\":15,\"city_id\":10,\"name\":\"FDA City\",\"la..."
+        },
+        {
+            "name": "GET \/driver\/requests\/available",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Available requests\",\"data\":[{\"id\":20,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"pending\",\"parent_id\":59,\"parent\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_contact_name\":\"Imran Khan\",\"emergency_contact_phone\":\"0302555..."
+        },
+        {
+            "name": "GET \/driver\/requests\/accepted",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Accepted requests\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/driver\/requests\/cover",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Cover trips in your area\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/driver\/rides",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Rides history\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/rides?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/rides?page=1\",\"links\":[{\"url\":null,\"label\":\"&laquo; Previous\",\"a..."
+        },
+        {
+            "name": "GET \/driver\/rides\/today",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Today's rides\",\"data\":{\"date\":\"2026-09-15\",\"weekday\":\"tuesday\",\"optimized\":true,\"round_trip_rule\":\"Drop every passenger back at the same pickup point.\",\"summary\":{\"total\":0,\"pending\":0,\"done\":0,\"pickups\":0,\"drops\":0,\"passengers\":0},\"trips\":[],\"stops\":[]}}"
+        },
+        {
+            "name": "GET \/driver\/earnings",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Earnings\",\"data\":{\"currency\":\"PKR\",\"this_month\":{\"total\":0,\"paid\":0,\"unpaid\":0},\"all_time\":{\"total\":0,\"paid\":0,\"unpaid\":0},\"payroll\":{\"pending_amount\":0,\"paid_amount\":0,\"recent_bills\":[]},\"completed_days\":0,\"shifts\":[],\"latest_payroll\":null}}"
+        },
+        {
+            "name": "GET \/driver\/notifications",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Notifications\",\"data\":{\"current_page\":1,\"data\":[],\"first_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/notifications?page=1\",\"from\":null,\"last_page\":1,\"last_page_url\":\"http:\\\/\\\/127.0.0.1\\\/Pick-Drop\\\/public\\\/api\\\/driver\\\/notifications?page=1\",\"links\":[{\"url\":null,\"label\":\"&laq..."
+        },
+        {
+            "name": "GET \/driver\/holidays",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Holidays\",\"data\":[]}"
+        },
+        {
+            "name": "GET \/driver\/payroll",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver payments\",\"data\":{\"currency\":\"PKR\",\"summary\":{\"total_requested\":0,\"pending_amount\":0,\"paid_amount\":0,\"pending_count\":0,\"paid_count\":0},\"bills\":[],\"shifts\":[]}}"
+        },
+        {
+            "name": "GET \/driver\/payrolls",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payroll\",\"data\":[]}"
+        },
+        {
+            "name": "PUT \/driver\/account\/payment-details",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payment account updated\",\"data\":{\"payment_account\":{\"bank_name\":\"HBL\",\"account_title\":\"Usman Ali\",\"account_number\":\"1234567890123\",\"iban\":\"PK00HABB0000001234567890\"},\"has_payment_account\":true}}"
+        },
+        {
+            "name": "GET \/driver\/account\/payment-details",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Payment account details\",\"data\":{\"payment_account\":{\"bank_name\":\"HBL\",\"account_title\":\"Usman Ali\",\"account_number\":\"1234567890123\",\"iban\":\"PK00HABB0000001234567890\"},\"has_payment_account\":true,\"banks\":[\"HBL — Habib Bank\",\"UBL — United Bank\",\"MCB — Muslim Commercial Bank\",\"Allied Bank\",\"..."
+        },
+        {
+            "name": "POST \/driver\/device-token",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Device registered for push\",\"data\":{\"user_id\":61,\"token\":\"fcm-usman-20260915115026\",\"platform\":\"android\",\"updated_at\":\"2026-09-15T11:52:09.000000Z\",\"created_at\":\"2026-09-15T11:52:09.000000Z\",\"id\":10}}"
+        },
+        {
+            "name": "POST \/driver\/sos",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"SOS sent\",\"data\":{\"id\":11,\"pickup_request_id\":null,\"lat\":33.7294,\"lng\":73.0931,\"message\":\"Usman Ali SOS test\",\"status\":\"open\",\"created_at\":\"2026-09-15T11:52:09+00:00\",\"acknowledged_at\":null,\"resolved_at\":null}}"
+        },
+        {
+            "name": "POST \/driver\/requests\/{id}\/accept",
+            "status": 200,
+            "ok": true,
+            "note": "req=20",
+            "body": "{\"success\":true,\"message\":\"Request accepted. Customer must pay the advance fee before the shift can start.\",\"data\":{\"id\":20,\"type\":\"parent\",\"service_type\":\"both\",\"status\":\"accepted\",\"parent_id\":59,\"parent\":{\"id\":59,\"name\":\"Ayesha Khan\",\"email\":\"ayesha.khan.20260915115026@pickdrop.test\",\"phone\":\"03015115026\",\"emergency_..."
+        },
+        {
+            "name": "GET \/parent\/requests\/{id}\/driver",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Driver info\",\"data\":{\"driver\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":\"Saima Ali\",\"emergency_contact_phone\":\"03098887766\",\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09-15T11:51..."
+        },
+        {
+            "name": "GET \/parent\/requests\/{id}\/contact",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Call contact\",\"data\":{\"type\":\"driver\",\"name\":\"Usman Ali\",\"phone\":\"03035115026\",\"emergency_name\":\"Saima Ali\",\"emergency_phone\":\"03098887766\"}}"
+        },
+        {
+            "name": "GET \/driver\/requests\/{id}\/contact",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Call contact\",\"data\":{\"type\":\"parent\",\"name\":\"Ayesha Khan\",\"phone\":\"03015115026\",\"emergency_name\":\"Imran Khan\",\"emergency_phone\":\"03025551234\"}}"
+        },
+        {
+            "name": "POST \/parent\/requests\/{id}\/messages",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Message sent\",\"data\":{\"pickup_request_id\":20,\"sender_id\":59,\"receiver_id\":61,\"message\":\"Assalam o Alaikum Usman bhai, Hassan ready hoga 7:35 pe.\",\"updated_at\":\"2026-09-15T11:52:12.000000Z\",\"created_at\":\"2026-09-15T11:52:12.000000Z\",\"id\":4}}"
+        },
+        {
+            "name": "POST \/driver\/requests\/{id}\/messages",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Message sent\",\"data\":{\"pickup_request_id\":20,\"sender_id\":61,\"receiver_id\":59,\"message\":\"Ji Ayesha madam, main 7:30 pe gate pe honga.\",\"updated_at\":\"2026-09-15T11:52:12.000000Z\",\"created_at\":\"2026-09-15T11:52:12.000000Z\",\"id\":5,\"sender\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.2026091511..."
+        },
+        {
+            "name": "GET \/parent\/requests\/{id}\/messages",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Messages\",\"data\":{\"current_page\":1,\"data\":[{\"id\":4,\"pickup_request_id\":20,\"sender_id\":59,\"receiver_id\":61,\"message\":\"Assalam o Alaikum Usman bhai, Hassan ready hoga 7:35 pe.\",\"read_at\":null,\"created_at\":\"2026-09-15T11:52:12.000000Z\",\"updated_at\":\"2026-09-15T11:52:12.000000Z\"},{\"id\":5,\"pickup_..."
+        },
+        {
+            "name": "POST \/driver\/issues",
+            "status": 201,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Issue submitted\",\"data\":{\"id\":7,\"pickup_request_id\":20,\"type\":\"delay\",\"eta_minutes\":12,\"subject\":\"Delay\",\"description\":\"Heavy traffic near F-8\",\"status\":\"open\",\"admin_notes\":null,\"resolved_at\":null,\"created_at\":\"2026-09-15T11:52:13+00:00\"}}"
+        },
+        {
+            "name": "POST \/driver\/login",
+            "status": 200,
+            "ok": true,
+            "note": "",
+            "body": "{\"success\":true,\"message\":\"Logged in successfully\",\"data\":{\"user\":{\"id\":61,\"name\":\"Usman Ali\",\"email\":\"usman.ali.20260915115026@pickdrop.test\",\"phone\":\"03035115026\",\"emergency_contact_name\":\"Saima Ali\",\"emergency_contact_phone\":\"03098887766\",\"email_verified_at\":\"2026-09-15T11:51:46.000000Z\",\"phone_verified_at\":\"2026-09..."
+        }
+    ]
+}

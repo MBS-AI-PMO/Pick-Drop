@@ -10,9 +10,17 @@
 @endphp
 
 <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
-  <div>
-    <h4 class="mb-1">Review {{ $isSelf ? 'Self' : 'Parent' }} Verification</h4>
-    <p class="text-secondary mb-0">{{ $verification->full_name }} · {{ $user?->email }}</p>
+  <div class="d-flex align-items-center gap-3">
+    <a href="{{ route('parent-self-verifications.document', [$verification, 'selfie_photo']) }}" target="_blank" class="flex-shrink-0">
+      <img src="{{ route('parent-self-verifications.document', [$verification, 'selfie_photo']) }}"
+           alt="Profile"
+           class="rounded-circle border"
+           style="width:64px;height:64px;object-fit:cover;">
+    </a>
+    <div>
+      <h4 class="mb-1">Review {{ $isSelf ? 'Self' : 'Parent' }} Verification</h4>
+      <p class="text-secondary mb-0">{{ $verification->full_name }} · {{ $user?->email }}</p>
+    </div>
   </div>
   <div>
     <a href="{{ route('parent-self-verifications.index') }}" class="btn btn-outline-secondary">Back to list</a>
@@ -161,8 +169,7 @@
                     <th class="ps-4">Name</th>
                     <th>School</th>
                     <th>Grade</th>
-                    <th>Pickup</th>
-                    <th>Timing</th>
+                    <th>Emergency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -172,13 +179,10 @@
                       <td>{{ $child->school_name ?: '—' }}</td>
                       <td>{{ $child->grade ?: '—' }}</td>
                       <td>
-                        {{ $child->pickup_location ?: '—' }}
-                        <small class="text-muted d-block">{{ $child->pickupArea?->name }}{{ $child->city ? ' · '.$child->city->name : '' }}</small>
-                      </td>
-                      <td>
-                        {{ $child->pickup_time ? substr((string) $child->pickup_time, 0, 5) : '—' }}
-                        –
-                        {{ $child->dropoff_time ? substr((string) $child->dropoff_time, 0, 5) : '—' }}
+                        {{ $child->emergency_name ?: '—' }}
+                        @if($child->emergency_phone)
+                          <small class="text-muted d-block">{{ $child->emergency_phone }}</small>
+                        @endif
                       </td>
                     </tr>
                   @endforeach

@@ -134,7 +134,7 @@
                   <td>{{ str_replace('_', ' ', $payment->method) }}</td>
                   <td>{{ $payment->reference ?: '—' }}</td>
                   <td>{{ $invoice->formatMoney((float) $payment->amount) }}</td>
-                  <td>{{ ucfirst($payment->status) }}</td>
+                  <td>{{ $payment->receiptStatusLabel() }}</td>
                   <td class="text-center">
                     <div class="action-btns">
                       @if($payment->proof_path)
@@ -142,7 +142,25 @@
                           <i data-lucide="eye"></i>
                         </a>
                       @endif
-                      @if($payment->method === 'bank_transfer' && $payment->status === 'pending')
+                      @if($payment->proof_path)
+                        <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
+                          @csrf
+                          <input type="hidden" name="receipt_status" value="received">
+                          <button type="submit" class="action-btn action-btn-add" title="Mark received"
+                                  {{ $payment->receiptStatus() === 'received' ? 'disabled' : '' }}>
+                            <i data-lucide="check"></i>
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
+                          @csrf
+                          <input type="hidden" name="receipt_status" value="not_received">
+                          <button type="submit" class="action-btn action-btn-view" title="Mark not received"
+                                  {{ $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}>
+                            <i data-lucide="x"></i>
+                          </button>
+                        </form>
+                      @endif
+                      @if($payment->method === 'bank_transfer' && $payment->status === 'pending' && ! $payment->proof_path)
                         <form method="POST" action="{{ route('payments.confirm-bank', $payment) }}">
                           @csrf
                           <button type="submit" class="action-btn action-btn-add" title="Confirm"

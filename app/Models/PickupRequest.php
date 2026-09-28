@@ -172,9 +172,10 @@ class PickupRequest extends Model
     }
 
     /**
-     * Outbound + return legs so the driver always brings the passenger back.
+     * Outbound (+ return when round trip): return swaps points —
+     * evening pickup = morning drop, evening drop = morning pickup.
      *
-     * @return list<array<string, mixed>>
+     * @return array<string, mixed>
      */
     public function journeyApiArray(): array
     {
@@ -185,7 +186,7 @@ class PickupRequest extends Model
             $stops = collect();
         }
 
-        $rows = $stops->values()->map(function (PickupRequestStop $stop, int $index) {
+        $rows = $stops->values()->map(function (PickupRequestStop $stop) {
             $payload = $stop->toApiArray();
             $payload['leg'] = $stop->leg ?: 'outbound';
             $payload['action'] = $stop->isPickup()
@@ -196,25 +197,40 @@ class PickupRequest extends Model
             return $payload;
         })->all();
 
-        $roundTrip = $this->round_trip !== false && $this->resolvedServiceType() === self::SERVICE_BOTH;
-        // Virtual return legs only for classic 1 pickup + 1 drop. Multi-stop / one-sided journeys use stored stops as-is.
+        $roundTrip = $this->tripMode() === self::TRIP_ROUND;
+        // Virtual return legs only for classic 1 pickup + 1 drop.
         if ($roundTrip && count($rows) === 2) {
-            $pickup = $rows[0];
-            $drop = $rows[1];
-            $returnPickup = $drop;
+            $outboundPickup = $rows[0]['type'] === PickupRequestStop::TYPE_PICKUP ? $rows[0] : $rows[1];
+            $outboundDrop = $rows[0]['type'] === PickupRequestStop::TYPE_DROP ? $rows[0] : $rows[1];
+
+            $returnLeaveTime = $outboundDrop['time'] ?? $this->formatTime($this->drop_time);
+            $returnArriveTime = $this->estimateReturnArriveTime(
+                $outboundPickup['time'] ?? $this->formatTime($this->pickup_time),
+                $returnLeaveTime
+            );
+
+            $returnPickup = $outboundDrop;
+            $returnPickup['id'] = null;
             $returnPickup['type'] = PickupRequestStop::TYPE_PICKUP;
             $returnPickup['leg'] = 'return';
             $returnPickup['sequence'] = 3;
             $returnPickup['name'] = 'Return pickup';
-            $returnPickup['action'] = 'Pick up from ' . ($drop['point'] ?? $this->drop_point);
+            $returnPickup['time'] = $returnLeaveTime;
+            $returnPickup['action'] = 'Pick up from ' . ($outboundDrop['point'] ?? $this->drop_point)
+                . ' (wapsi — subah jahan drop kiya)';
             $returnPickup['virtual'] = true;
-            $returnDrop = $pickup;
+
+            $returnDrop = $outboundPickup;
+            $returnDrop['id'] = null;
             $returnDrop['type'] = PickupRequestStop::TYPE_DROP;
             $returnDrop['leg'] = 'return';
             $returnDrop['sequence'] = 4;
             $returnDrop['name'] = 'Return drop';
-            $returnDrop['action'] = 'Drop back at ' . ($pickup['point'] ?? $this->pickup_point);
+            $returnDrop['time'] = $returnArriveTime;
+            $returnDrop['action'] = 'Drop at ' . ($outboundPickup['point'] ?? $this->pickup_point)
+                . ' (wapsi — subah jahan se uthaya)';
             $returnDrop['virtual'] = true;
+
             $rows[0]['leg'] = 'outbound';
             $rows[1]['leg'] = 'outbound';
             $rows[] = $returnPickup;
@@ -222,8 +238,11 @@ class PickupRequest extends Model
         }
 
         return [
+            'trip_mode' => $this->tripMode(),
             'round_trip' => $roundTrip,
-            'rule' => 'Passenger is dropped back at the same place they were picked up.',
+            'rule' => $roundTrip
+                ? 'Ana-jana: subah A→B, wapsi B→A (jahan drop kiya wahan se pickup, jahan se uthaya wahan drop).'
+                : 'One way: sirf ek taraf — return nahi.',
             'from' => [
                 'point' => $this->pickup_point,
                 'lat' => $this->pickup_lat,
@@ -240,6 +259,26 @@ class PickupRequest extends Model
         ];
     }
 
+    private function estimateReturnArriveTime(?string $outboundPickupTime, ?string $outboundDropTime): ?string
+    {
+        if (!$outboundPickupTime || !$outboundDropTime) {
+            return $outboundDropTime;
+        }
+
+        try {
+            $start = \Illuminate\Support\Carbon::createFromFormat('H:i', substr($outboundPickupTime, 0, 5));
+            $end = \Illuminate\Support\Carbon::createFromFormat('H:i', substr($outboundDropTime, 0, 5));
+            $minutes = max(15, $start->diffInMinutes($end, false));
+            if ($minutes < 0) {
+                $minutes = 30;
+            }
+
+            return $end->copy()->addMinutes($minutes)->format('H:i');
+        } catch (\Throwable) {
+            return $outboundDropTime;
+        }
+    }
+
     public function renewedFrom()
     {
         return $this->belongsTo(self::class, 'renewed_from_id');
@@ -252,6 +291,39 @@ class PickupRequest extends Model
     public const SERVICE_BOTH = 'both';
     public const SERVICE_PICKUP_ONLY = 'pickup_only';
     public const SERVICE_DROP_ONLY = 'drop_only';
+
+    public const TRIP_ROUND = 'round_trip';
+    public const TRIP_ONE_WAY = 'one_way';
+
+    /**
+     * App-facing trip mode: round_trip (ana-jana) or one_way (single side).
+     */
+    public function tripMode(): string
+    {
+        if ($this->round_trip === false || $this->resolvedServiceType() !== self::SERVICE_BOTH) {
+            return self::TRIP_ONE_WAY;
+        }
+
+        return self::TRIP_ROUND;
+    }
+
+    public function tripModeLabel(): string
+    {
+        return $this->tripMode() === self::TRIP_ROUND
+            ? 'Ana-jana (round trip)'
+            : 'One way (single side)';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function tripModeOptions(): array
+    {
+        return [
+            self::TRIP_ROUND => 'Ana-jana (round trip)',
+            self::TRIP_ONE_WAY => 'One way (single side)',
+        ];
+    }
 
     public function resolvedServiceType(): string
     {
@@ -526,6 +598,8 @@ class PickupRequest extends Model
             'id' => $this->id,
             'type' => $this->type,
             'service_type' => $this->resolvedServiceType(),
+            'trip_mode' => $this->tripMode(),
+            'trip_mode_label' => $this->tripModeLabel(),
             'status' => $this->status,
             'parent_id' => $this->parent_id,
             'parent' => $this->relationLoaded('parent') ? $this->parent : null,
