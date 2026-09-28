@@ -50,8 +50,8 @@ Route::prefix('parent')->group(function () {
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.parent.invoices.show');
         Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.parent.invoices.pay.stripe');
         Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.parent.invoices.pay.bank');
-        Route::post('invoices/{invoice}/pay/jazzcash', [InvoiceController::class, 'payJazzcash'])->name('api.parent.invoices.pay.jazzcash');
-        Route::post('invoices/{invoice}/pay/easypaisa', [InvoiceController::class, 'payEasypaisa'])->name('api.parent.invoices.pay.easypaisa');
+        Route::post('invoices/{invoice}/pay/screenshot', [InvoiceController::class, 'payScreenshot'])->name('api.parent.invoices.pay.screenshot');
+        Route::get('invoices/{invoice}/pay/status', [InvoiceController::class, 'payStatus'])->name('api.parent.invoices.pay.status');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.parent.me.show');
@@ -150,8 +150,8 @@ Route::prefix('self')->group(function () {
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('api.self.invoices.show');
         Route::post('invoices/{invoice}/pay/stripe', [InvoiceController::class, 'payStripe'])->name('api.self.invoices.pay.stripe');
         Route::post('invoices/{invoice}/pay/bank', [InvoiceController::class, 'payBank'])->name('api.self.invoices.pay.bank');
-        Route::post('invoices/{invoice}/pay/jazzcash', [InvoiceController::class, 'payJazzcash'])->name('api.self.invoices.pay.jazzcash');
-        Route::post('invoices/{invoice}/pay/easypaisa', [InvoiceController::class, 'payEasypaisa'])->name('api.self.invoices.pay.easypaisa');
+        Route::post('invoices/{invoice}/pay/screenshot', [InvoiceController::class, 'payScreenshot'])->name('api.self.invoices.pay.screenshot');
+        Route::get('invoices/{invoice}/pay/status', [InvoiceController::class, 'payStatus'])->name('api.self.invoices.pay.status');
 
         // Profile
         Route::get('me', [ProfileController::class, 'show'])->name('api.self.me.show');

@@ -66,6 +66,9 @@
             @forelse($notifications as $notification)
               @php
                 $notificationType = strtolower($notification->type ?? 'info');
+                $notificationTone = in_array($notificationType, ['success', 'warning', 'danger', 'info'], true)
+                  ? $notificationType
+                  : 'info';
                 $notificationIcon = match ($notificationType) {
                   'success' => 'check-circle-2',
                   'warning', 'danger' => 'alert-triangle',
@@ -73,30 +76,27 @@
                 };
               @endphp
 
-              <div class="notification-dropdown__card {{ $notification->is_read ? '' : 'is-unread' }}">
+              <div class="notification-dropdown__card notification-dropdown__card--{{ $notificationTone }} {{ $notification->is_read ? '' : 'is-unread' }}">
                 <a href="{{ route('notifications.index') }}" class="notification-dropdown__main">
-                  <span class="notification-dropdown__icon notification-dropdown__icon--{{ $notificationType }}">
+                  <span class="notification-dropdown__icon notification-dropdown__icon--{{ $notificationTone }}">
                     <i class="icon-sm" data-lucide="{{ $notificationIcon }}"></i>
                   </span>
                   <span class="notification-dropdown__content">
                     <span class="notification-dropdown__top">
                       <span class="notification-dropdown__item-title">{{ $notification->title }}</span>
-                      @unless($notification->is_read)
-                        <span class="notification-dropdown__dot" aria-hidden="true"></span>
-                      @endunless
+                      <span class="notification-dropdown__time">
+                        {{ $notification->created_at->diffForHumans(['short' => true, 'parts' => 1]) }}
+                      </span>
                     </span>
                     <span class="notification-dropdown__message">
-                      {{ \Illuminate\Support\Str::limit($notification->message, 72) }}
-                    </span>
-                    <span class="notification-dropdown__time">
-                      {{ $notification->created_at->diffForHumans() }}
+                      {{ \Illuminate\Support\Str::limit($notification->message, 88) }}
                     </span>
                   </span>
                 </a>
                 <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="notification-dropdown__delete">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="notification-delete-btn" title="Delete" onclick="event.stopPropagation();">
+                  <button type="submit" class="notification-delete-btn" title="Dismiss" aria-label="Dismiss notification" onclick="event.stopPropagation();">
                     <i data-lucide="x" class="icon-xs"></i>
                   </button>
                 </form>

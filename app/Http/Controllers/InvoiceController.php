@@ -22,6 +22,36 @@ class InvoiceController extends Controller
     ) {
     }
 
+    public function screenshots(Request $request)
+    {
+        $payments = Payment::query()
+            ->with(['invoice.customer', 'invoice.student', 'user'])
+            ->whereNotNull('proof_path')
+            ->when($request->filled('receipt_status'), function ($query) use ($request) {
+                $query->where('receipt_status', $request->string('receipt_status'));
+            })
+            ->latest('id')
+            ->paginate(AppPagination::PER_PAGE);
+
+        return view('pickdrop.payments.screenshots', compact('payments'));
+    }
+
+    public function updateReceipt(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'receipt_status' => ['required', 'in:received,not_received'],
+        ]);
+
+        try {
+            $this->invoices->markReceiptStatus($payment, $validated['receipt_status'], $request->user()->id);
+            $label = $validated['receipt_status'] === Payment::RECEIPT_RECEIVED ? 'Received' : 'Not received';
+
+            return back()->with('success', 'Screenshot status updated to '.$label.'.');
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function index(Request $request)
     {
         $this->invoices->markOverdueInvoices();

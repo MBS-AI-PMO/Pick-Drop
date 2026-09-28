@@ -119,6 +119,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'updateStop'])->name('routes.stops.update');
     Route::delete('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'destroyStop'])->name('routes.stops.destroy');
     Route::get('/payments', [InvoiceController::class, 'index'])->name('payments.index');
+    Route::get('/payments/screenshots', [InvoiceController::class, 'screenshots'])->name('payments.screenshots');
+    Route::post('/payments/payments/{payment}/receipt', [InvoiceController::class, 'updateReceipt'])->name('payments.receipt');
     Route::post('/payments/invoices', [InvoiceController::class, 'store'])->name('payments.store');
     Route::get('/payments/export', [InvoiceController::class, 'export'])->name('payments.export');
     Route::get('/payments/settings', [PaymentSettingController::class, 'edit'])->name('payments.settings');
@@ -214,8 +216,8 @@ Route::get('reset-password/{token}', [AuthController::class, 'showResetPasswordF
     ->name('password.reset');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
-Route::post('/payments/jazzcash/callback', [LocalPaymentCallbackController::class, 'jazzcash'])->name('payments.jazzcash.callback');
-Route::post('/payments/easypaisa/callback', [LocalPaymentCallbackController::class, 'easypaisa'])->name('payments.easypaisa.callback');
+Route::match(['get', 'post'], '/payments/jazzcash/callback', [LocalPaymentCallbackController::class, 'jazzcash'])->name('payments.jazzcash.callback');
+Route::match(['get', 'post'], '/payments/easypaisa/callback', [LocalPaymentCallbackController::class, 'easypaisa'])->name('payments.easypaisa.callback');
 Route::get('/payments/stripe/complete', [InvoiceController::class, 'stripeComplete'])->name('payments.stripe.complete');
 Route::get('/payments/stripe/cancel/{invoice}', [InvoiceController::class, 'stripeCancel'])->name('payments.stripe.cancel');
 
