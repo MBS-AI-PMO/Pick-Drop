@@ -69,6 +69,7 @@
         { "name": "Payment Methods", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/payment-methods" } },
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices/{{invoice_id}}" } },
+        { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/stripe" } },
         { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [
           { "key": "reference", "value": "TRX-123456", "type": "text" },
           { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
@@ -176,6 +177,7 @@
         { "name": "Payment Methods", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/payment-methods" } },
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices/{{invoice_id}}" } },
+        { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/stripe" } },
         { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [
           { "key": "reference", "value": "TRX-654321", "type": "text" },
           { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
