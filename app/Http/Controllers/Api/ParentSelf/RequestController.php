@@ -32,21 +32,10 @@ class RequestController extends BaseApiController
             if ($request->filled('trip_mode')) {
                 $mode = strtolower((string) $request->string('trip_mode'));
                 if ($mode === PickupRequest::TRIP_ONE_WAY) {
-                    $q->where(function ($inner) {
-                        $inner->where('round_trip', false)
-                            ->orWhereIn('service_type', [
-                                PickupRequest::SERVICE_PICKUP_ONLY,
-                                PickupRequest::SERVICE_DROP_ONLY,
-                            ]);
-                    });
+                    $q->where('round_trip', false);
                 } elseif ($mode === PickupRequest::TRIP_ROUND) {
                     $q->where(function ($inner) {
-                        $inner->where(function ($r) {
-                            $r->whereNull('round_trip')->orWhere('round_trip', true);
-                        })->where(function ($s) {
-                            $s->whereNull('service_type')
-                                ->orWhere('service_type', PickupRequest::SERVICE_BOTH);
-                        });
+                        $inner->whereNull('round_trip')->orWhere('round_trip', true);
                     });
                 }
             }
@@ -87,10 +76,14 @@ class RequestController extends BaseApiController
                 $serviceType = PickupRequest::SERVICE_BOTH;
             }
 
-            $needPickup = ! $hasStops && $serviceType !== PickupRequest::SERVICE_DROP_ONLY;
-            $needDrop = ! $hasStops && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY;
-            $isParentRequest = $this->expectedAccountType($request) === 'parent'
-                || strcasecmp((string) $request->input('type'), 'parent') === 0;
+            $needPickupTime = ! $hasStops && $serviceType !== PickupRequest::SERVICE_DROP_ONLY;
+            $needDropTime = ! $hasStops && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY;
+            $needDropArea = (! $hasStops && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY)
+                || (
+                    ($this->expectedAccountType($request) === 'parent'
+                        || strcasecmp((string) $request->input('type'), 'parent') === 0)
+                    && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY
+                );
 
             $validated = $request->validate([
                 'type'       => ['required', 'in:parent,self'],
@@ -104,24 +97,20 @@ class RequestController extends BaseApiController
                     'exists:areas,id',
                 ],
                 'drop_area_id' => [
-                    $needDrop || ($isParentRequest && $serviceType !== PickupRequest::SERVICE_PICKUP_ONLY)
-                        ? 'required'
-                        : 'nullable',
+                    $needDropArea ? 'required' : 'nullable',
                     'integer',
                     'exists:areas,id',
                 ],
-                'pickup_point' => [$needPickup ? 'required' : 'nullable', 'string', 'max:255'],
-                'pickup_lat'   => [$needPickup ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
-                'pickup_lng'   => [$needPickup ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
-                'drop_point'   => [$needDrop ? 'required' : 'nullable', 'string', 'max:255'],
-                'drop_lat'     => [$needDrop ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
-                'drop_lng'     => [$needDrop ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
-                'pickup_time'  => [$needPickup ? 'required' : 'nullable', 'date_format:H:i'],
-                'drop_time'    => [$needDrop ? 'required' : 'nullable', 'date_format:H:i'],
+                'pickup_point' => [! $hasStops ? 'required' : 'nullable', 'string', 'max:255'],
+                'pickup_lat'   => [! $hasStops ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
+                'pickup_lng'   => [! $hasStops ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
+                'drop_point'   => [! $hasStops ? 'required' : 'nullable', 'string', 'max:255'],
+                'drop_lat'     => [! $hasStops ? 'required' : 'nullable', 'numeric', 'between:-90,90'],
+                'drop_lng'     => [! $hasStops ? 'required' : 'nullable', 'numeric', 'between:-180,180'],
+                'pickup_time'  => [$needPickupTime ? 'required' : 'nullable', 'date_format:H:i'],
+                'drop_time'    => [$needDropTime ? 'required' : 'nullable', 'date_format:H:i'],
                 'days'         => ['required', 'array', 'min:1'],
                 'days.*'       => ['string'],
-                'duration_months' => ['nullable', 'integer', 'min:1', 'max:24'],
-                'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20'],
                 'round_trip' => ['nullable', 'boolean'],
                 'shift_start_date' => ['nullable', 'date'],
                 'scheduled_date' => ['nullable', 'date'],
@@ -131,18 +120,18 @@ class RequestController extends BaseApiController
                 'stops.*.name' => ['nullable', 'string', 'max:255'],
                 'stops.*.lat' => ['required_with:stops', 'numeric', 'between:-90,90'],
                 'stops.*.lng' => ['required_with:stops', 'numeric', 'between:-180,180'],
-                'stops.*.time' => ['required_with:stops', 'date_format:H:i'],
+                'stops.*.time' => ['nullable', 'date_format:H:i'],
                 'stops.*.sequence' => ['nullable', 'integer', 'min:1', 'max:20'],
                 'stops.*.area_id' => ['nullable', 'integer', 'exists:areas,id'],
                 'stops.*.notes' => ['nullable', 'string', 'max:500'],
             ]);
 
             $validated['service_type'] = $validated['service_type'] ?? $serviceType;
+            $this->assertRelevantStopTimes($request, $validated);
             $validated = $this->applyTripModeToValidated($validated);
 
-            if (empty($validated['duration_months'])) {
-                $validated['duration_months'] = 1;
-            }
+            $validated['duration_months'] = 1;
+            $validated['passenger_count'] = 1;
 
             $validated['shift_start_date'] = $validated['shift_start_date']
                 ?? $validated['scheduled_date']
@@ -169,19 +158,22 @@ class RequestController extends BaseApiController
             $resolved = $this->resolveStopPayload($validated, $stopService);
             $stopPayload = $resolved['stops'];
             $endpoints = $resolved['endpoints'];
-            $validated['service_type'] = $endpoints['service_type'];
 
             $validated['pickup_point'] = $endpoints['pickup']['point'] ?? null;
             $validated['pickup_lat'] = $endpoints['pickup']['lat'] ?? null;
             $validated['pickup_lng'] = $endpoints['pickup']['lng'] ?? null;
-            $validated['pickup_time'] = $endpoints['pickup']['scheduled_time'] ?? null;
+            $validated['pickup_time'] = ($resolved['times']['pickup_sent'] ?? false)
+                ? ($endpoints['pickup']['scheduled_time'] ?? null)
+                : null;
             $validated['area_id'] = $endpoints['pickup']['area_id']
                 ?? $endpoints['drop']['area_id']
                 ?? ($validated['area_id'] ?? null);
             $validated['drop_point'] = $endpoints['drop']['point'] ?? null;
             $validated['drop_lat'] = $endpoints['drop']['lat'] ?? null;
             $validated['drop_lng'] = $endpoints['drop']['lng'] ?? null;
-            $validated['drop_time'] = $endpoints['drop']['scheduled_time'] ?? null;
+            $validated['drop_time'] = ($resolved['times']['drop_sent'] ?? false)
+                ? ($endpoints['drop']['scheduled_time'] ?? null)
+                : null;
             $validated['drop_area_id'] = $endpoints['drop']['area_id'] ?? ($validated['drop_area_id'] ?? null);
 
             if (empty($validated['area_id'])) {
@@ -257,7 +249,9 @@ class RequestController extends BaseApiController
             ]);
 
             $stopService->sync($req, $stopPayload);
-            $req->load(['student', 'city', 'area', 'dropArea', 'stops.area']);
+            app(InvoiceService::class)->createForAcceptedShift($req->fresh(['stops']));
+            $req->refresh();
+            $req->load(['student', 'city', 'area', 'dropArea', 'stops.area', 'latestInvoice.items', 'latestInvoice.payments']);
 
             $notifier = app(AppNotificationService::class);
             $notifier->notifyParentRequestSubmitted($req);
@@ -323,7 +317,6 @@ class RequestController extends BaseApiController
                 'drop_area_id' => ['sometimes', 'nullable', 'integer', 'exists:areas,id'],
                 'student_id' => ['sometimes', 'nullable', 'integer', 'exists:students,id'],
                 'scheduled_date' => ['sometimes', 'nullable', 'date'],
-                'duration_months' => ['sometimes', 'integer', 'min:1', 'max:24'],
                 'shift_start_date' => ['sometimes', 'nullable', 'date'],
                 'service_type' => ['sometimes', 'in:both,pickup_only,drop_only'],
                 'trip_mode' => ['sometimes', 'in:round_trip,one_way'],
@@ -334,13 +327,15 @@ class RequestController extends BaseApiController
                 'stops.*.name' => ['nullable', 'string', 'max:255'],
                 'stops.*.lat' => ['required_with:stops', 'numeric', 'between:-90,90'],
                 'stops.*.lng' => ['required_with:stops', 'numeric', 'between:-180,180'],
-                'stops.*.time' => ['required_with:stops', 'date_format:H:i'],
+                'stops.*.time' => ['nullable', 'date_format:H:i'],
                 'stops.*.sequence' => ['nullable', 'integer', 'min:1', 'max:20'],
                 'stops.*.area_id' => ['nullable', 'integer', 'exists:areas,id'],
                 'stops.*.notes' => ['nullable', 'string', 'max:500'],
             ]);
 
             $validated = $this->applyTripModeToValidated($validated);
+            $validated['service_type'] = $validated['service_type'] ?? $pickupRequest->resolvedServiceType();
+            $this->assertRelevantStopTimes($request, $validated);
 
             if (array_key_exists('student_id', $validated) && !empty($validated['student_id'])) {
                 $student = Student::where('id', $validated['student_id'])
@@ -353,6 +348,7 @@ class RequestController extends BaseApiController
 
             $stopService = app(ShiftStopService::class);
             $cityId = (int) ($validated['city_id'] ?? $pickupRequest->city_id);
+            $stopsToSync = null;
 
             if (array_key_exists('stops', $validated)) {
                 $resolved = $this->resolveStopPayload($validated + [
@@ -379,17 +375,21 @@ class RequestController extends BaseApiController
                 $validated['pickup_point'] = $resolved['endpoints']['pickup']['point'] ?? null;
                 $validated['pickup_lat'] = $resolved['endpoints']['pickup']['lat'] ?? null;
                 $validated['pickup_lng'] = $resolved['endpoints']['pickup']['lng'] ?? null;
-                $validated['pickup_time'] = $resolved['endpoints']['pickup']['scheduled_time'] ?? null;
+                $validated['pickup_time'] = ($resolved['times']['pickup_sent'] ?? false)
+                    ? ($resolved['endpoints']['pickup']['scheduled_time'] ?? null)
+                    : null;
                 $validated['area_id'] = $resolved['endpoints']['pickup']['area_id']
                     ?? $resolved['endpoints']['drop']['area_id']
                     ?? ($validated['area_id'] ?? $pickupRequest->area_id);
                 $validated['drop_point'] = $resolved['endpoints']['drop']['point'] ?? null;
                 $validated['drop_lat'] = $resolved['endpoints']['drop']['lat'] ?? null;
                 $validated['drop_lng'] = $resolved['endpoints']['drop']['lng'] ?? null;
-                $validated['drop_time'] = $resolved['endpoints']['drop']['scheduled_time'] ?? null;
+                $validated['drop_time'] = ($resolved['times']['drop_sent'] ?? false)
+                    ? ($resolved['endpoints']['drop']['scheduled_time'] ?? null)
+                    : null;
                 $validated['drop_area_id'] = $resolved['endpoints']['drop']['area_id']
                     ?? ($validated['drop_area_id'] ?? $pickupRequest->drop_area_id);
-                $validated['service_type'] = $resolved['endpoints']['service_type'];
+                $stopsToSync = $resolved['stops'];
             }
 
             $locationChanged = $pickupRequest->status === 'pending' && (
@@ -415,13 +415,17 @@ class RequestController extends BaseApiController
             }
 
             $pickupRequest->save();
-            if (array_key_exists('stops', $validated)) {
-                $stopService->sync($pickupRequest, $validated['stops']);
+            if ($stopsToSync !== null) {
+                $stopService->sync($pickupRequest, $stopsToSync);
             } else {
                 $stopService->ensureDefaults($pickupRequest);
             }
+            $pickupRequest->load('stops');
             app(ShiftFareService::class)->apply($pickupRequest)->save();
-            $pickupRequest->load(['student', 'city', 'area', 'dropArea', 'driver', 'vehicle', 'stops.area']);
+            app(InvoiceService::class)->syncOpenShiftQuote($pickupRequest);
+            $pickupRequest->unsetRelation('latestInvoice');
+            $pickupRequest->refresh();
+            $pickupRequest->load(['student', 'city', 'area', 'dropArea', 'driver', 'vehicle', 'stops.area', 'latestInvoice.items', 'latestInvoice.payments']);
 
             $notifier = app(AppNotificationService::class);
             $notifier->notifyParentRequestUpdated($pickupRequest);
@@ -652,6 +656,7 @@ class RequestController extends BaseApiController
             ];
 
             if (!$hasStops) {
+                $profileService = strtolower((string) $request->input('service_type', ''));
                 $defaults = array_merge($defaults, [
                     'pickup_point' => $profile->pickup_point,
                     'pickup_lat' => $profile->pickup_lat,
@@ -659,9 +664,13 @@ class RequestController extends BaseApiController
                     'drop_point' => $profile->drop_point,
                     'drop_lat' => $profile->drop_lat,
                     'drop_lng' => $profile->drop_lng,
-                    'pickup_time' => $this->formatHm($profile->pickup_time),
-                    'drop_time' => $this->formatHm($profile->drop_time),
                 ]);
+                if ($profileService !== PickupRequest::SERVICE_DROP_ONLY) {
+                    $defaults['pickup_time'] = $this->formatHm($profile->pickup_time);
+                }
+                if ($profileService !== PickupRequest::SERVICE_PICKUP_ONLY) {
+                    $defaults['drop_time'] = $this->formatHm($profile->drop_time);
+                }
             }
         }
 
@@ -700,65 +709,175 @@ class RequestController extends BaseApiController
     }
 
     /**
+     * Pickup, drop, and both all keep both locations.
+     * Single and round trip both need a pickup point and a drop point.
+     *
      * @param  array<string, mixed>  $validated
-     * @return array{stops: list<array<string, mixed>>, endpoints: array{pickup: ?array<string, mixed>, drop: ?array<string, mixed>, service_type: string}}
+     * @return array{stops: list<array<string, mixed>>, endpoints: array{pickup: ?array<string, mixed>, drop: ?array<string, mixed>, service_type: string}, times: array{pickup_sent: bool, drop_sent: bool}}
      */
     private function resolveStopPayload(array $validated, ShiftStopService $stopService): array
     {
         $stopPayload = $stopService->prepareInput($validated['stops'] ?? null);
-        $serviceType = strtolower((string) ($validated['service_type'] ?? PickupRequest::SERVICE_BOTH));
-
-        if ($stopPayload === []) {
-            if (in_array($serviceType, [PickupRequest::SERVICE_BOTH, PickupRequest::SERVICE_PICKUP_ONLY], true)
-                && filled($validated['pickup_point'] ?? null)) {
-                $stopPayload[] = [
-                    'type' => 'pickup',
-                    'name' => 'Pickup',
-                    'point' => $validated['pickup_point'],
-                    'lat' => $validated['pickup_lat'],
-                    'lng' => $validated['pickup_lng'],
-                    'time' => $validated['pickup_time'],
-                    'area_id' => $validated['area_id'] ?? null,
-                ];
-            }
-
-            if (in_array($serviceType, [PickupRequest::SERVICE_BOTH, PickupRequest::SERVICE_DROP_ONLY], true)
-                && filled($validated['drop_point'] ?? null)) {
-                $stopPayload[] = [
-                    'type' => 'drop',
-                    'name' => 'Drop',
-                    'point' => $validated['drop_point'],
-                    'lat' => $validated['drop_lat'],
-                    'lng' => $validated['drop_lng'],
-                    'time' => $validated['drop_time'],
-                    'area_id' => $validated['drop_area_id'] ?? null,
-                ];
-            }
-        }
-
-        if ($stopPayload === []) {
-            throw new RuntimeException('Add at least one pickup or one drop.');
-        }
+        $stopPayload = $this->ensureBothLocationStops($stopPayload, $validated);
 
         $pickupCount = collect($stopPayload)->where('type', 'pickup')->count();
         $dropCount = collect($stopPayload)->where('type', 'drop')->count();
-        if ($pickupCount < 1 && $dropCount < 1) {
-            throw new RuntimeException('Add at least one pickup or one drop. Multiple pickups and drops are allowed.');
+        if ($pickupCount < 1 || $dropCount < 1) {
+            throw new RuntimeException('Pickup and drop locations are both required.');
         }
 
-        if ($serviceType === PickupRequest::SERVICE_PICKUP_ONLY && $dropCount > 0) {
-            throw new RuntimeException('Pickup-only requests cannot include drop stops.');
-        }
-        if ($serviceType === PickupRequest::SERVICE_DROP_ONLY && $pickupCount > 0) {
-            throw new RuntimeException('Drop-only requests cannot include pickup stops.');
+        $times = ['pickup_sent' => false, 'drop_sent' => false];
+        foreach ($stopPayload as $stop) {
+            if (! is_array($stop)) {
+                continue;
+            }
+            $type = strtolower((string) ($stop['type'] ?? ''));
+            $time = $stop['time'] ?? $stop['scheduled_time'] ?? null;
+            if (($time === null || $time === '') && $type === 'pickup') {
+                $time = $validated['pickup_time'] ?? null;
+            }
+            if (($time === null || $time === '') && $type === 'drop') {
+                $time = $validated['drop_time'] ?? null;
+            }
+            if ($time !== null && $time !== '') {
+                if ($type === 'pickup') {
+                    $times['pickup_sent'] = true;
+                }
+                if ($type === 'drop') {
+                    $times['drop_sent'] = true;
+                }
+            }
         }
 
+        $stopPayload = $this->fillMissingStopTimes($stopPayload);
         $endpoints = $stopService->endpointsFromStops($stopPayload);
+        if (! filled($endpoints['pickup']['point'] ?? null) || ! filled($endpoints['drop']['point'] ?? null)) {
+            throw new RuntimeException('Pickup and drop locations are both required.');
+        }
 
         return [
             'stops' => $stopPayload,
             'endpoints' => $endpoints,
+            'times' => $times,
         ];
+    }
+
+    /**
+     * Single (jana), return (ana), and both always keep a pickup location and a drop location.
+     *
+     * @param  list<array<string, mixed>>  $stops
+     * @param  array<string, mixed>  $validated
+     * @return list<array<string, mixed>>
+     */
+    private function ensureBothLocationStops(array $stops, array $validated): array
+    {
+        $has = function (string $type) use ($stops): bool {
+            foreach ($stops as $stop) {
+                if (is_array($stop) && strtolower((string) ($stop['type'] ?? '')) === $type) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if (! $has('pickup') && filled($validated['pickup_point'] ?? null)) {
+            $stops[] = [
+                'type' => 'pickup',
+                'name' => 'Pickup',
+                'point' => $validated['pickup_point'],
+                'lat' => $validated['pickup_lat'] ?? null,
+                'lng' => $validated['pickup_lng'] ?? null,
+                'time' => $validated['pickup_time'] ?? null,
+                'area_id' => $validated['area_id'] ?? null,
+            ];
+        }
+
+        if (! $has('drop') && filled($validated['drop_point'] ?? null)) {
+            $stops[] = [
+                'type' => 'drop',
+                'name' => 'Drop',
+                'point' => $validated['drop_point'],
+                'lat' => $validated['drop_lat'] ?? null,
+                'lng' => $validated['drop_lng'] ?? null,
+                'time' => $validated['drop_time'] ?? null,
+                'area_id' => $validated['drop_area_id'] ?? null,
+            ];
+        }
+
+        return array_values($stops);
+    }
+
+    /**
+     * Stop rows need a clock time. When the other side was not sent, reuse the known time.
+     *
+     * @param  list<array<string, mixed>>  $stops
+     * @return list<array<string, mixed>>
+     */
+    private function fillMissingStopTimes(array $stops): array
+    {
+        $known = null;
+        foreach ($stops as $stop) {
+            $time = $stop['time'] ?? $stop['scheduled_time'] ?? null;
+            if (is_string($time) && preg_match('/^\d{2}:\d{2}/', $time)) {
+                $known = substr($time, 0, 5);
+                break;
+            }
+        }
+
+        if ($known === null) {
+            return $stops;
+        }
+
+        foreach ($stops as &$stop) {
+            $time = $stop['time'] ?? $stop['scheduled_time'] ?? null;
+            if ($time === null || $time === '') {
+                $stop['time'] = $known;
+            }
+        }
+        unset($stop);
+
+        return $stops;
+    }
+
+    /**
+     * Pickup requests only need pickup time. Drop requests only need drop time.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertRelevantStopTimes(Request $request, array $validated): void
+    {
+        $stops = $request->input('stops');
+        if (! is_array($stops)) {
+            return;
+        }
+
+        $serviceType = strtolower((string) ($validated['service_type'] ?? PickupRequest::SERVICE_BOTH));
+        $errors = [];
+
+        foreach (array_values($stops) as $index => $stop) {
+            if (! is_array($stop)) {
+                continue;
+            }
+
+            $type = strtolower((string) ($stop['type'] ?? ''));
+            $time = $stop['time'] ?? null;
+            $needsTime = match ($serviceType) {
+                PickupRequest::SERVICE_PICKUP_ONLY => $type === 'pickup',
+                PickupRequest::SERVICE_DROP_ONLY => $type === 'drop',
+                default => $type === 'pickup' || $type === 'drop',
+            };
+
+            if ($needsTime && ($time === null || $time === '')) {
+                $errors['stops.'.$index.'.time'] = [
+                    $type === 'drop' ? 'Drop time is required.' : 'Pickup time is required.',
+                ];
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     private function formatHm(mixed $value): ?string

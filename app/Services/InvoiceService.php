@@ -10,6 +10,8 @@ use App\Models\Payment;
 use App\Models\PaymentSetting;
 use App\Models\PickDropCharge;
 use App\Models\PickupRequest;
+use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +34,8 @@ class InvoiceService
     {
         $settings = PaymentSetting::current();
         $charge = PickDropCharge::query()->first();
+        $send = ! array_key_exists('send', $payload) || (bool) $payload['send'];
+        unset($payload['send']);
 
         $invoice = DB::transaction(function () use ($payload, $items, $issuedBy, $settings, $charge) {
             $invoice = Invoice::create([
@@ -56,18 +60,22 @@ class InvoiceService
             return $invoice->fresh(['items', 'customer', 'student']);
         });
 
-        Notification::create([
-            'title' => 'Invoice created',
-            'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
-            'type' => 'info',
-        ]);
+        if ($send) {
+            Notification::create([
+                'title' => 'Invoice created',
+                'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
+                'type' => 'info',
+            ]);
 
-        $this->sendQuietly($invoice);
+            $this->sendQuietly($invoice);
+        } elseif ($invoice->status === Invoice::STATUS_DRAFT) {
+            $invoice->update(['status' => Invoice::STATUS_UNPAID]);
+        }
 
         return $invoice->fresh(['items', 'customer', 'student']);
     }
 
-    public function createForAcceptedShift(PickupRequest $pickupRequest): Invoice
+    public function createForAcceptedShift(PickupRequest $pickupRequest, bool $send = true): Invoice
     {
         $existing = Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
@@ -97,6 +105,7 @@ class InvoiceService
                 $pickupRequest->id
             ),
             'terms' => 'This is an advance monthly service fee. The shift starts only after full payment. Minimum duration is 1 month. The driver is paid separately by PickDrop at month end.',
+            'send' => $send,
         ], [
             [
                 'description' => sprintf(
@@ -114,11 +123,60 @@ class InvoiceService
         ]);
 
         $pickupRequest->update([
-            'payment_status' => PickupRequest::PAYMENT_UNPAID,
+            'payment_status' => $pickupRequest->payment_status === PickupRequest::PAYMENT_PAID
+                ? PickupRequest::PAYMENT_PAID
+                : PickupRequest::PAYMENT_UNPAID,
             'estimated_amount' => $invoice->total,
         ]);
 
         return $invoice;
+    }
+
+    /**
+     * Keep the open distance bill in step with the request fare after an edit.
+     */
+    public function syncOpenShiftQuote(PickupRequest $pickupRequest): ?Invoice
+    {
+        $existing = Invoice::query()
+            ->where('pickup_request_id', $pickupRequest->id)
+            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID])
+            ->latest('id')
+            ->first();
+
+        if (! $existing) {
+            return null;
+        }
+
+        $locked = $existing->payments()
+            ->whereIn('status', [Payment::STATUS_COMPLETED, Payment::STATUS_PENDING])
+            ->exists();
+
+        if ($locked) {
+            return $existing->load(['items', 'customer', 'student']);
+        }
+
+        $quote = app(ShiftFareService::class)->quoteFromRequest($pickupRequest);
+        $this->syncItems($existing, [[
+            'description' => sprintf(
+                'Advance monthly pick-drop: %s km one-way × %d trips (%d month%s, %s to %s)',
+                number_format($quote['distance_km'], 2),
+                $quote['trip_count'],
+                $quote['duration_months'],
+                $quote['duration_months'] === 1 ? '' : 's',
+                $quote['shift_start_date'],
+                $quote['shift_end_date']
+            ),
+            'quantity' => $quote['trip_count'],
+            'unit_price' => $quote['per_trip_amount'],
+        ]]);
+        $this->recalculate($existing);
+        $existing = $existing->fresh(['items', 'customer', 'student']);
+
+        $pickupRequest->update([
+            'estimated_amount' => $existing->total,
+        ]);
+
+        return $existing;
     }
 
     public function syncPickupRequestPayment(Invoice $invoice): void
@@ -282,6 +340,11 @@ class InvoiceService
                 'currency' => $invoice->currency,
                 'method' => $method,
                 'status' => $status,
+                'receipt_status' => $extra['receipt_status'] ?? (
+                    $status === Payment::STATUS_COMPLETED
+                        ? Payment::RECEIPT_RECEIVED
+                        : Payment::RECEIPT_PENDING
+                ),
                 'reference' => $extra['reference'] ?? null,
                 'stripe_payment_intent_id' => $extra['stripe_payment_intent_id'] ?? null,
                 'proof_path' => $extra['proof_path'] ?? null,
@@ -363,8 +426,166 @@ class InvoiceService
                 'reference' => $reference,
                 'proof_path' => $path,
                 'notes' => $notes,
+                'receipt_status' => $path ? Payment::RECEIPT_NOT_RECEIVED : Payment::RECEIPT_PENDING,
             ]
         );
+    }
+
+    public function submitPaymentScreenshot(
+        Invoice $invoice,
+        UploadedFile $proof,
+        string $method = Payment::METHOD_BANK,
+        ?string $reference = null,
+        ?string $notes = null
+    ): Payment {
+        if ($invoice->isPaid() || $invoice->status === Invoice::STATUS_CANCELLED) {
+            throw new RuntimeException('This invoice cannot accept a payment screenshot.');
+        }
+
+        if ($invoice->receiptStatus() === Payment::RECEIPT_RECEIVED) {
+            throw new RuntimeException('This payment screenshot is already marked received.');
+        }
+
+        $allowed = [
+            Payment::METHOD_BANK,
+            Payment::METHOD_JAZZCASH,
+            Payment::METHOD_EASYPAISA,
+            Payment::METHOD_MANUAL,
+        ];
+        if (! in_array($method, $allowed, true)) {
+            $method = Payment::METHOD_MANUAL;
+        }
+
+        $existing = $invoice->payments()
+            ->where('receipt_status', Payment::RECEIPT_NOT_RECEIVED)
+            ->where('status', Payment::STATUS_PENDING)
+            ->latest('id')
+            ->first();
+
+        $path = $proof->store('payment-proofs/'.$invoice->id, 'public');
+
+        if ($existing) {
+            if ($existing->proof_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($existing->proof_path);
+            }
+            $existing->update([
+                'method' => $method,
+                'reference' => $reference,
+                'proof_path' => $path,
+                'notes' => $notes,
+                'receipt_status' => Payment::RECEIPT_NOT_RECEIVED,
+                'status' => Payment::STATUS_PENDING,
+            ]);
+
+            return $existing->fresh();
+        }
+
+        return $this->recordPayment(
+            $invoice,
+            $method,
+            $invoice->balance(),
+            Payment::STATUS_PENDING,
+            [
+                'reference' => $reference,
+                'proof_path' => $path,
+                'notes' => $notes,
+                'receipt_status' => Payment::RECEIPT_NOT_RECEIVED,
+            ]
+        );
+    }
+
+    public function markReceiptStatus(Payment $payment, string $receiptStatus, ?int $recordedBy = null): Payment
+    {
+        if (! in_array($receiptStatus, [Payment::RECEIPT_NOT_RECEIVED, Payment::RECEIPT_RECEIVED], true)) {
+            throw new RuntimeException('Status must be received or not received.');
+        }
+
+        if (! $payment->proof_path) {
+            throw new RuntimeException('This payment has no screenshot yet.');
+        }
+
+        if ($receiptStatus === Payment::RECEIPT_RECEIVED) {
+            $payment->update([
+                'receipt_status' => Payment::RECEIPT_RECEIVED,
+                'status' => Payment::STATUS_COMPLETED,
+                'paid_at' => $payment->paid_at ?? now(),
+                'recorded_by' => $recordedBy,
+                'rejected_at' => null,
+                'reject_reason' => null,
+            ]);
+        } else {
+            $payment->update([
+                'receipt_status' => Payment::RECEIPT_NOT_RECEIVED,
+                'status' => Payment::STATUS_PENDING,
+                'paid_at' => null,
+                'recorded_by' => $recordedBy,
+            ]);
+        }
+
+        $invoice = $payment->invoice()->firstOrFail();
+        $this->recalculate($invoice);
+        $invoice->refresh();
+        if ($invoice->isPaid()) {
+            $invoice->update(['payment_method' => $payment->method]);
+        }
+        $this->syncPickupRequestPayment($invoice->fresh());
+
+        if ($receiptStatus === Payment::RECEIPT_RECEIVED) {
+            $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']));
+        }
+
+        return $payment->fresh();
+    }
+
+    public function payWithWallet(Invoice $invoice, User $user): Payment
+    {
+        if ((int) $invoice->user_id !== (int) $user->id) {
+            throw new RuntimeException('Invoice not found');
+        }
+
+        if (!$invoice->isPayable()) {
+            throw new RuntimeException('This invoice is not payable.');
+        }
+
+        return DB::transaction(function () use ($invoice, $user) {
+            $lockedUser = User::query()->where('id', $user->id)->lockForUpdate()->firstOrFail();
+            $lockedInvoice = Invoice::query()->where('id', $invoice->id)->lockForUpdate()->firstOrFail();
+
+            if (!$lockedInvoice->isPayable()) {
+                throw new RuntimeException('This invoice is not payable.');
+            }
+
+            $amount = $lockedInvoice->balance();
+            $balance = (float) $lockedUser->referral_balance;
+
+            if ($amount <= 0) {
+                throw new RuntimeException('This invoice is already paid.');
+            }
+
+            if ($balance + 0.001 < $amount) {
+                throw new RuntimeException(
+                    'Wallet balance is not enough. Available PKR ' . number_format($balance, 2) . '.'
+                );
+            }
+
+            $lockedUser->decrement('referral_balance', $amount);
+
+            WalletTransaction::query()->create([
+                'user_id' => $lockedUser->id,
+                'amount' => $amount,
+                'type' => 'debit',
+                'reason' => 'invoice_payment',
+                'pickup_request_id' => $lockedInvoice->pickup_request_id,
+            ]);
+
+            return $this->recordPayment(
+                $lockedInvoice->fresh(),
+                Payment::METHOD_WALLET,
+                $amount,
+                Payment::STATUS_COMPLETED,
+                ['reference' => 'WALLET-' . $lockedInvoice->invoice_number]
+            );
+        });
     }
 
     public function createStripeCheckout(Invoice $invoice, ?string $successUrl = null, ?string $cancelUrl = null): array

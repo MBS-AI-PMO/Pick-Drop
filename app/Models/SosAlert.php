@@ -14,6 +14,7 @@ class SosAlert extends Model
     protected $fillable = [
         'user_id',
         'pickup_request_id',
+        'type',
         'lat',
         'lng',
         'message',
@@ -58,6 +59,7 @@ class SosAlert extends Model
         return [
             'id' => $this->id,
             'pickup_request_id' => $this->pickup_request_id,
+            'type' => $this->type,
             'lat' => $this->lat,
             'lng' => $this->lng,
             'message' => $this->message,

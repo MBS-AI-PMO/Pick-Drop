@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ManagesVerificationDocuments;
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
 use App\Models\Vehicle;
+use App\Models\VehicleCategory;
 use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 
 class VehicleVerificationController extends Controller
 {
+    use ManagesVerificationDocuments;
+
     public function index(Request $request)
     {
         try {
@@ -54,6 +58,89 @@ class VehicleVerificationController extends Controller
         return view('pickdrop.vehicle-verifications.show', [
             'verification' => $vehicleVerification,
         ]);
+    }
+
+    public function edit(DriverVehicleVerification $vehicleVerification)
+    {
+        $vehicleVerification->load(['user', 'category']);
+        $categories = VehicleCategory::orderBy('vehicle_name')->get(['id', 'vehicle_name']);
+
+        return view('pickdrop.vehicle-verifications.edit', [
+            'verification' => $vehicleVerification,
+            'categories' => $categories,
+        ]);
+    }
+
+    public function update(Request $request, DriverVehicleVerification $vehicleVerification)
+    {
+        $validated = $request->validate([
+            'vehicle_category_id' => ['required', 'integer', 'exists:vehicle_categories,id'],
+            'vehicle_name' => ['required', 'string', 'max:255'],
+            'vehicle_model' => ['nullable', 'string', 'max:255'],
+            'vehicle_color' => ['nullable', 'string', 'max:100'],
+            'license_plate' => ['required', 'string', 'max:50'],
+            'owner_name' => ['required', 'string', 'max:255'],
+            'owner_cnic_number' => ['nullable', 'string', 'max:20'],
+            'registration_card_front' => ['nullable', 'image', 'max:5120'],
+            'registration_card_back' => ['nullable', 'image', 'max:5120'],
+            'vehicle_front_photo' => ['nullable', 'image', 'max:5120'],
+            'vehicle_back_photo' => ['nullable', 'image', 'max:5120'],
+            'number_plate_photo' => ['nullable', 'image', 'max:5120'],
+            'owner_document_front' => ['nullable', 'image', 'max:5120'],
+            'owner_document_back' => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $payload = [
+                'vehicle_category_id' => (int) $validated['vehicle_category_id'],
+                'vehicle_name' => $validated['vehicle_name'],
+                'vehicle_model' => $validated['vehicle_model'] ?? null,
+                'vehicle_color' => $validated['vehicle_color'] ?? null,
+                'license_plate' => $validated['license_plate'],
+                'owner_name' => $validated['owner_name'],
+                'owner_cnic_number' => !empty($validated['owner_cnic_number'])
+                    ? $this->normalizeCnicNumber($validated['owner_cnic_number'])
+                    : null,
+            ];
+
+            $documentUpdates = $this->replaceVerificationDocuments(
+                $vehicleVerification,
+                $request->allFiles(),
+                'driver-vehicle-kyc/' . $vehicleVerification->user_id,
+                [
+                    'registration_card_front' => 'reg_front',
+                    'registration_card_back' => 'reg_back',
+                    'vehicle_front_photo' => 'vehicle_front',
+                    'vehicle_back_photo' => 'vehicle_back',
+                    'number_plate_photo' => 'number_plate',
+                    'owner_document_front' => 'owner_front',
+                    'owner_document_back' => 'owner_back',
+                ]
+            );
+
+            $vehicleVerification->update(array_merge($payload, $documentUpdates));
+
+            if ($vehicleVerification->status === DriverVehicleVerification::STATUS_APPROVED) {
+                Vehicle::where('driver_id', $vehicleVerification->user_id)->update([
+                    'name' => $vehicleVerification->vehicle_name,
+                    'license_plate' => $vehicleVerification->license_plate,
+                    'vehicle_category_id' => $vehicleVerification->vehicle_category_id,
+                ]);
+            }
+
+            return redirect()
+                ->route('vehicle-verifications.show', $vehicleVerification)
+                ->with('success', 'Vehicle verification updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update vehicle verification details', [
+                'id' => $vehicleVerification->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update verification: ' . $e->getMessage());
+        }
     }
 
     public function approve(Request $request, DriverVehicleVerification $vehicleVerification)

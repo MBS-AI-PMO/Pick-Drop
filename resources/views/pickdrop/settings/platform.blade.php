@@ -63,9 +63,14 @@
       <div class="card mb-3">
         <div class="card-header"><h6 class="mb-0">JazzCash</h6></div>
         <div class="card-body">
+          <p class="text-secondary small mb-3">Users pay in the app with their JazzCash number and CNIC. The invoice is marked paid only after JazzCash confirms — not from a fake callback.</p>
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="jazzcash_enabled" value="1" id="jc" {{ old('jazzcash_enabled', $settings->jazzcash_enabled) ? 'checked' : '' }}>
             <label class="form-check-label" for="jc">Enable JazzCash</label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="jazzcash_sandbox" value="1" id="jc_sandbox" {{ old('jazzcash_sandbox', $settings->jazzcash_sandbox ?? true) ? 'checked' : '' }}>
+            <label class="form-check-label" for="jc_sandbox">Use JazzCash sandbox (keep on until merchant is live)</label>
           </div>
           <label class="form-label">Merchant ID</label>
           <input class="form-control mb-3" name="jazzcash_merchant_id" value="{{ old('jazzcash_merchant_id', $settings->jazzcash_merchant_id) }}">
@@ -80,9 +85,14 @@
       <div class="card">
         <div class="card-header"><h6 class="mb-0">EasyPaisa</h6></div>
         <div class="card-body">
+          <p class="text-secondary small mb-3">Users pay in the app with their EasyPaisa number. The invoice is marked paid only after EasyPaisa confirms.</p>
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="easypaisa_enabled" value="1" id="ep" {{ old('easypaisa_enabled', $settings->easypaisa_enabled) ? 'checked' : '' }}>
             <label class="form-check-label" for="ep">Enable EasyPaisa</label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="easypaisa_sandbox" value="1" id="ep_sandbox" {{ old('easypaisa_sandbox', $settings->easypaisa_sandbox ?? true) ? 'checked' : '' }}>
+            <label class="form-check-label" for="ep_sandbox">Use EasyPaisa sandbox (keep on until store is live)</label>
           </div>
           <label class="form-label">Store ID</label>
           <input class="form-control mb-3" name="easypaisa_store_id" value="{{ old('easypaisa_store_id', $settings->easypaisa_store_id) }}">

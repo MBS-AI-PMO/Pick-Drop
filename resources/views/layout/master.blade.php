@@ -116,22 +116,6 @@ Author: PickDrop Team
         text-decoration: none !important;
         min-width: 0;
     }
-    nav.sidebar.pd-sidebar .pd-brand__mark {
-        width: 30px;
-        height: 30px;
-        border-radius: 9px;
-        background: var(--pd-sb-accent);
-        color: #fff;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'Outfit', sans-serif;
-        font-weight: 700;
-        font-size: 14px;
-        letter-spacing: -0.02em;
-        flex: 0 0 30px;
-        box-shadow: 0 6px 14px rgba(230, 57, 70, 0.25);
-    }
     nav.sidebar.pd-sidebar .pd-brand__text {
         font-family: 'Outfit', sans-serif;
         font-weight: 700;
@@ -461,7 +445,6 @@ Author: PickDrop Team
         color: var(--pd-sb-accent) !important;
     }
     @media (min-width: 992px) {
-        body.sidebar-folded nav.sidebar .pd-brand__text,
         body.sidebar-folded nav.sidebar .pd-nav-eyebrow,
         body.sidebar-folded nav.sidebar .link-title,
         body.sidebar-folded nav.sidebar .link-arrow,
@@ -495,9 +478,19 @@ Author: PickDrop Team
         body.sidebar-folded nav.sidebar .pd-nav-ico {
             margin: 0;
         }
-        body.sidebar-folded nav.sidebar .pd-brand {
-            justify-content: center;
-            width: 100%;
+        body.sidebar-folded nav.sidebar .sidebar-header {
+            justify-content: center !important;
+            padding: 0 !important;
+        }
+        body.sidebar-folded nav.sidebar .pd-brand,
+        body.sidebar-folded nav.sidebar .pd-brand__text {
+            display: none !important;
+        }
+        body.sidebar-folded nav.sidebar .sidebar-header .sidebar-toggler {
+            display: block !important;
+            width: 20px;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
         body.sidebar-folded nav.sidebar .sidebar-footer {
             padding: 8px;

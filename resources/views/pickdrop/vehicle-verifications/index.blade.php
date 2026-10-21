@@ -82,6 +82,9 @@
                   <a href="{{ route('vehicle-verifications.show', $item) }}" class="action-btn action-btn-view" title="View">
                     <i data-lucide="eye"></i>
                   </a>
+                  <a href="{{ route('vehicle-verifications.edit', $item) }}" class="action-btn action-btn-edit" title="Edit">
+                    <i data-lucide="edit-2"></i>
+                  </a>
                   <form action="{{ route('vehicle-verifications.destroy', $item) }}" method="POST"
                         class="d-inline" onsubmit="confirmDelete(event, this)">
                     @csrf

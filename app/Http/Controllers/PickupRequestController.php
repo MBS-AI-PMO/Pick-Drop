@@ -33,21 +33,10 @@ class PickupRequestController extends Controller
             if ($request->filled('trip_mode')) {
                 $mode = strtolower((string) $request->trip_mode);
                 if ($mode === PickupRequest::TRIP_ONE_WAY) {
-                    $query->where(function ($inner) {
-                        $inner->where('round_trip', false)
-                            ->orWhereIn('service_type', [
-                                PickupRequest::SERVICE_PICKUP_ONLY,
-                                PickupRequest::SERVICE_DROP_ONLY,
-                            ]);
-                    });
+                    $query->where('round_trip', false);
                 } elseif ($mode === PickupRequest::TRIP_ROUND) {
                     $query->where(function ($inner) {
-                        $inner->where(function ($r) {
-                            $r->whereNull('round_trip')->orWhere('round_trip', true);
-                        })->where(function ($s) {
-                            $s->whereNull('service_type')
-                                ->orWhere('service_type', PickupRequest::SERVICE_BOTH);
-                        });
+                        $inner->whereNull('round_trip')->orWhere('round_trip', true);
                     });
                 }
             }
@@ -75,6 +64,7 @@ class PickupRequestController extends Controller
                 'pending' => PickupRequest::where('status', 'pending')->count(),
                 'accepted' => PickupRequest::whereIn('status', ['accepted', 'picked_up', 'dropped'])->count(),
                 'completed' => PickupRequest::where('status', 'completed')->count(),
+                'cleared' => PickupRequest::onlyTrashed()->count(),
             ];
 
             return view('pickdrop.pickup-requests.index', compact('requests', 'cities', 'counts'));
@@ -237,7 +227,7 @@ class PickupRequestController extends Controller
     public function destroy(PickupRequest $pickupRequest)
     {
         try {
-            $pickupRequest->delete();
+            $pickupRequest->forceDelete();
 
             return redirect()
                 ->route('pickup-requests.index')
@@ -257,11 +247,12 @@ class PickupRequestController extends Controller
     public function clear()
     {
         try {
+            $count = PickupRequest::query()->count();
             PickupRequest::query()->delete();
 
             return redirect()
                 ->route('pickup-requests.index')
-                ->with('success', 'All pickup requests cleared.');
+                ->with('success', $count . ' pickup request' . ($count === 1 ? '' : 's') . ' cleared. You can recover them from this page.');
         } catch (\Throwable $e) {
             Log::error('Failed to clear pickup requests', [
                 'error' => $e->getMessage(),
@@ -270,6 +261,32 @@ class PickupRequestController extends Controller
             return redirect()
                 ->route('pickup-requests.index')
                 ->with('error', 'Failed to clear pickup requests: ' . $e->getMessage());
+        }
+    }
+
+    public function recover()
+    {
+        try {
+            $count = PickupRequest::onlyTrashed()->count();
+            if ($count === 0) {
+                return redirect()
+                    ->route('pickup-requests.index')
+                    ->with('error', 'There are no cleared pickup requests to recover.');
+            }
+
+            PickupRequest::onlyTrashed()->restore();
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('success', $count . ' pickup request' . ($count === 1 ? '' : 's') . ' recovered.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to recover pickup requests', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('pickup-requests.index')
+                ->with('error', 'Failed to recover pickup requests: ' . $e->getMessage());
         }
     }
 }

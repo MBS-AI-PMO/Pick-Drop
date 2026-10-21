@@ -32,7 +32,7 @@ class City extends Model
     }
 
     /**
-     * City dropdown: har city ke sath usi ke active areas.
+     * City dropdown: each city with its active areas.
      */
     public static function dropdownWithAreas()
     {

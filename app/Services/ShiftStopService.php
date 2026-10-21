@@ -71,10 +71,12 @@ class ShiftStopService
      */
     public function defaultsFromRequest(PickupRequest $request): array
     {
-        $serviceType = $request->resolvedServiceType();
         $rows = [];
+        $pickupTime = substr((string) $request->pickup_time, 0, 5);
+        $dropTime = substr((string) $request->drop_time, 0, 5);
+        $sharedTime = preg_match('/^\d{2}:\d{2}$/', $pickupTime) ? $pickupTime : $dropTime;
 
-        if ($serviceType !== PickupRequest::SERVICE_DROP_ONLY && filled($request->pickup_point)) {
+        if (filled($request->pickup_point)) {
             $rows[] = [
                 'type' => PickupRequestStop::TYPE_PICKUP,
                 'sequence' => 1,
@@ -83,11 +85,11 @@ class ShiftStopService
                 'lat' => (float) $request->pickup_lat,
                 'lng' => (float) $request->pickup_lng,
                 'area_id' => $request->area_id,
-                'scheduled_time' => substr((string) $request->pickup_time, 0, 5),
+                'scheduled_time' => preg_match('/^\d{2}:\d{2}$/', $pickupTime) ? $pickupTime : $sharedTime,
             ];
         }
 
-        if ($serviceType !== PickupRequest::SERVICE_PICKUP_ONLY && filled($request->drop_point)) {
+        if (filled($request->drop_point)) {
             $rows[] = [
                 'type' => PickupRequestStop::TYPE_DROP,
                 'sequence' => count($rows) + 1,
@@ -96,7 +98,7 @@ class ShiftStopService
                 'lat' => (float) $request->drop_lat,
                 'lng' => (float) $request->drop_lng,
                 'area_id' => $request->drop_area_id,
-                'scheduled_time' => substr((string) $request->drop_time, 0, 5),
+                'scheduled_time' => preg_match('/^\d{2}:\d{2}$/', $dropTime) ? $dropTime : $sharedTime,
             ];
         }
 
@@ -134,41 +136,42 @@ class ShiftStopService
         $request->loadMissing('stops');
         $firstPickup = $request->stops->firstWhere('type', PickupRequestStop::TYPE_PICKUP);
         $lastDrop = $request->stops->where('type', PickupRequestStop::TYPE_DROP)->last();
-        $serviceType = $request->serviceTypeFromStops();
+        $serviceType = $request->resolvedServiceType();
 
         if ($firstPickup) {
             $request->pickup_point = $firstPickup->point;
             $request->pickup_lat = $firstPickup->lat;
             $request->pickup_lng = $firstPickup->lng;
-            $request->pickup_time = $firstPickup->formattedTime();
+            if ($serviceType !== PickupRequest::SERVICE_DROP_ONLY || filled($request->pickup_time)) {
+                $request->pickup_time = $firstPickup->formattedTime();
+            }
             if ($firstPickup->area_id) {
                 $request->area_id = $firstPickup->area_id;
             }
-        } elseif ($serviceType === PickupRequest::SERVICE_DROP_ONLY) {
-            $request->pickup_point = null;
-            $request->pickup_lat = null;
-            $request->pickup_lng = null;
-            $request->pickup_time = null;
         }
 
         if ($lastDrop) {
             $request->drop_point = $lastDrop->point;
             $request->drop_lat = $lastDrop->lat;
             $request->drop_lng = $lastDrop->lng;
-            $request->drop_time = $lastDrop->formattedTime();
+            if ($serviceType !== PickupRequest::SERVICE_PICKUP_ONLY || filled($request->drop_time)) {
+                $request->drop_time = $lastDrop->formattedTime();
+            }
             $request->drop_area_id = $lastDrop->area_id;
-            if ($serviceType === PickupRequest::SERVICE_DROP_ONLY && $lastDrop->area_id && !$request->area_id) {
+            if (!$request->area_id && $lastDrop->area_id) {
                 $request->area_id = $lastDrop->area_id;
             }
-        } elseif ($serviceType === PickupRequest::SERVICE_PICKUP_ONLY) {
-            $request->drop_point = null;
-            $request->drop_lat = null;
-            $request->drop_lng = null;
-            $request->drop_time = null;
-            $request->drop_area_id = null;
         }
 
-        $request->service_type = $serviceType;
+        $explicit = strtolower(trim((string) ($request->service_type ?: '')));
+        if (! in_array($explicit, [
+            PickupRequest::SERVICE_BOTH,
+            PickupRequest::SERVICE_PICKUP_ONLY,
+            PickupRequest::SERVICE_DROP_ONLY,
+        ], true)) {
+            $request->service_type = $request->serviceTypeFromStops();
+        }
+
         $request->save();
     }
 

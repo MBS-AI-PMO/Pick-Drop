@@ -24,21 +24,22 @@ class LocalPaymentCallbackController extends Controller
 
     private function result(?Invoice $invoice, string $gateway)
     {
-        $paid = $invoice?->isPaid();
+        $paid = (bool) $invoice?->isPaid();
 
-        if ($requestWantsJson = request()->expectsJson() || request()->is('api/*')) {
+        if (request()->expectsJson() || request()->is('api/*')) {
             return response()->json([
-                'success' => (bool) $paid,
+                'success' => $paid,
                 'gateway' => $gateway,
                 'invoice' => $invoice?->toApiArray(),
-            ]);
+            ], $invoice ? 200 : 400);
         }
 
         return view('pickdrop.payments.stripe-complete', [
             'invoice' => $invoice,
+            'success' => $paid,
             'message' => $paid
-                ? $gateway . ' payment received.'
-                : $gateway . ' callback received. If paid, the invoice will update shortly.',
+                ? $gateway . ' payment confirmed.'
+                : $gateway . ' did not confirm this payment. If you paid, wait a moment and open the invoice again.',
         ]);
     }
 }

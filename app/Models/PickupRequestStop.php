@@ -101,7 +101,7 @@ class PickupRequestStop extends Model
                 : 'Drop at ' . $this->point,
             'completed_at' => optional($this->getAttribute('today_completed_at'))?->toIso8601String()
                 ?: $this->completed_at?->toIso8601String(),
-            'pickup_otp_required' => $this->isPickup(),
+            'pickup_otp_required' => false,
             'notes' => $this->notes,
             'passenger' => [
                 'name' => $request?->student?->name ?: $request?->parent?->name,

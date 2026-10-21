@@ -207,6 +207,11 @@ class AuthController extends BaseApiController
                 'email' => ['required', 'email'],
             ]);
 
+            $denied = $this->denyUnlessDriverAccount($validated['email']);
+            if ($denied) {
+                return $denied;
+            }
+
             $status = Password::sendResetLink(['email' => $validated['email']]);
 
             if ($status === Password::RESET_LINK_SENT) {
@@ -230,6 +235,11 @@ class AuthController extends BaseApiController
                 'password' => ['required', 'string', 'min:6', 'confirmed'],
             ]);
 
+            $denied = $this->denyUnlessDriverAccount($validated['email']);
+            if ($denied) {
+                return $denied;
+            }
+
             $status = Password::reset(
                 [
                     'email' => $validated['email'],
@@ -238,6 +248,10 @@ class AuthController extends BaseApiController
                     'password_confirmation' => $request->input('password_confirmation'),
                 ],
                 function (User $user, string $password) {
+                    if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+                        throw new RuntimeException('Account not found');
+                    }
+
                     $user->password = $password;
                     $user->save();
                     $user->tokens()->delete();
@@ -251,9 +265,30 @@ class AuthController extends BaseApiController
             return $this->errorResponse(__($status), 422);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse('Account not found', 422);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to reset password');
         }
+    }
+
+    /**
+     * Unknown emails keep Laravel's "user not found" response.
+     * A parent or self email is rejected before any driver reset mail is sent.
+     */
+    private function denyUnlessDriverAccount(string $email): ?JsonResponse
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        if (! $user) {
+            return null;
+        }
+
+        if (strcasecmp(trim((string) $user->role), 'driver') !== 0) {
+            return $this->errorResponse('Account not found', 422);
+        }
+
+        return null;
     }
 
     public function verifyOtp(Request $request): JsonResponse

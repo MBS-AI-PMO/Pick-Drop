@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ManagesVerificationDocuments;
 use App\Mail\AccountVerificationRejectedMail;
 use App\Mail\AccountVerifiedMail;
+use App\Models\City;
 use App\Models\Notification;
 use App\Models\ParentSelfVerification;
 use App\Support\AppPagination;
@@ -11,9 +13,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ParentSelfVerificationController extends Controller
 {
+    use ManagesVerificationDocuments;
+
     public function index(Request $request)
     {
         try {
@@ -69,6 +74,98 @@ class ParentSelfVerificationController extends Controller
         ]);
     }
 
+    public function edit(ParentSelfVerification $parentSelfVerification)
+    {
+        $parentSelfVerification->load(['user', 'city']);
+        $cities = City::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('pickdrop.parent-self-verifications.edit', [
+            'verification' => $parentSelfVerification,
+            'cities' => $cities,
+        ]);
+    }
+
+    public function update(Request $request, ParentSelfVerification $parentSelfVerification)
+    {
+        $validated = $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'father_name' => ['nullable', 'string', 'max:255'],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'gender' => ['nullable', 'string', 'in:male,female,other'],
+            'nationality' => ['nullable', 'string', 'max:100'],
+            'address' => ['required', 'string', 'max:500'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'city_id' => ['required', 'integer', 'exists:cities,id'],
+            'complete_address' => ['nullable', 'string', 'max:1000'],
+            'postal_code' => ['nullable', 'string', 'max:30'],
+            'cnic_number' => [
+                'required',
+                'string',
+                'max:20',
+                'regex:/^[0-9]{5}-?[0-9]{7}-?[0-9]{1}$/',
+                Rule::unique('parent_self_verifications', 'cnic_number')->ignore($parentSelfVerification->id),
+            ],
+            'cnic_front' => ['nullable', 'image', 'max:5120'],
+            'cnic_back' => ['nullable', 'image', 'max:5120'],
+            'selfie_photo' => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $city = City::find((int) $validated['city_id']);
+            $payload = [
+                'full_name' => $validated['full_name'],
+                'father_name' => $validated['father_name'] ?? null,
+                'date_of_birth' => $validated['date_of_birth'],
+                'gender' => $validated['gender'] ?? null,
+                'nationality' => $validated['nationality'] ?? $parentSelfVerification->nationality,
+                'address' => $validated['address'],
+                'country' => $validated['country'] ?? $parentSelfVerification->country,
+                'city_id' => (int) $validated['city_id'],
+                'city_name' => $city?->name,
+                'complete_address' => $validated['complete_address'] ?? $validated['address'],
+                'postal_code' => $validated['postal_code'] ?? null,
+                'cnic_number' => $this->normalizeCnicNumber($validated['cnic_number']),
+            ];
+
+            $documentUpdates = $this->replaceVerificationDocuments(
+                $parentSelfVerification,
+                $request->allFiles(),
+                'parent-self-kyc/' . $parentSelfVerification->user_id,
+                [
+                    'cnic_front' => 'cnic_front',
+                    'cnic_back' => 'cnic_back',
+                    'selfie_photo' => 'selfie',
+                ]
+            );
+
+            $parentSelfVerification->update(array_merge($payload, $documentUpdates));
+
+            $user = $parentSelfVerification->user;
+            if ($user) {
+                $details = is_array($user->details) ? $user->details : [];
+                $details['address'] = $validated['address'];
+                $user->update([
+                    'name' => $validated['full_name'],
+                    'city_id' => (int) $validated['city_id'],
+                    'details' => $details,
+                ]);
+            }
+
+            return redirect()
+                ->route('parent-self-verifications.show', $parentSelfVerification)
+                ->with('success', 'Verification details updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update parent/self verification details', [
+                'id' => $parentSelfVerification->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update verification: ' . $e->getMessage());
+        }
+    }
+
     public function approve(Request $request, ParentSelfVerification $parentSelfVerification)
     {
         $request->merge(['status' => ParentSelfVerification::STATUS_APPROVED]);
@@ -94,18 +191,21 @@ class ParentSelfVerificationController extends Controller
             $status = $validated['status'];
             $previousStatus = $parentSelfVerification->status;
 
-            $parentSelfVerification->update([
+            $parentSelfVerification->forceFill([
                 'status' => $status,
                 'rejection_reason' => $status === ParentSelfVerification::STATUS_REJECTED
-                    ? $validated['rejection_reason']
+                    ? ($validated['rejection_reason'] ?? null)
                     : null,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
-            ]);
+            ])->save();
 
-            $parentSelfVerification->user?->update(
-                $this->userStatusPayload($parentSelfVerification, $status)
-            );
+            $user = $parentSelfVerification->user()->first();
+            if ($user) {
+                $user->forceFill(
+                    $this->userStatusPayload($parentSelfVerification->fresh(), $status)
+                )->save();
+            }
 
             $this->notifyStatusChange($parentSelfVerification, $status, $previousStatus);
             $this->emailStatusChange($parentSelfVerification, $status, $previousStatus);

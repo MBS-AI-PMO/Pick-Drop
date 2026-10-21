@@ -24,7 +24,7 @@ use App\Http\Controllers\Api\Driver\PayrollController as DriverPayrollApiControl
 | Driver Mobile App API Routes
 |--------------------------------------------------------------------------
 |
-| Prefix automatically ho jayega /api/driver (Laravel api.php prefix + group).
+| Combined with the /api prefix from api.php, these routes are /api/driver.
 |
 */
 
@@ -78,8 +78,10 @@ Route::prefix('driver')->group(function () {
         // Assigned students / rides (daily pick-drop management)
         Route::get('rides/today',          [RideController::class, 'today'])->name('api.driver.rides.today');
         Route::get('rides',                [RideController::class, 'index'])->name('api.driver.rides.index');
+        Route::post('rides/end',           [RideController::class, 'end'])->name('api.driver.rides.end');
         Route::post('rides/{pickupRequest}/start', [RideController::class, 'start'])->name('api.driver.rides.start');
         Route::post('rides/{pickupRequest}/arrive', [RideController::class, 'arrive'])->name('api.driver.rides.arrive');
+        Route::post('rides/{pickupRequest}/not-going', [RideController::class, 'notGoing'])->name('api.driver.rides.not-going');
         Route::post('rides/{ride}/pickup', [RideController::class, 'markPickup'])->name('api.driver.rides.pickup');
         Route::post('rides/{ride}/drop',   [RideController::class, 'markDrop'])->name('api.driver.rides.drop');
 
@@ -87,9 +89,9 @@ Route::prefix('driver')->group(function () {
         Route::post('location/update', [RideController::class, 'updateLocation'])->name('api.driver.location.update'); // lat,lng
         Route::post('status/update',   [RideController::class, 'updateStatus'])->name('api.driver.status.update');     // on_the_way, picked, dropped, etc.
 
-        // Delay / issue reporting (driver reason submit karega)
+        // Delay / issue reporting (the driver submits a reason)
         Route::post('issues',          [IssueController::class, 'store'])->name('api.driver.issues.store');        // body: { route_id, type, reason, eta_change, ... }
-        Route::get('issues/today',     [IssueController::class, 'today'])->name('api.driver.issues.today');       // optional: aaj ki issues list
+        Route::get('issues/today',     [IssueController::class, 'today'])->name('api.driver.issues.today');       // optional: today's issues
 
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index'])->name('api.driver.notifications.index');

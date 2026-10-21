@@ -134,15 +134,39 @@
                   <td>{{ str_replace('_', ' ', $payment->method) }}</td>
                   <td>{{ $payment->reference ?: '—' }}</td>
                   <td>{{ $invoice->formatMoney((float) $payment->amount) }}</td>
-                  <td>{{ ucfirst($payment->status) }}</td>
+                  <td>{{ $payment->receiptStatusLabel() }}</td>
                   <td class="text-center">
                     <div class="action-btns">
                       @if($payment->proof_path)
-                        <a href="{{ $payment->proofUrl() }}" target="_blank" class="action-btn action-btn-view" title="View">
+                        <button type="button"
+                                class="action-btn action-btn-view screenshot-thumb"
+                                title="View"
+                                data-bs-toggle="modal"
+                                data-bs-target="#paymentScreenshotModal"
+                                data-screenshot-url="{{ $payment->proofUrl() }}"
+                                data-screenshot-title="{{ $invoice->invoice_number }} screenshot">
                           <i data-lucide="eye"></i>
-                        </a>
+                        </button>
                       @endif
-                      @if($payment->method === 'bank_transfer' && $payment->status === 'pending')
+                      @if($payment->proof_path)
+                        <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
+                          @csrf
+                          <input type="hidden" name="receipt_status" value="received">
+                          <button type="submit" class="action-btn action-btn-add" title="Mark received"
+                                  {{ $payment->receiptStatus() === 'received' ? 'disabled' : '' }}>
+                            <i data-lucide="check"></i>
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
+                          @csrf
+                          <input type="hidden" name="receipt_status" value="not_received">
+                          <button type="submit" class="action-btn action-btn-view" title="Mark not received"
+                                  {{ $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}>
+                            <i data-lucide="x"></i>
+                          </button>
+                        </form>
+                      @endif
+                      @if($payment->method === 'bank_transfer' && $payment->status === 'pending' && ! $payment->proof_path)
                         <form method="POST" action="{{ route('payments.confirm-bank', $payment) }}">
                           @csrf
                           <button type="submit" class="action-btn action-btn-add" title="Confirm"
@@ -249,10 +273,50 @@
   @endif
 </div>
 
+{{-- Screenshot overlay --}}
+<div class="modal fade" id="paymentScreenshotModal" tabindex="-1" aria-labelledby="paymentScreenshotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-semibold" id="paymentScreenshotModalLabel">Payment screenshot</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3 text-center">
+        <img id="paymentScreenshotModalImg" src="" alt="Payment screenshot"
+             class="img-fluid rounded-3"
+             style="max-height:75vh;width:auto;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('custom-scripts')
 <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('paymentScreenshotModal');
+    if (!modalEl) return;
+
+    modalEl.addEventListener('show.bs.modal', function (event) {
+      var trigger = event.relatedTarget;
+      if (!trigger) return;
+
+      var url = trigger.getAttribute('data-screenshot-url') || '';
+      var title = trigger.getAttribute('data-screenshot-title') || 'Payment screenshot';
+      var img = document.getElementById('paymentScreenshotModalImg');
+      var label = document.getElementById('paymentScreenshotModalLabel');
+
+      if (img) img.src = url;
+      if (label) label.textContent = title;
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      var img = document.getElementById('paymentScreenshotModalImg');
+      if (img) img.src = '';
+    });
+  });
+
   function confirmDeleteInvoice(event, form) {
     event.preventDefault();
     Swal.fire({

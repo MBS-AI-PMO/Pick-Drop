@@ -11,11 +11,18 @@ class Payment extends Model
     public const METHOD_STRIPE = 'stripe';
     public const METHOD_BANK = 'bank_transfer';
     public const METHOD_MANUAL = 'manual';
+    public const METHOD_JAZZCASH = 'jazzcash';
+    public const METHOD_EASYPAISA = 'easypaisa';
+    public const METHOD_WALLET = 'wallet';
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
     public const STATUS_REFUNDED = 'refunded';
+
+    public const RECEIPT_PENDING = 'pending';
+    public const RECEIPT_NOT_RECEIVED = 'not_received';
+    public const RECEIPT_RECEIVED = 'received';
 
     protected $fillable = [
         'invoice_id',
@@ -24,6 +31,7 @@ class Payment extends Model
         'currency',
         'method',
         'status',
+        'receipt_status',
         'reference',
         'stripe_payment_intent_id',
         'proof_path',
@@ -61,6 +69,29 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    public function receiptStatus(): string
+    {
+        $stored = strtolower((string) ($this->receipt_status ?: ''));
+        if (in_array($stored, [self::RECEIPT_PENDING, self::RECEIPT_NOT_RECEIVED, self::RECEIPT_RECEIVED], true)) {
+            return $stored;
+        }
+
+        if ($this->status === self::STATUS_COMPLETED) {
+            return self::RECEIPT_RECEIVED;
+        }
+
+        return $this->proof_path ? self::RECEIPT_NOT_RECEIVED : self::RECEIPT_PENDING;
+    }
+
+    public function receiptStatusLabel(): string
+    {
+        return match ($this->receiptStatus()) {
+            self::RECEIPT_RECEIVED => 'Received',
+            self::RECEIPT_NOT_RECEIVED => 'Not received',
+            default => 'Pending',
+        };
+    }
+
     public function proofUrl(): ?string
     {
         if (!$this->proof_path) {
@@ -81,6 +112,8 @@ class Payment extends Model
             'currency' => $this->currency,
             'method' => $this->method,
             'status' => $this->status,
+            'receipt_status' => $this->receiptStatus(),
+            'receipt_status_label' => $this->receiptStatusLabel(),
             'reference' => $this->reference,
             'proof_url' => $this->proofUrl(),
             'notes' => $this->notes,

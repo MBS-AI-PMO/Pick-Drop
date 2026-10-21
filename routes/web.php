@@ -43,6 +43,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/login-logs/clear', [LoginLogController::class, 'clear'])->name('login-logs.clear');
     Route::get('/driver-verifications', [DriverVerificationController::class, 'index'])->name('driver-verifications.index');
     Route::get('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'show'])->name('driver-verifications.show');
+    Route::get('/driver-verifications/{driverVerification}/edit', [DriverVerificationController::class, 'edit'])->name('driver-verifications.edit');
+    Route::put('/driver-verifications/{driverVerification}', [DriverVerificationController::class, 'update'])->name('driver-verifications.update');
     Route::post('/driver-verifications/{driverVerification}/status', [DriverVerificationController::class, 'updateStatus'])->name('driver-verifications.status');
     Route::post('/driver-verifications/{driverVerification}/approve', [DriverVerificationController::class, 'approve'])->name('driver-verifications.approve');
     Route::post('/driver-verifications/{driverVerification}/reject', [DriverVerificationController::class, 'reject'])->name('driver-verifications.reject');
@@ -52,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'show'])->name('pickup-requests.show');
     Route::delete('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'destroy'])->name('pickup-requests.destroy');
     Route::post('/pickup-requests/clear', [PickupRequestController::class, 'clear'])->name('pickup-requests.clear');
+    Route::post('/pickup-requests/recover', [PickupRequestController::class, 'recover'])->name('pickup-requests.recover');
     Route::post('/pickup-requests/{pickupRequest}/driver-payout', [PickupRequestController::class, 'markDriverPaid'])->name('pickup-requests.driver-payout');
     Route::post('/pickup-requests/{pickupRequest}/assign', [PickupRequestController::class, 'assignDriver'])->name('pickup-requests.assign');
     Route::post('/pickup-requests/{pickupRequest}/cover', [PickupRequestController::class, 'assignCover'])->name('pickup-requests.cover');
@@ -64,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/sos/{sosAlert}', [SosAlertController::class, 'show'])->name('sos.show');
     Route::post('/sos/{sosAlert}/acknowledge', [SosAlertController::class, 'acknowledge'])->name('sos.acknowledge');
     Route::post('/sos/{sosAlert}/resolve', [SosAlertController::class, 'resolve'])->name('sos.resolve');
+    Route::post('/sos/{sosAlert}/end-trip', [SosAlertController::class, 'endTrip'])->name('sos.end-trip');
     Route::delete('/sos/{sosAlert}', [SosAlertController::class, 'destroy'])->name('sos.destroy');
     Route::post('/sos/clear', [SosAlertController::class, 'clear'])->name('sos.clear');
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
@@ -82,6 +86,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/platform-settings', [PlatformSettingController::class, 'update'])->name('platform-settings.update');
     Route::get('/parent-self-verifications', [ParentSelfVerificationController::class, 'index'])->name('parent-self-verifications.index');
     Route::get('/parent-self-verifications/{parentSelfVerification}', [ParentSelfVerificationController::class, 'show'])->name('parent-self-verifications.show');
+    Route::get('/parent-self-verifications/{parentSelfVerification}/edit', [ParentSelfVerificationController::class, 'edit'])->name('parent-self-verifications.edit');
+    Route::put('/parent-self-verifications/{parentSelfVerification}', [ParentSelfVerificationController::class, 'update'])->name('parent-self-verifications.update');
     Route::post('/parent-self-verifications/{parentSelfVerification}/status', [ParentSelfVerificationController::class, 'updateStatus'])->name('parent-self-verifications.status');
     Route::post('/parent-self-verifications/{parentSelfVerification}/approve', [ParentSelfVerificationController::class, 'approve'])->name('parent-self-verifications.approve');
     Route::post('/parent-self-verifications/{parentSelfVerification}/reject', [ParentSelfVerificationController::class, 'reject'])->name('parent-self-verifications.reject');
@@ -89,6 +95,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/parent-self-verifications/{parentSelfVerification}/document/{field}', [ParentSelfVerificationController::class, 'document'])->name('parent-self-verifications.document');
     Route::get('/vehicle-verifications', [VehicleVerificationController::class, 'index'])->name('vehicle-verifications.index');
     Route::get('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'show'])->name('vehicle-verifications.show');
+    Route::get('/vehicle-verifications/{vehicleVerification}/edit', [VehicleVerificationController::class, 'edit'])->name('vehicle-verifications.edit');
+    Route::put('/vehicle-verifications/{vehicleVerification}', [VehicleVerificationController::class, 'update'])->name('vehicle-verifications.update');
     Route::post('/vehicle-verifications/{vehicleVerification}/status', [VehicleVerificationController::class, 'updateStatus'])->name('vehicle-verifications.status');
     Route::post('/vehicle-verifications/{vehicleVerification}/approve', [VehicleVerificationController::class, 'approve'])->name('vehicle-verifications.approve');
     Route::post('/vehicle-verifications/{vehicleVerification}/reject', [VehicleVerificationController::class, 'reject'])->name('vehicle-verifications.reject');
@@ -119,6 +127,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'updateStop'])->name('routes.stops.update');
     Route::delete('/routes/{route}/stops/{stop}', [SchoolRouteController::class, 'destroyStop'])->name('routes.stops.destroy');
     Route::get('/payments', [InvoiceController::class, 'index'])->name('payments.index');
+    Route::get('/payments/screenshots', [InvoiceController::class, 'screenshots'])->name('payments.screenshots');
+    Route::post('/payments/payments/{payment}/receipt', [InvoiceController::class, 'updateReceipt'])->name('payments.receipt');
     Route::post('/payments/invoices', [InvoiceController::class, 'store'])->name('payments.store');
     Route::get('/payments/export', [InvoiceController::class, 'export'])->name('payments.export');
     Route::get('/payments/settings', [PaymentSettingController::class, 'edit'])->name('payments.settings');
@@ -179,9 +189,17 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('bill')
         ->name('driver-payroll.reject');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::get('/notifications/clear', [NotificationController::class, 'clear'])
         ->name('notifications.clear');
+    Route::get('/notifications/{notification}', [NotificationController::class, 'show'])
+        ->whereNumber('notification')
+        ->name('notifications.show');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+        ->whereNumber('notification')
+        ->name('notifications.read');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
+        ->whereNumber('notification')
+        ->name('notifications.destroy');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
         ->name('vehicles.unassign');
 });
@@ -214,8 +232,8 @@ Route::get('reset-password/{token}', [AuthController::class, 'showResetPasswordF
     ->name('password.reset');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
-Route::post('/payments/jazzcash/callback', [LocalPaymentCallbackController::class, 'jazzcash'])->name('payments.jazzcash.callback');
-Route::post('/payments/easypaisa/callback', [LocalPaymentCallbackController::class, 'easypaisa'])->name('payments.easypaisa.callback');
+Route::match(['get', 'post'], '/payments/jazzcash/callback', [LocalPaymentCallbackController::class, 'jazzcash'])->name('payments.jazzcash.callback');
+Route::match(['get', 'post'], '/payments/easypaisa/callback', [LocalPaymentCallbackController::class, 'easypaisa'])->name('payments.easypaisa.callback');
 Route::get('/payments/stripe/complete', [InvoiceController::class, 'stripeComplete'])->name('payments.stripe.complete');
 Route::get('/payments/stripe/cancel/{invoice}', [InvoiceController::class, 'stripeCancel'])->name('payments.stripe.cancel');
 
@@ -227,6 +245,7 @@ Route::get('/clear-cache', function () {
 
 // HTML 404 for unknown admin pages only. Do not use Route::any() here —
 // it intercepts API POSTs and returns "CSRF token mismatch" instead of JSON.
-Route::get('/{page?}', function () {
+// Keep {page} required so this never steals the real "/" login route.
+Route::get('/{page}', function () {
     return View::make('pages.error.404');
-})->where('page', '^(?!api/).*$');
+})->where('page', '^(?!api/).+$');

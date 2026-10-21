@@ -651,8 +651,6 @@ if ($driverToken && $driverUserId) {
         'vehicle_front_photo' => new CURLFile($img3, 'image/png', 'veh_f.png'),
         'vehicle_back_photo' => new CURLFile($img4, 'image/png', 'veh_b.png'),
         'number_plate_photo' => new CURLFile($img5, 'image/png', 'plate.png'),
-        'owner_document_front' => new CURLFile($img1, 'image/png', 'odf.png'),
-        'owner_document_back' => new CURLFile($img2, 'image/png', 'odb.png'),
     ];
     $r = api('POST', "{$base}/driver/vehicle-verification", null, $driverToken, $vehicleMultipart);
     record($results, $pass, $fail, 'POST /driver/vehicle-verification', $r['status'], $r['body'], expectOk($r));
@@ -787,7 +785,7 @@ if ($driverToken && $driverUserId) {
             record($results, $pass, $fail, 'GET /driver/requests/{id}/contact', $r['status'], $r['body'], expectOk($r));
 
             $r = api('POST', "{$base}/parent/requests/{$pendingReq->id}/messages", [
-                'message' => 'Assalam o Alaikum Usman bhai, Hassan ready hoga 7:35 pe.',
+                'message' => 'Hello, Hassan will be ready at 7:35.',
             ], $parentToken);
             record($results, $pass, $fail, 'POST /parent/requests/{id}/messages', $r['status'], $r['body'], expectOk($r));
 

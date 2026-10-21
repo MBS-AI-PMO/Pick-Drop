@@ -7,7 +7,11 @@
     <h4 class="mb-1">Review Vehicle Verification</h4>
     <p class="text-secondary mb-0">{{ $verification->vehicle_name }} · {{ $verification->user?->name ?? 'Driver' }}</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
+    <a href="{{ route('vehicle-verifications.edit', $verification) }}" class="btn btn-primary">
+      <i data-lucide="edit-2" class="icon-xs"></i>
+      Edit / Update
+    </a>
     <a href="{{ route('vehicle-verifications.index') }}" class="btn btn-outline-secondary">Back to list</a>
   </div>
 </div>
@@ -86,7 +90,7 @@
 
     <div class="card mb-3">
       <div class="card-header">
-        <h6 class="mb-0">Owner Documents</h6>
+        <h6 class="mb-0">Owner</h6>
       </div>
       <div class="card-body">
         <div class="row g-3 mb-3">
@@ -97,20 +101,6 @@
           <div class="col-md-6">
             <label class="text-muted small">Owner CNIC</label>
             <div class="fw-semibold">{{ $verification->owner_cnic_number ?: '—' }}</div>
-          </div>
-        </div>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="text-muted small d-block mb-2">Owner Document Front</label>
-            <a href="{{ route('vehicle-verifications.document', [$verification, 'owner_document_front']) }}" target="_blank">
-              <img src="{{ route('vehicle-verifications.document', [$verification, 'owner_document_front']) }}" alt="Owner document front" class="img-fluid rounded border" style="max-height:180px;object-fit:cover;width:100%;">
-            </a>
-          </div>
-          <div class="col-md-6">
-            <label class="text-muted small d-block mb-2">Owner Document Back</label>
-            <a href="{{ route('vehicle-verifications.document', [$verification, 'owner_document_back']) }}" target="_blank">
-              <img src="{{ route('vehicle-verifications.document', [$verification, 'owner_document_back']) }}" alt="Owner document back" class="img-fluid rounded border" style="max-height:180px;object-fit:cover;width:100%;">
-            </a>
           </div>
         </div>
       </div>
@@ -169,6 +159,10 @@
         <h6 class="mb-0">Admin Actions</h6>
       </div>
       <div class="card-body">
+        <a href="{{ route('vehicle-verifications.edit', $verification) }}" class="btn btn-outline-primary w-100 mb-3">
+          <i data-lucide="edit-2" class="icon-xs"></i>
+          Edit details / documents
+        </a>
         <div class="verification-action-grid mb-3">
           <form method="POST" action="{{ route('vehicle-verifications.status', $verification) }}">
             @csrf
@@ -226,3 +220,29 @@
 </div>
 
 @endsection
+
+@push('custom-scripts')
+<script>
+  @if(session('success'))
+  Swal.fire({
+    icon: 'success',
+    title: 'Updated',
+    text: @json(session('success')),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#3f6fd9',
+    customClass: { popup: 'rounded-4' }
+  });
+  @endif
+
+  @if(session('error'))
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: @json(session('error')),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#e63946',
+    customClass: { popup: 'rounded-4' }
+  });
+  @endif
+</script>
+@endpush
