@@ -222,7 +222,7 @@
             </div>
             <div class="col-12">
               <div class="alert alert-light border mb-0 py-2">
-                Invoice email customer ko automatically chali jayegi. Payment ke baad receipt bhi khud send hogi.
+                The invoice email is sent to the customer automatically. The receipt is sent after payment as well.
               </div>
             </div>
           </div>

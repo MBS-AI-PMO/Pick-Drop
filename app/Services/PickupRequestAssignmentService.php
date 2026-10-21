@@ -73,27 +73,38 @@ class PickupRequestAssignmentService
         ]);
 
         $this->notifier->notifyParentRequestAccepted($updated);
-        $this->notifier->notifyShiftPaymentRequired($updated, $invoice);
-
-        if ($source === 'auto') {
-            $this->notifier->notify(
-                (int) $updated->driver_id,
-                'pickup_request_auto_assigned',
-                'Request auto-assigned',
-                sprintf('Pickup request #%d was assigned to you because no driver accepted in time.', $updated->id),
-                ['pickup_request_id' => $updated->id]
-            );
+        if (! $invoice->isPaid()) {
+            $this->notifier->notifyShiftPaymentRequired($updated, $invoice);
         }
 
-        if ($source === 'admin') {
-            $this->notifier->notify(
-                (int) $updated->driver_id,
-                'pickup_request_admin_assigned',
-                'Request assigned by admin',
-                sprintf('Admin assigned pickup request #%d to you.', $updated->id),
-                ['pickup_request_id' => $updated->id]
-            );
-        }
+        // Always notify the assigned driver (accept / admin / auto).
+        $driverNotify = match ($source) {
+            'auto' => [
+                'type' => 'pickup_request_auto_assigned',
+                'title' => 'Request auto-assigned',
+                'body' => sprintf('Pickup request #%d was assigned to you because no driver accepted in time.', $updated->id),
+            ],
+            'admin' => [
+                'type' => 'pickup_request_admin_assigned',
+                'title' => 'Request assigned by admin',
+                'body' => sprintf('Admin assigned pickup request #%d to you.', $updated->id),
+            ],
+            default => [
+                'type' => 'pickup_request_accepted_by_you',
+                'title' => 'Request accepted',
+                'body' => $invoice->isPaid()
+                    ? sprintf('You accepted request #%d. Payment is done — you can start the shift.', $updated->id)
+                    : sprintf('You accepted request #%d. Waiting for the customer to pay before the shift can start.', $updated->id),
+            ],
+        };
+
+        $this->notifier->notify(
+            (int) $updated->driver_id,
+            $driverNotify['type'],
+            $driverNotify['title'],
+            $driverNotify['body'],
+            ['pickup_request_id' => $updated->id, 'invoice_id' => $invoice->id]
+        );
 
         return $updated;
     }

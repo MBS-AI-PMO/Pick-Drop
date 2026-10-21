@@ -22,8 +22,7 @@ class PushService
         }
 
         try {
-            Http::timeout(15)
-                ->withToken((string) $settings->fcm_server_key)
+            $response = Http::timeout(15)
                 ->withHeaders([
                     'Authorization' => 'key=' . $settings->fcm_server_key,
                     'Content-Type' => 'application/json',
@@ -37,6 +36,14 @@ class PushService
                     'data' => array_map('strval', $data),
                     'priority' => 'high',
                 ]);
+
+            if (! $response->successful()) {
+                Log::warning('FCM push rejected', [
+                    'user_id' => $userId,
+                    'status' => $response->status(),
+                    'body' => mb_substr((string) $response->body(), 0, 500),
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::warning('FCM push failed', ['user_id' => $userId, 'error' => $e->getMessage()]);
         }

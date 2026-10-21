@@ -75,6 +75,28 @@
         </thead>
         <tbody id="locationsTableBody">
           @forelse($cities as $city)
+          @php
+            $jsonFlags = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+            $cityAreaContext = [
+                'id' => $city->id,
+                'name' => $city->name,
+                'latitude' => $city->latitude,
+                'longitude' => $city->longitude,
+            ];
+            $cityEditPayload = [
+                'id' => $city->id,
+                'name' => $city->name,
+                'latitude' => $city->latitude,
+                'longitude' => $city->longitude,
+                'status' => $city->status,
+            ];
+            $cityPayload = array_merge($cityEditPayload, [
+                'areas_count' => $city->areas->count(),
+                'area_names' => $city->areas->pluck('name')->values()->all(),
+                'created_at' => optional($city->created_at)->format('Y-m-d H:i'),
+                'updated_at' => optional($city->updated_at)->format('Y-m-d H:i'),
+            ]);
+          @endphp
           <tr>
             <td class="ps-4 py-3 text-muted">{{ $cities->firstItem() + $loop->index }}</td>
             <td class="py-3 fw-semibold">{{ $city->name }}</td>
@@ -98,8 +120,18 @@
               @else
                 <div class="d-flex flex-wrap gap-1">
                   @foreach($city->areas as $area)
+                    @php
+                      $areaPayload = [
+                          'id' => $area->id,
+                          'city_id' => $area->city_id,
+                          'name' => $area->name,
+                          'latitude' => $area->latitude,
+                          'longitude' => $area->longitude,
+                          'status' => $area->status,
+                      ];
+                    @endphp
                     <span class="badge bg-light text-secondary border"
-                          onclick='openEditAreaModal(@json($area->toArray()), @json($city->toArray()))'
+                          onclick="openEditAreaModal(event, {{ json_encode($areaPayload, $jsonFlags) }}, {{ json_encode($cityAreaContext, $jsonFlags) }})"
                           style="cursor:pointer;">
                       {{ $area->name }}
                     </span>
@@ -115,15 +147,15 @@
             <td class="py-3 text-center">
               <div class="action-btns">
                 <button type="button" class="action-btn action-btn-view" title="View City"
-                        onclick='openViewCityModal(@json(array_merge($city->toArray(), ["areas_count" => $city->areas->count()])))'>
+                        onclick="openViewCityModal(event, {{ json_encode($cityPayload, $jsonFlags) }})">
                   <i data-lucide="eye"></i>
                 </button>
                 <button type="button" class="action-btn action-btn-edit" title="Edit City"
-                        onclick='openEditCityModal(@json($city->toArray()))'>
+                        onclick="openEditCityModal(event, {{ json_encode($cityEditPayload, $jsonFlags) }})">
                   <i data-lucide="edit-2"></i>
                 </button>
                 <button type="button" class="action-btn action-btn-extra" title="Add Area"
-                        onclick='openAddAreaModal(@json($city->toArray()))'>
+                        onclick="openAddAreaModal(event, {{ json_encode($cityAreaContext, $jsonFlags) }})">
                   <i data-lucide="map-pin"></i>
                 </button>
                 <form action="{{ route('locations.cities.destroy', $city) }}" method="POST"
@@ -233,35 +265,47 @@
 <div class="modal fade" id="viewCityModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
+      <div class="modal-header">
         <h5 class="modal-title fw-bold">City Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body pt-2">
-        <div class="row g-3">
+      <div class="modal-body">
+        <div class="row g-3 view-city-grid">
           <div class="col-12">
-            <p class="text-secondary small mb-1">City</p>
-            <p class="fw-semibold mb-0" id="viewCityName">—</p>
+            <label class="form-label mb-1">City Name</label>
+            <div class="fw-semibold text-break" id="viewCityName">—</div>
           </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Latitude</p>
-            <p class="fw-semibold mb-0" id="viewCityLat">—</p>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Latitude</label>
+            <div class="fw-semibold text-break" id="viewCityLat">—</div>
           </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Longitude</p>
-            <p class="fw-semibold mb-0" id="viewCityLng">—</p>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Longitude</label>
+            <div class="fw-semibold text-break" id="viewCityLng">—</div>
           </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Status</p>
-            <p class="fw-semibold mb-0" id="viewCityStatus">—</p>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Status</label>
+            <div class="fw-semibold text-break" id="viewCityStatus">—</div>
           </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Areas</p>
-            <p class="fw-semibold mb-0" id="viewCityAreas">—</p>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Areas Count</label>
+            <div class="fw-semibold text-break" id="viewCityAreasCount">—</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Areas</label>
+            <div class="fw-semibold text-break" id="viewCityAreas">—</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Created At</label>
+            <div class="fw-semibold text-break" id="viewCityCreatedAt">—</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Updated At</label>
+            <div class="fw-semibold text-break" id="viewCityUpdatedAt">—</div>
           </div>
         </div>
       </div>
-      <div class="modal-footer border-0 pt-0">
+      <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -425,6 +469,7 @@
     });
   }
 
+  const viewCityModal = new bootstrap.Modal(document.getElementById('viewCityModal'));
   const editCityModal = new bootstrap.Modal(document.getElementById('editCityModal'));
   const areaModal     = new bootstrap.Modal(document.getElementById('areaModal'));
   const areaMapEl     = document.getElementById('areaPickerMap');
@@ -570,16 +615,26 @@
     }, 150);
   });
 
-  function openViewCityModal(city) {
+  function openViewCityModal(event, city) {
+    if (event) event.preventDefault();
+    const areaNames = Array.isArray(city.area_names) ? city.area_names.filter(Boolean) : [];
     document.getElementById('viewCityName').textContent = city.name || '—';
-    document.getElementById('viewCityLat').textContent = city.latitude ?? '—';
-    document.getElementById('viewCityLng').textContent = city.longitude ?? '—';
+    document.getElementById('viewCityLat').textContent = (city.latitude !== null && city.latitude !== undefined && city.latitude !== '')
+      ? city.latitude
+      : '—';
+    document.getElementById('viewCityLng').textContent = (city.longitude !== null && city.longitude !== undefined && city.longitude !== '')
+      ? city.longitude
+      : '—';
     document.getElementById('viewCityStatus').textContent = city.status || '—';
-    document.getElementById('viewCityAreas').textContent = (city.areas_count ?? 0) + ' areas';
-    new bootstrap.Modal(document.getElementById('viewCityModal')).show();
+    document.getElementById('viewCityAreasCount').textContent = String(city.areas_count ?? areaNames.length);
+    document.getElementById('viewCityAreas').textContent = areaNames.length ? areaNames.join(', ') : 'No areas';
+    document.getElementById('viewCityCreatedAt').textContent = city.created_at || '—';
+    document.getElementById('viewCityUpdatedAt').textContent = city.updated_at || '—';
+    viewCityModal.show();
   }
 
-  function openEditCityModal(city) {
+  function openEditCityModal(event, city) {
+    if (event) event.preventDefault();
     document.getElementById('editCityName').value   = city.name || '';
     document.getElementById('editCityLat').value    = city.latitude ?? '';
     document.getElementById('editCityLng').value    = city.longitude ?? '';
@@ -588,7 +643,8 @@
     editCityModal.show();
   }
 
-  function openAddAreaModal(city) {
+  function openAddAreaModal(event, city) {
+    if (event) event.preventDefault();
     activeCityContext = city;
     document.getElementById('areaModalLabel').textContent = 'Add Area';
     document.getElementById('areaForm').action            = '{{ route('locations.areas.store') }}';
@@ -606,7 +662,8 @@
     areaModal.show();
   }
 
-  function openEditAreaModal(area, city) {
+  function openEditAreaModal(event, area, city) {
+    if (event) event.preventDefault();
     activeCityContext = city;
     document.getElementById('areaModalLabel').textContent = 'Edit Area';
     document.getElementById('areaForm').action            = `/locations/areas/${area.id}`;

@@ -250,33 +250,33 @@
 
         {{-- View Mode --}}
         <div id="vehicleViewMode">
-          <div class="row g-3">
+          <div class="row g-3 view-detail-grid">
             <div class="col-6">
-              <p class="text-secondary small mb-1">Vehicle Name</p>
-              <p class="fw-semibold mb-0" id="vDetailName">—</p>
+              <label class="form-label mb-1">Vehicle Name</label>
+              <div class="fw-semibold text-break" id="vDetailName">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Plate Number</p>
-              <p class="fw-semibold mb-0" id="vDetailPlate">—</p>
+              <label class="form-label mb-1">Plate Number</label>
+              <div class="fw-semibold text-break" id="vDetailPlate">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Type</p>
-              <p class="fw-semibold mb-0" id="vDetailType">—</p>
+              <label class="form-label mb-1">Type</label>
+              <div class="fw-semibold text-break" id="vDetailType">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Capacity</p>
-              <p class="fw-semibold mb-0" id="vDetailCapacity">—</p>
+              <label class="form-label mb-1">Capacity</label>
+              <div class="fw-semibold text-break" id="vDetailCapacity">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Driver</p>
-              <p class="fw-semibold mb-0" id="vDetailDriver">—</p>
+              <label class="form-label mb-1">Driver</label>
+              <div class="fw-semibold text-break" id="vDetailDriver">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Route</p>
-              <p class="fw-semibold mb-0" id="vDetailRoute">—</p>
+              <label class="form-label mb-1">Route</label>
+              <div class="fw-semibold text-break" id="vDetailRoute">—</div>
             </div>
             <div class="col-6">
-              <p class="text-secondary small mb-1">Status</p>
+              <label class="form-label mb-1">Status</label>
               <span class="badge rounded-pill px-3 py-1" id="vDetailStatusBadge">—</span>
             </div>
           </div>

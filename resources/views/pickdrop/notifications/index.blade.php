@@ -36,14 +36,18 @@
 
                         <tr class="{{ $notification->is_read ? '' : 'notification-table__row--unread' }}">
                             <td>
-                                <div class="notification-title-cell">
+                                <a href="{{ route('notifications.show', $notification) }}" class="notification-title-cell text-decoration-none text-body">
                                     @unless($notification->is_read)
                                         <span class="notification-row-dot"></span>
                                     @endunless
                                     <span>{{ $notification->title }}</span>
-                                </div>
+                                </a>
                             </td>
-                            <td class="notification-message-cell">{{ $notification->message }}</td>
+                            <td class="notification-message-cell">
+                                <a href="{{ route('notifications.show', $notification) }}" class="text-decoration-none text-body">
+                                    {{ $notification->message }}
+                                </a>
+                            </td>
                             <td>
                                 <span class="notification-type-pill notification-type-pill--{{ $notificationType }}">
                                     {{ ucfirst($notification->type ?? 'info') }}
@@ -61,6 +65,9 @@
                                 </div>
                             </td>
                             <td class="text-center">
+                                <a href="{{ route('notifications.show', $notification) }}" class="action-btn action-btn-view me-1" title="View">
+                                    <i data-lucide="eye"></i>
+                                </a>
                                 <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')

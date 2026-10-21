@@ -34,6 +34,8 @@ class InvoiceService
     {
         $settings = PaymentSetting::current();
         $charge = PickDropCharge::query()->first();
+        $send = ! array_key_exists('send', $payload) || (bool) $payload['send'];
+        unset($payload['send']);
 
         $invoice = DB::transaction(function () use ($payload, $items, $issuedBy, $settings, $charge) {
             $invoice = Invoice::create([
@@ -58,18 +60,22 @@ class InvoiceService
             return $invoice->fresh(['items', 'customer', 'student']);
         });
 
-        Notification::create([
-            'title' => 'Invoice created',
-            'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
-            'type' => 'info',
-        ]);
+        if ($send) {
+            Notification::create([
+                'title' => 'Invoice created',
+                'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
+                'type' => 'info',
+            ]);
 
-        $this->sendQuietly($invoice);
+            $this->sendQuietly($invoice);
+        } elseif ($invoice->status === Invoice::STATUS_DRAFT) {
+            $invoice->update(['status' => Invoice::STATUS_UNPAID]);
+        }
 
         return $invoice->fresh(['items', 'customer', 'student']);
     }
 
-    public function createForAcceptedShift(PickupRequest $pickupRequest): Invoice
+    public function createForAcceptedShift(PickupRequest $pickupRequest, bool $send = true): Invoice
     {
         $existing = Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
@@ -99,6 +105,7 @@ class InvoiceService
                 $pickupRequest->id
             ),
             'terms' => 'This is an advance monthly service fee. The shift starts only after full payment. Minimum duration is 1 month. The driver is paid separately by PickDrop at month end.',
+            'send' => $send,
         ], [
             [
                 'description' => sprintf(
@@ -116,11 +123,60 @@ class InvoiceService
         ]);
 
         $pickupRequest->update([
-            'payment_status' => PickupRequest::PAYMENT_UNPAID,
+            'payment_status' => $pickupRequest->payment_status === PickupRequest::PAYMENT_PAID
+                ? PickupRequest::PAYMENT_PAID
+                : PickupRequest::PAYMENT_UNPAID,
             'estimated_amount' => $invoice->total,
         ]);
 
         return $invoice;
+    }
+
+    /**
+     * Keep the open distance bill in step with the request fare after an edit.
+     */
+    public function syncOpenShiftQuote(PickupRequest $pickupRequest): ?Invoice
+    {
+        $existing = Invoice::query()
+            ->where('pickup_request_id', $pickupRequest->id)
+            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID])
+            ->latest('id')
+            ->first();
+
+        if (! $existing) {
+            return null;
+        }
+
+        $locked = $existing->payments()
+            ->whereIn('status', [Payment::STATUS_COMPLETED, Payment::STATUS_PENDING])
+            ->exists();
+
+        if ($locked) {
+            return $existing->load(['items', 'customer', 'student']);
+        }
+
+        $quote = app(ShiftFareService::class)->quoteFromRequest($pickupRequest);
+        $this->syncItems($existing, [[
+            'description' => sprintf(
+                'Advance monthly pick-drop: %s km one-way × %d trips (%d month%s, %s to %s)',
+                number_format($quote['distance_km'], 2),
+                $quote['trip_count'],
+                $quote['duration_months'],
+                $quote['duration_months'] === 1 ? '' : 's',
+                $quote['shift_start_date'],
+                $quote['shift_end_date']
+            ),
+            'quantity' => $quote['trip_count'],
+            'unit_price' => $quote['per_trip_amount'],
+        ]]);
+        $this->recalculate($existing);
+        $existing = $existing->fresh(['items', 'customer', 'student']);
+
+        $pickupRequest->update([
+            'estimated_amount' => $existing->total,
+        ]);
+
+        return $existing;
     }
 
     public function syncPickupRequestPayment(Invoice $invoice): void

@@ -176,6 +176,15 @@ class RequestController extends BaseApiController
                 'status' => ['required', 'in:picked_up,dropped,completed'],
             ]);
 
+            if (in_array($validated['status'], ['dropped', 'completed'], true)) {
+                $trip = app(\App\Services\ShiftDayService::class)->endTripByDriver($driver);
+
+                return $this->successResponse([
+                    'request' => $pickupRequest->fresh(['parent', 'student', 'city', 'area', 'dropArea'])->toApiArray('driver'),
+                    'trip' => $trip,
+                ], 'Trip ended');
+            }
+
             $run = app(\App\Services\ShiftDayService::class)->markRequestStage($pickupRequest, $validated['status']);
 
             return $this->successResponse([
@@ -184,6 +193,8 @@ class RequestController extends BaseApiController
             ], 'Today status updated');
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to update request status');
         }

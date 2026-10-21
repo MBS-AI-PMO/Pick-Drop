@@ -225,7 +225,13 @@ class User extends Authenticatable
 
     public function parentSelfKycStatus(): string
     {
-        return $this->parentSelfVerification?->status ?? 'not_submitted';
+        $status = $this->parentSelfVerification?->status;
+
+        if (! is_string($status) || trim($status) === '' || strcasecmp($status, 'null') === 0) {
+            return 'not_submitted';
+        }
+
+        return strtolower(trim($status));
     }
 
     public function hasChildren(): bool
@@ -372,7 +378,30 @@ class User extends Authenticatable
 
     public function kycStatus(): string
     {
-        return $this->driverVerification?->status ?? 'not_submitted';
+        if ($this->isParentSelf()) {
+            return $this->parentSelfKycStatus();
+        }
+
+        $status = $this->driverVerification?->status;
+
+        if (! is_string($status) || trim($status) === '' || strcasecmp($status, 'null') === 0) {
+            return 'not_submitted';
+        }
+
+        return strtolower(trim($status));
+    }
+
+    /**
+     * Admin-facing verification badge label for People → Users.
+     */
+    public function verificationBadgeLabel(): string
+    {
+        return match ($this->kycStatus()) {
+            'approved' => 'Verified',
+            'pending' => 'Pending',
+            'rejected' => 'Rejected',
+            default => 'Not verified',
+        };
     }
 
     public function vehicleVerificationStatus(): string
@@ -499,9 +528,7 @@ class User extends Authenticatable
 
     public function isOnboardingComplete(): bool
     {
-        return $this->kycStatus() === 'approved'
-            && $this->vehicleVerificationStatus() === 'approved'
-            && $this->hasServiceAreas();
+        return strcasecmp($this->kycStatus(), 'approved') === 0;
     }
 
     public function driverCityId(): ?int
@@ -517,6 +544,10 @@ class User extends Authenticatable
 
     public function driverNextStep(): string
     {
+        if (strcasecmp($this->kycStatus(), 'approved') === 0) {
+            return 'dashboard';
+        }
+
         if (is_null($this->email_verified_at)) {
             return 'verify_email';
         }
@@ -525,29 +556,11 @@ class User extends Authenticatable
             return 'verify_phone';
         }
 
-        $kycStatus = $this->kycStatus();
-        if ($kycStatus !== 'approved') {
-            return match ($kycStatus) {
-                'pending' => 'kyc_pending',
-                'rejected' => 'kyc_resubmit',
-                default => 'kyc_submit',
-            };
-        }
-
-        $vehicleStatus = $this->vehicleVerificationStatus();
-        if ($vehicleStatus !== 'approved') {
-            return match ($vehicleStatus) {
-                'pending' => 'vehicle_verification_pending',
-                'rejected' => 'vehicle_verification_resubmit',
-                default => 'vehicle_verification_submit',
-            };
-        }
-
-        if (!$this->hasServiceAreas()) {
-            return 'setup_service_areas';
-        }
-
-        return 'dashboard';
+        return match ($this->kycStatus()) {
+            'pending' => 'kyc_pending',
+            'rejected' => 'kyc_resubmit',
+            default => 'kyc_submit',
+        };
     }
 
     /**

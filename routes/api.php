@@ -8,9 +8,8 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Yahan par mobile apps (driver / parent-self) ke liye saare stateless
-| JSON APIs register hon ge. Ye /api prefix ke sath automatically expose
-| hote hain (Laravel default).
+| Stateless JSON APIs for the driver and parent/self mobile apps.
+| Laravel exposes these routes with the /api prefix.
 |
 */
 
@@ -19,7 +18,7 @@ Route::get('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
-// Driver & Parent/Self API groups ko separate files se include karein
+// Driver and parent/self API groups live in separate files.
 require base_path('routes/driver.php');
 require base_path('routes/parent.php');
 

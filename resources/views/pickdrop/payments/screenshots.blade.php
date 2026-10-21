@@ -62,9 +62,15 @@
             <tr>
               <td class="ps-4">
                 @if($payment->proofUrl())
-                  <a href="{{ $payment->proofUrl() }}" target="_blank">
-                    <img src="{{ $payment->proofUrl() }}" alt="Payment screenshot" style="width:72px;height:72px;object-fit:cover;border-radius:8px;">
-                  </a>
+                  <button type="button"
+                          class="btn p-0 border-0 bg-transparent screenshot-thumb"
+                          data-bs-toggle="modal"
+                          data-bs-target="#paymentScreenshotModal"
+                          data-screenshot-url="{{ $payment->proofUrl() }}"
+                          data-screenshot-title="{{ $payment->invoice?->invoice_number ?: 'Payment screenshot' }}"
+                          title="View screenshot">
+                    <img src="{{ $payment->proofUrl() }}" alt="Payment screenshot" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;">
+                  </button>
                 @else
                   —
                 @endif
@@ -109,4 +115,48 @@
   <x-app-pagination :paginator="$payments" label="screenshots" />
 </div>
 
+{{-- Screenshot overlay --}}
+<div class="modal fade" id="paymentScreenshotModal" tabindex="-1" aria-labelledby="paymentScreenshotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-semibold" id="paymentScreenshotModalLabel">Payment screenshot</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3 text-center">
+        <img id="paymentScreenshotModalImg" src="" alt="Payment screenshot"
+             class="img-fluid rounded-3"
+             style="max-height:75vh;width:auto;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var modalEl = document.getElementById('paymentScreenshotModal');
+  if (!modalEl) return;
+
+  modalEl.addEventListener('show.bs.modal', function (event) {
+    var trigger = event.relatedTarget;
+    if (!trigger) return;
+
+    var url = trigger.getAttribute('data-screenshot-url') || '';
+    var title = trigger.getAttribute('data-screenshot-title') || 'Payment screenshot';
+    var img = document.getElementById('paymentScreenshotModalImg');
+    var label = document.getElementById('paymentScreenshotModalLabel');
+
+    if (img) img.src = url;
+    if (label) label.textContent = title;
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    var img = document.getElementById('paymentScreenshotModalImg');
+    if (img) img.src = '';
+  });
+});
+</script>
+@endpush

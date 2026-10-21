@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Driver;
 
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
+use App\Models\VehicleCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -60,8 +61,6 @@ class VehicleVerificationController extends BaseApiController
                 'number_plate_photo' => ['required', 'image', 'max:5120'],
                 'owner_name' => ['required', 'string', 'max:255'],
                 'owner_cnic_number' => ['nullable', 'string', 'max:20'],
-                'owner_document_front' => ['required', 'image', 'max:5120'],
-                'owner_document_back' => ['required', 'image', 'max:5120'],
             ]);
 
             $dir = 'driver-vehicle-verification/' . $user->id;
@@ -75,8 +74,6 @@ class VehicleVerificationController extends BaseApiController
                 $paths['vehicle_front_photo'] = $this->storeDocument($request->file('vehicle_front_photo'), $dir, 'vehicle_front');
                 $paths['vehicle_back_photo'] = $this->storeDocument($request->file('vehicle_back_photo'), $dir, 'vehicle_back');
                 $paths['number_plate_photo'] = $this->storeDocument($request->file('number_plate_photo'), $dir, 'number_plate');
-                $paths['owner_document_front'] = $this->storeDocument($request->file('owner_document_front'), $dir, 'owner_doc_front');
-                $paths['owner_document_back'] = $this->storeDocument($request->file('owner_document_back'), $dir, 'owner_doc_back');
 
                 $payload = [
                     'vehicle_category_id' => $validated['vehicle_category_id'] ?? null,
@@ -91,8 +88,8 @@ class VehicleVerificationController extends BaseApiController
                     'number_plate_photo' => $paths['number_plate_photo'],
                     'owner_name' => $validated['owner_name'],
                     'owner_cnic_number' => $validated['owner_cnic_number'] ?? null,
-                    'owner_document_front' => $paths['owner_document_front'],
-                    'owner_document_back' => $paths['owner_document_back'],
+                    'owner_document_front' => null,
+                    'owner_document_back' => null,
                     'status' => DriverVehicleVerification::STATUS_PENDING,
                     'rejection_reason' => null,
                     'reviewed_by' => null,
@@ -100,7 +97,11 @@ class VehicleVerificationController extends BaseApiController
                 ];
 
                 if ($existing) {
-                    $this->deleteOldDocuments($existing, array_keys($paths));
+                    $this->deleteOldDocuments($existing, [
+                        ...array_keys($paths),
+                        'owner_document_front',
+                        'owner_document_back',
+                    ]);
                     $existing->update($payload);
                     $verification = $existing->fresh(['category']);
                 } else {
@@ -144,12 +145,17 @@ class VehicleVerificationController extends BaseApiController
         try {
             $user = $request->user();
             $verification = $user->vehicleVerification;
+            $categories = VehicleCategory::query()
+                ->where('status', 1)
+                ->orderBy('vehicle_name')
+                ->get(['id', 'vehicle_name', 'passenger_capacity']);
 
             return $this->successResponse([
                 'vehicle_verification_status' => $user->vehicleVerificationStatus(),
                 'service_areas_setup' => $user->hasServiceAreas(),
                 'onboarding_complete' => $user->isOnboardingComplete(),
                 'next_step' => $user->driverNextStep(),
+                'vehicle_categories' => $categories,
                 'vehicle_verification' => $verification?->toApiArray(),
             ], 'Driver vehicle verification status');
         } catch (Throwable $e) {

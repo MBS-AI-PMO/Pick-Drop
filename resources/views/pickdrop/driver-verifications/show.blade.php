@@ -7,7 +7,11 @@
     <h4 class="mb-1">Review Driver Verification</h4>
     <p class="text-secondary mb-0">{{ $verification->full_name }} · {{ $verification->user?->email }}</p>
   </div>
-  <div>
+  <div class="d-flex gap-2">
+    <a href="{{ route('driver-verifications.edit', $verification) }}" class="btn btn-primary">
+      <i data-lucide="edit-2" class="icon-xs"></i>
+      Edit / Update
+    </a>
     <a href="{{ route('driver-verifications.index') }}" class="btn btn-outline-secondary">Back to list</a>
   </div>
 </div>
@@ -193,6 +197,10 @@
         <h6 class="mb-0">Admin Actions</h6>
       </div>
       <div class="card-body">
+        <a href="{{ route('driver-verifications.edit', $verification) }}" class="btn btn-outline-primary w-100 mb-3">
+          <i data-lucide="edit-2" class="icon-xs"></i>
+          Edit details / documents
+        </a>
         <div class="verification-action-grid mb-3">
           <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
             @csrf
@@ -250,3 +258,29 @@
 </div>
 
 @endsection
+
+@push('custom-scripts')
+<script>
+  @if(session('success'))
+  Swal.fire({
+    icon: 'success',
+    title: 'Updated',
+    text: @json(session('success')),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#3f6fd9',
+    customClass: { popup: 'rounded-4' }
+  });
+  @endif
+
+  @if(session('error'))
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: @json(session('error')),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#e63946',
+    customClass: { popup: 'rounded-4' }
+  });
+  @endif
+</script>
+@endpush

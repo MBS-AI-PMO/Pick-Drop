@@ -188,26 +188,26 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
-        <div class="row g-3">
+        <div class="row g-3 view-detail-grid">
           <div class="col-12">
-            <p class="text-secondary small mb-1">City</p>
-            <p class="fw-semibold mb-0" id="viewAreaCity">—</p>
+            <label class="form-label mb-1">City</label>
+            <div class="fw-semibold text-break" id="viewAreaCity">—</div>
           </div>
           <div class="col-12">
-            <p class="text-secondary small mb-1">Area</p>
-            <p class="fw-semibold mb-0" id="viewAreaName">—</p>
+            <label class="form-label mb-1">Area</label>
+            <div class="fw-semibold text-break" id="viewAreaName">—</div>
           </div>
           <div class="col-md-6">
-            <p class="text-secondary small mb-1">Latitude</p>
-            <p class="fw-semibold mb-0" id="viewAreaLat">—</p>
+            <label class="form-label mb-1">Latitude</label>
+            <div class="fw-semibold text-break" id="viewAreaLat">—</div>
           </div>
           <div class="col-md-6">
-            <p class="text-secondary small mb-1">Longitude</p>
-            <p class="fw-semibold mb-0" id="viewAreaLng">—</p>
+            <label class="form-label mb-1">Longitude</label>
+            <div class="fw-semibold text-break" id="viewAreaLng">—</div>
           </div>
           <div class="col-12">
-            <p class="text-secondary small mb-1">Status</p>
-            <p class="fw-semibold mb-0" id="viewAreaStatus">—</p>
+            <label class="form-label mb-1">Status</label>
+            <div class="fw-semibold text-break" id="viewAreaStatus">—</div>
           </div>
         </div>
       </div>

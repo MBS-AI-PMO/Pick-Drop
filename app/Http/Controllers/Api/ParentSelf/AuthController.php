@@ -162,13 +162,22 @@ class AuthController extends BaseApiController
     public function forgotPassword(Request $request): JsonResponse
     {
         try {
+            $accountType = $this->expectedAccountType($request);
+
             $validated = $request->validate([
                 'email' => ['required', 'email'],
+                'type' => ['sometimes', 'nullable', Rule::in([$accountType])],
+                'role' => ['sometimes', 'nullable', Rule::in([$accountType])],
+                'account_type' => ['sometimes', 'nullable', Rule::in([$accountType])],
             ]);
+
+            $denied = $this->denyUnlessResetAccount($validated['email'], $accountType);
+            if ($denied) {
+                return $denied;
+            }
 
             $status = Password::sendResetLink(['email' => $validated['email']]);
 
-            // In case mail is not configured, we still return a consistent response.
             if ($status === Password::RESET_LINK_SENT) {
                 return $this->successResponse(null, __($status));
             }
@@ -184,11 +193,21 @@ class AuthController extends BaseApiController
     public function resetPassword(Request $request): JsonResponse
     {
         try {
+            $accountType = $this->expectedAccountType($request);
+
             $validated = $request->validate([
                 'email' => ['required', 'email'],
                 'token' => ['required', 'string'],
                 'password' => ['required', 'string', 'min:6', 'confirmed'],
+                'type' => ['sometimes', 'nullable', Rule::in([$accountType])],
+                'role' => ['sometimes', 'nullable', Rule::in([$accountType])],
+                'account_type' => ['sometimes', 'nullable', Rule::in([$accountType])],
             ]);
+
+            $denied = $this->denyUnlessResetAccount($validated['email'], $accountType);
+            if ($denied) {
+                return $denied;
+            }
 
             $status = Password::reset(
                 [
@@ -197,7 +216,11 @@ class AuthController extends BaseApiController
                     'password' => $validated['password'],
                     'password_confirmation' => $request->input('password_confirmation'),
                 ],
-                function (User $user, string $password) {
+                function (User $user, string $password) use ($accountType) {
+                    if (strcasecmp(trim((string) $user->role), $accountType) !== 0) {
+                        throw new RuntimeException('Account not found');
+                    }
+
                     $user->password = $password;
                     $user->save();
                     $user->tokens()->delete();
@@ -211,9 +234,31 @@ class AuthController extends BaseApiController
             return $this->errorResponse(__($status), 422);
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse('Account not found', 422);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to reset password');
         }
+    }
+
+    /**
+     * Unknown emails keep Laravel's "user not found" response.
+     * An email that belongs to another role (for example a driver) is rejected
+     * before any reset mail is sent.
+     */
+    private function denyUnlessResetAccount(string $email, string $accountType): ?JsonResponse
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        if (! $user) {
+            return null;
+        }
+
+        if (strcasecmp(trim((string) $user->role), $accountType) !== 0) {
+            return $this->errorResponse('Account not found', 422);
+        }
+
+        return null;
     }
 
     public function sendEmailVerification(Request $request): JsonResponse

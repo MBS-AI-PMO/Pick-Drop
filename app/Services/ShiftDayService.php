@@ -4,9 +4,10 @@ namespace App\Services;
 
 use App\Models\PickupRequest;
 use App\Models\PickupRequestStop;
-use App\Models\PlatformSetting;
+use App\Models\ShiftAttendance;
 use App\Models\ShiftDayRun;
 use App\Models\ShiftDayStopLog;
+use App\Models\SosAlert;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -64,6 +65,7 @@ class ShiftDayService
                 ->first();
 
             $stop->setAttribute('today_status', $log?->status ?? PickupRequestStop::STATUS_PENDING);
+            $stop->setAttribute('today_reason', $log?->reason);
             $stop->setAttribute('today_run', $run);
             $stop->setAttribute('today_completed_at', $log?->completed_at);
 
@@ -105,9 +107,9 @@ class ShiftDayService
             throw new RuntimeException('This shift is skipped today.');
         }
 
-        $settings = PlatformSetting::current();
-        if ($action === 'pickup' && $settings->pickup_otp_enabled) {
-            if (!$otp || $otp !== $run->pickup_otp) {
+        // OTP and photo are optional. If OTP is sent on pickup, it must match today's code.
+        if ($action === 'pickup' && filled($otp)) {
+            if ($otp !== $run->pickup_otp) {
                 throw new RuntimeException('Invalid pickup OTP. Ask the parent for today\'s code.');
             }
             $run->pickup_verified_at = now();
@@ -264,13 +266,19 @@ class ShiftDayService
     {
         $request->loadMissing('stops');
         $logs = $run->stopLogs->keyBy('pickup_request_stop_id');
+        $settled = [PickupRequestStop::STATUS_DONE, PickupRequestStop::STATUS_SKIPPED];
 
         $pickupsDone = $request->stops->where('type', PickupRequestStop::TYPE_PICKUP)
-            ->every(fn (PickupRequestStop $stop) => ($logs[$stop->id]->status ?? null) === PickupRequestStop::STATUS_DONE);
+            ->every(fn (PickupRequestStop $stop) => in_array($logs[$stop->id]->status ?? null, $settled, true));
         $dropsDone = $request->stops->where('type', PickupRequestStop::TYPE_DROP)
-            ->every(fn (PickupRequestStop $stop) => ($logs[$stop->id]->status ?? null) === PickupRequestStop::STATUS_DONE);
+            ->every(fn (PickupRequestStop $stop) => in_array($logs[$stop->id]->status ?? null, $settled, true));
+        $anyDone = $request->stops->contains(
+            fn (PickupRequestStop $stop) => ($logs[$stop->id]->status ?? null) === PickupRequestStop::STATUS_DONE
+        );
 
-        if ($forced === 'completed' || ($dropsDone && $pickupsDone)) {
+        if ($request->stops->isNotEmpty() && $pickupsDone && $dropsDone && ! $anyDone && $forced === null) {
+            $run->status = ShiftDayRun::ABSENT;
+        } elseif ($forced === 'completed' || ($dropsDone && $pickupsDone)) {
             $run->status = ShiftDayRun::COMPLETED;
         } elseif ($forced === 'dropped' || $dropsDone) {
             $run->status = ShiftDayRun::DROPPED;
@@ -309,6 +317,312 @@ class ShiftDayService
         if ($notify) {
             app(AppNotificationService::class)->notifyPickupRequestStatus($request, $notify);
         }
+    }
+
+    /**
+     * @param  Collection<int, PickupRequestStop>  $stops
+     * @return array<string, mixed>
+     */
+    public function passengerProgress(Collection $stops): array
+    {
+        $statusOf = fn (PickupRequestStop $stop) => $stop->getAttribute('today_status') ?: PickupRequestStop::STATUS_PENDING;
+        $pickups = $stops->where('type', PickupRequestStop::TYPE_PICKUP);
+        $drops = $stops->where('type', PickupRequestStop::TYPE_DROP);
+        $allSkipped = $stops->isNotEmpty() && $stops->every(
+            fn (PickupRequestStop $stop) => $statusOf($stop) === PickupRequestStop::STATUS_SKIPPED
+        );
+        $pickupsDone = $pickups->isEmpty() || $pickups->every(
+            fn (PickupRequestStop $stop) => $statusOf($stop) === PickupRequestStop::STATUS_DONE
+        );
+        $dropsDone = $drops->isEmpty() || $drops->every(
+            fn (PickupRequestStop $stop) => $statusOf($stop) === PickupRequestStop::STATUS_DONE
+        );
+        $anyDone = $stops->contains(
+            fn (PickupRequestStop $stop) => $statusOf($stop) === PickupRequestStop::STATUS_DONE
+        );
+        $run = $stops->first()?->getAttribute('today_run');
+        $started = $run && (
+            $run->started_at
+            || in_array($run->status, [ShiftDayRun::STARTED, ShiftDayRun::ARRIVED, ShiftDayRun::PICKED_UP], true)
+        );
+
+        $passengerStatus = 'waiting';
+        if ($allSkipped) {
+            $passengerStatus = 'not_going';
+        } elseif ($pickupsDone && $dropsDone) {
+            $passengerStatus = 'dropped';
+        } elseif ($pickupsDone && $pickups->isNotEmpty()) {
+            $passengerStatus = 'picked';
+        }
+
+        return [
+            'passenger_status' => $passengerStatus,
+            'not_going_reason' => $allSkipped
+                ? $stops->map(fn (PickupRequestStop $stop) => $stop->getAttribute('today_reason'))->filter()->first()
+                : null,
+            'can_mark_not_going' => (bool) $started && ! $allSkipped && ! $anyDone,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, PickupRequestStop>  $stops
+     * @return list<string>
+     */
+    public function unsettledPassengerNames(Collection $stops): array
+    {
+        return $stops->groupBy('pickup_request_id')->map(function (Collection $group) {
+            $progress = $this->passengerProgress($group);
+            if (in_array($progress['passenger_status'], ['dropped', 'not_going'], true)) {
+                return null;
+            }
+
+            $request = $group->first()?->pickupRequest;
+
+            return $request?->student?->name ?: $request?->requesterName();
+        })->filter()->unique()->values()->all();
+    }
+
+    /**
+     * @param  Collection<int, PickupRequestStop>  $stops
+     * @return array<string, mixed>
+     */
+    public function todayTripSummary(User $driver, Collection $stops): array
+    {
+        $groups = $stops->groupBy('pickup_request_id');
+        $progress = $groups->map(fn (Collection $group) => $this->passengerProgress($group));
+        $pending = $this->unsettledPassengerNames($stops);
+        $emergency = $this->driverHasOpenEmergency($driver);
+        $runs = $stops->map(fn (PickupRequestStop $stop) => $stop->getAttribute('today_run'))->filter()->unique('id');
+        $started = $runs->contains(fn (ShiftDayRun $run) => $run->started_at || in_array($run->status, [
+            ShiftDayRun::STARTED,
+            ShiftDayRun::ARRIVED,
+            ShiftDayRun::PICKED_UP,
+        ], true));
+        $ended = $runs->isNotEmpty() && $runs->every(fn (ShiftDayRun $run) => (bool) $run->ended_at);
+
+        $reason = null;
+        if ($emergency) {
+            $reason = 'An emergency is open. Admin will end this trip.';
+        } elseif ($pending !== []) {
+            $reason = 'Drop all passengers before ending the trip.';
+        } elseif ($ended) {
+            $reason = 'This trip is already ended.';
+        }
+
+        return [
+            'can_end' => $stops->isNotEmpty() && $started && ! $emergency && $pending === [] && ! $ended,
+            'end_blocked_reason' => $reason,
+            'emergency_open' => $emergency,
+            'ended' => $ended,
+            'passengers_total' => $groups->count(),
+            'passengers_picked' => $progress->whereIn('passenger_status', ['picked', 'dropped'])->count(),
+            'passengers_dropped' => $progress->where('passenger_status', 'dropped')->count(),
+            'passengers_not_going' => $progress->where('passenger_status', 'not_going')->count(),
+            'pending_passengers' => $pending,
+        ];
+    }
+
+    public function driverHasOpenEmergency(User $driver): bool
+    {
+        return SosAlert::query()
+            ->where('user_id', $driver->id)
+            ->whereIn('status', [SosAlert::OPEN, SosAlert::ACKNOWLEDGED])
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+    }
+
+    public function lockTripForEmergency(User $driver): void
+    {
+        $stops = $this->todayStopsForDriver($driver);
+
+        foreach ($stops->groupBy('pickup_request_id') as $group) {
+            $request = $group->first()?->pickupRequest;
+            if (! $request) {
+                continue;
+            }
+
+            $run = $this->ensureToday($request);
+            if ($run->ended_at || $run->status === ShiftDayRun::SKIPPED) {
+                continue;
+            }
+
+            $run->emergency_locked = true;
+            $run->save();
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function endTripByDriver(User $driver): array
+    {
+        if ($this->driverHasOpenEmergency($driver)) {
+            throw new RuntimeException('An emergency is open. Admin will end this trip.');
+        }
+
+        $stops = $this->todayStopsForDriver($driver);
+        if ($stops->isEmpty()) {
+            throw new RuntimeException('No passengers are assigned for today.');
+        }
+
+        $summary = $this->todayTripSummary($driver, $stops);
+        if ($summary['ended']) {
+            throw new RuntimeException('This trip is already ended.');
+        }
+
+        $started = $stops->map(fn (PickupRequestStop $stop) => $stop->getAttribute('today_run'))
+            ->filter()
+            ->contains(fn (ShiftDayRun $run) => $run->started_at || in_array($run->status, [
+                ShiftDayRun::STARTED,
+                ShiftDayRun::ARRIVED,
+                ShiftDayRun::PICKED_UP,
+                ShiftDayRun::DROPPED,
+                ShiftDayRun::COMPLETED,
+                ShiftDayRun::ABSENT,
+            ], true));
+
+        if (! $started) {
+            throw new RuntimeException('Start the trip before ending it.');
+        }
+
+        $pending = $summary['pending_passengers'];
+        if ($pending !== []) {
+            throw new RuntimeException('Drop these passengers before ending the trip: ' . implode(', ', $pending) . '.');
+        }
+
+        $this->closeTodayRuns($driver, 'driver');
+
+        return $this->todayTripSummary($driver, $this->todayStopsForDriver($driver));
+    }
+
+    public function endTripByAdmin(User $driver): void
+    {
+        $closed = $this->closeTodayRuns($driver, 'admin');
+        if ($closed === 0) {
+            throw new RuntimeException('No active trip to end.');
+        }
+    }
+
+    public function markPassengerNotGoing(PickupRequest $request, User $driver, string $reason): PickupRequest
+    {
+        $this->assertDriverCanOperate($request, $driver);
+
+        $run = $this->ensureToday($request);
+        if ($run->status === ShiftDayRun::SKIPPED) {
+            throw new RuntimeException('This shift is skipped today.');
+        }
+
+        if ($run->ended_at) {
+            throw new RuntimeException('This trip is already ended.');
+        }
+
+        $started = $run->started_at || in_array($run->status, [
+            ShiftDayRun::STARTED,
+            ShiftDayRun::ARRIVED,
+            ShiftDayRun::PICKED_UP,
+        ], true);
+
+        if (! $started) {
+            throw new RuntimeException('Start the trip before marking a passenger.');
+        }
+
+        $request->loadMissing('stops');
+        if ($request->stops->isEmpty()) {
+            throw new RuntimeException('This passenger has no pickup or drop for today.');
+        }
+
+        $logs = ShiftDayStopLog::query()
+            ->where('shift_day_run_id', $run->id)
+            ->get()
+            ->keyBy('pickup_request_stop_id');
+
+        foreach ($request->stops as $stop) {
+            if (($logs[$stop->id]->status ?? null) === PickupRequestStop::STATUS_DONE) {
+                throw new RuntimeException('This passenger is already picked up. Drop them to finish.');
+            }
+        }
+
+        foreach ($request->stops as $stop) {
+            ShiftDayStopLog::query()->updateOrCreate(
+                [
+                    'shift_day_run_id' => $run->id,
+                    'pickup_request_stop_id' => $stop->id,
+                ],
+                [
+                    'status' => PickupRequestStop::STATUS_SKIPPED,
+                    'reason' => $reason,
+                    'completed_at' => now(),
+                ]
+            );
+        }
+
+        ShiftAttendance::query()->updateOrCreate(
+            [
+                'pickup_request_id' => $request->id,
+                'date' => now()->toDateString(),
+            ],
+            [
+                'status' => ShiftAttendance::ABSENT,
+                'reason' => $reason,
+                'marked_by' => $driver->id,
+            ]
+        );
+
+        $this->syncDayStatus($run->fresh('stopLogs'), $request->fresh('stops'));
+
+        $name = $request->student?->name ?: $request->requesterName();
+        if ($request->parent_id) {
+            app(AppNotificationService::class)->notify(
+                (int) $request->parent_id,
+                'passenger_not_going',
+                'Passenger not going',
+                sprintf('%s is not going today. %s', $name, $reason),
+                ['pickup_request_id' => $request->id]
+            );
+        }
+
+        app(AppNotificationService::class)->notifyAdminPanel(
+            'Passenger not going',
+            sprintf('%s marked %s as not going. %s', $driver->name ?? 'Driver', $name, $reason),
+            'warning'
+        );
+
+        return $request->fresh(['parent', 'student', 'city', 'area', 'dropArea', 'stops.area']);
+    }
+
+    private function closeTodayRuns(User $driver, string $endedBy): int
+    {
+        $requestIds = $this->todayStopsForDriver($driver)->pluck('pickup_request_id')->unique()->filter()->values();
+
+        $runs = ShiftDayRun::query()
+            ->whereDate('date', now()->toDateString())
+            ->whereNull('ended_at')
+            ->where('status', '!=', ShiftDayRun::SKIPPED)
+            ->where(function ($query) use ($driver, $requestIds) {
+                $query->whereIn('pickup_request_id', $requestIds->all())
+                    ->orWhere(function ($locked) use ($driver) {
+                        $locked->where('emergency_locked', true)
+                            ->whereHas('pickupRequest', fn ($q) => $q->where('driver_id', $driver->id));
+                    });
+            })
+            ->get();
+
+        foreach ($runs as $run) {
+            $run->ended_at = now();
+            $run->ended_by = $endedBy;
+            $run->emergency_locked = false;
+            if (! in_array($run->status, [ShiftDayRun::COMPLETED, ShiftDayRun::DROPPED, ShiftDayRun::ABSENT], true)) {
+                $run->status = ShiftDayRun::COMPLETED;
+            }
+            $run->save();
+
+            $request = $run->pickupRequest;
+            if ($request && ! in_array($request->status, ['cancelled', 'completed'], true)) {
+                $request->update(['status' => 'dropped']);
+            }
+        }
+
+        return $runs->count();
     }
 
     /**

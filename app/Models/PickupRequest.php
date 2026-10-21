@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PickupRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'type',
@@ -217,7 +218,7 @@ class PickupRequest extends Model
             $returnPickup['name'] = 'Return pickup';
             $returnPickup['time'] = $returnLeaveTime;
             $returnPickup['action'] = 'Pick up from ' . ($outboundDrop['point'] ?? $this->drop_point)
-                . ' (wapsi — subah jahan drop kiya)';
+                . ' (return — morning drop point)';
             $returnPickup['virtual'] = true;
 
             $returnDrop = $outboundPickup;
@@ -228,7 +229,7 @@ class PickupRequest extends Model
             $returnDrop['name'] = 'Return drop';
             $returnDrop['time'] = $returnArriveTime;
             $returnDrop['action'] = 'Drop at ' . ($outboundPickup['point'] ?? $this->pickup_point)
-                . ' (wapsi — subah jahan se uthaya)';
+                . ' (return — morning pickup point)';
             $returnDrop['virtual'] = true;
 
             $rows[0]['leg'] = 'outbound';
@@ -241,8 +242,8 @@ class PickupRequest extends Model
             'trip_mode' => $this->tripMode(),
             'round_trip' => $roundTrip,
             'rule' => $roundTrip
-                ? 'Ana-jana: subah A→B, wapsi B→A (jahan drop kiya wahan se pickup, jahan se uthaya wahan drop).'
-                : 'One way: sirf ek taraf — return nahi.',
+                ? 'Round trip: morning A to B, return B to A (pick up from the morning drop point, drop at the morning pickup point).'
+                : 'One way: one direction only, no return.',
             'from' => [
                 'point' => $this->pickup_point,
                 'lat' => $this->pickup_lat,
@@ -296,11 +297,11 @@ class PickupRequest extends Model
     public const TRIP_ONE_WAY = 'one_way';
 
     /**
-     * App-facing trip mode: round_trip (ana-jana) or one_way (single side).
+     * App-facing trip mode: round_trip or one_way.
      */
     public function tripMode(): string
     {
-        if ($this->round_trip === false || $this->resolvedServiceType() !== self::SERVICE_BOTH) {
+        if ($this->round_trip === false) {
             return self::TRIP_ONE_WAY;
         }
 
@@ -310,7 +311,7 @@ class PickupRequest extends Model
     public function tripModeLabel(): string
     {
         return $this->tripMode() === self::TRIP_ROUND
-            ? 'Ana-jana (round trip)'
+            ? 'Round trip'
             : 'One way (single side)';
     }
 
@@ -320,7 +321,7 @@ class PickupRequest extends Model
     public static function tripModeOptions(): array
     {
         return [
-            self::TRIP_ROUND => 'Ana-jana (round trip)',
+            self::TRIP_ROUND => 'Round trip',
             self::TRIP_ONE_WAY => 'One way (single side)',
         ];
     }
@@ -418,6 +419,15 @@ class PickupRequest extends Model
         $required = $this->needsPayment();
         $months = (int) ($this->duration_months ?: 1);
 
+        $bill = $this->billApiArray();
+        $unpaidBill = $audience !== 'driver'
+            && $this->status !== 'cancelled'
+            && $this->payment_status !== self::PAYMENT_PAID
+            && (float) ($bill['amount'] ?? 0) > 0;
+        if ($unpaidBill) {
+            $required = true;
+        }
+
         $payload = [
             'model' => 'monthly_advance',
             'required' => $required,
@@ -434,12 +444,9 @@ class PickupRequest extends Model
             'shift_end_date' => $this->shift_end_date?->toDateString(),
             'distance_km' => $this->distance_km,
             'trip_count' => $this->trip_count,
-            'amount' => $this->estimated_amount,
-            'formatted_amount' => $invoice
-                ? $invoice->formattedTotal()
-                : (($this->estimated_amount !== null)
-                    ? 'PKR ' . number_format((float) $this->estimated_amount, 2)
-                    : null),
+            'amount' => $bill['amount'],
+            'formatted_amount' => $bill['formatted_amount'],
+            'bill' => $bill,
             'invoice' => $invoice?->toApiArray(),
             'methods' => ($audience === 'user' && $required) ? [
                 'stripe_enabled' => false,
@@ -588,6 +595,87 @@ class PickupRequest extends Model
     }
 
     /**
+     * Distance fare the parent should see on the request card, even before a driver accepts.
+     *
+     * @return array<string, mixed>
+     */
+    public function billApiArray(): array
+    {
+        $this->loadMissing('latestInvoice');
+        $invoice = $this->latestInvoice;
+        if ($invoice && $invoice->status === Invoice::STATUS_CANCELLED) {
+            $invoice = null;
+        }
+
+        $charge = self::activeFareCharge();
+        $currency = strtoupper((string) ($invoice?->currency ?: $charge?->currency ?: 'PKR'));
+        $distance = $this->distance_km !== null ? round((float) $this->distance_km, 2) : null;
+        $trips = $this->trip_count !== null ? (int) $this->trip_count : null;
+        $subtotal = $invoice
+            ? round((float) $invoice->subtotal, 2)
+            : ($this->estimated_amount !== null ? round((float) $this->estimated_amount, 2) : null);
+        $tax = $invoice ? round((float) $invoice->tax_amount, 2) : 0.0;
+        $amount = $invoice
+            ? round((float) $invoice->total, 2)
+            : $subtotal;
+        $perTrip = ($subtotal !== null && $trips > 0) ? round($subtotal / $trips, 2) : null;
+        $rate = $charge && (float) $charge->per_km_rate > 0
+            ? round((float) $charge->per_km_rate, 2)
+            : null;
+        if ($rate === null && $perTrip !== null && $distance > 0) {
+            $rate = round($perTrip / $distance, 2);
+        }
+
+        $money = fn (float $value): string => $currency . ' ' . number_format($value, 2);
+        $formatted = $amount !== null ? ($invoice ? $invoice->formattedTotal() : $money($amount)) : null;
+
+        $summary = null;
+        if ($formatted && $distance !== null && $rate !== null && $trips && $subtotal !== null) {
+            $summary = sprintf(
+                '%s km × %s %s × %d trips = %s',
+                number_format($distance, 2),
+                $currency,
+                number_format((float) $rate, 2),
+                $trips,
+                $money($subtotal)
+            );
+            if ($tax > 0) {
+                $summary .= sprintf(' + tax %s = %s', $money($tax), $formatted);
+            }
+        }
+
+        return [
+            'distance_km' => $distance,
+            'per_km_rate' => $rate,
+            'per_trip_amount' => $perTrip,
+            'trip_count' => $trips,
+            'subtotal' => $subtotal,
+            'tax_amount' => $tax,
+            'amount' => $amount,
+            'currency' => $currency,
+            'formatted_amount' => $formatted,
+            'summary' => $summary,
+            'invoice_id' => $invoice?->id,
+            'invoice_number' => $invoice?->invoice_number,
+        ];
+    }
+
+    private static ?PickDropCharge $activeFareChargeCache = null;
+
+    private static bool $activeFareChargeLoaded = false;
+
+    private static function activeFareCharge(): ?PickDropCharge
+    {
+        if (! self::$activeFareChargeLoaded) {
+            self::$activeFareChargeCache = PickDropCharge::query()->where('is_active', true)->first()
+                ?: PickDropCharge::query()->first();
+            self::$activeFareChargeLoaded = true;
+        }
+
+        return self::$activeFareChargeCache;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toApiArray(string $audience = 'user'): array
@@ -649,6 +737,7 @@ class PickupRequest extends Model
             'distance_km' => $this->distance_km,
             'trip_count' => $this->trip_count,
             'estimated_amount' => $this->estimated_amount,
+            'bill' => $this->billApiArray(),
             'payment_status' => $this->payment_status ?: self::PAYMENT_UNPAID,
             'payment' => $this->paymentApiArray($audience),
             'tracking' => $this->trackingApiArray(),

@@ -26,6 +26,10 @@
             <div class="fw-semibold">{{ ucfirst($alert->status) }}</div>
           </div>
           <div class="col-md-6">
+            <label class="text-muted small">Type</label>
+            <div class="fw-semibold">{{ $alert->type ? ucfirst($alert->type) : '—' }}</div>
+          </div>
+          <div class="col-md-6">
             <label class="text-muted small">Request</label>
             <div>
               @if($alert->pickup_request_id)
@@ -63,6 +67,13 @@
             @csrf
             <button class="btn btn-outline-dark w-100" type="submit">Acknowledge</button>
           </form>
+        @endif
+        @if($alert->status !== 'resolved' && $alert->user?->role === 'driver')
+          <form method="POST" action="{{ route('sos.end-trip', $alert) }}" class="mb-2">
+            @csrf
+            <button class="btn btn-danger w-100" type="submit">End trip</button>
+          </form>
+          <p class="text-muted small">The driver cannot end this trip. Ending it here closes today's trip.</p>
         @endif
         @if($alert->status !== 'resolved')
           <form method="POST" action="{{ route('sos.resolve', $alert) }}" class="mb-2">

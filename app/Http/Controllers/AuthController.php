@@ -36,7 +36,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        // Sirf Super Admin aur Admin login kar sakte hain
+        // Only Super Admin and Admin can log in
         if (! Auth::user()->isPanelAdmin()) {
             $user = Auth::user();
             Auth::logout();
