@@ -88,11 +88,14 @@ class LocationController extends Controller
             'status'    => 'nullable|string',
         ]);
 
+        $latitude  = (isset($data['latitude']) && $data['latitude'] !== '') ? $data['latitude'] : null;
+        $longitude = (isset($data['longitude']) && $data['longitude'] !== '') ? $data['longitude'] : null;
+
         try {
             City::create([
                 'name'      => $data['name'],
-                'latitude'  => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
+                'latitude'  => $latitude,
+                'longitude' => $longitude,
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
@@ -174,11 +177,14 @@ class LocationController extends Controller
             'status'    => 'nullable|string',
         ]);
 
+        $latitude  = (isset($data['latitude']) && $data['latitude'] !== '') ? $data['latitude'] : null;
+        $longitude = (isset($data['longitude']) && $data['longitude'] !== '') ? $data['longitude'] : null;
+
         try {
             $city->update([
                 'name'      => $data['name'],
-                'latitude'  => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
+                'latitude'  => $latitude,
+                'longitude' => $longitude,
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
