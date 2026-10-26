@@ -107,20 +107,16 @@
             <td class="py-3 text-center">
               <div class="action-btns">
 @if($vehicle->driver_id)
-<form action="{{ route('vehicles.unassign', $vehicle->id) }}" method="POST">
+<form action="{{ route('vehicles.unassign', $vehicle->id) }}" method="POST"
+      onsubmit="confirmUnassign(event, this, {{ Js::from(optional($vehicle->driver)->name) }}, {{ Js::from($vehicle->name) }})">
     @csrf
-    <button type="submit" class="action-btn action-btn-warn" title="Unassign Driver"
-            onclick="return confirm('Unassign this driver?')">
+    <button type="submit" class="action-btn action-btn-warn" title="Unassign Driver">
         <i data-lucide="user-minus"></i>
     </button>
 </form>
 @else
 <button type="button" class="action-btn action-btn-add" title="Assign Driver"
-    onclick='openDetailsModal(@json(collect($vehicle->toArray())->merge([
-        "type_name"   => optional($vehicle->category)->vehicle_name,
-        "capacity_val"=> optional($vehicle->category)->passenger_capacity,
-        "driver_name" => optional($vehicle->driver)->name
-    ])))'>
+    onclick="openAssignDriverModal({{ Js::from(['id' => $vehicle->id, 'name' => $vehicle->name, 'license_plate' => $vehicle->license_plate]) }})">
     <i data-lucide="user-plus"></i>
 </button>
 @endif
@@ -238,7 +234,50 @@
   </div>
 </div>
 
-{{-- ========== VIEW / EDIT VEHICLE MODAL ========== --}}
+{{-- ========== ASSIGN DRIVER MODAL ========== --}}
+<div class="modal fade" id="assignDriverModal" tabindex="-1" aria-labelledby="assignDriverModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="assignDriverModalLabel">Assign Driver</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <form id="assignDriverForm" method="POST">
+          @csrf
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label mb-1 text-muted">Vehicle</label>
+              <div class="fw-semibold text-break" id="assignVehicleName">—</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 text-muted">Plate Number</label>
+              <div class="fw-semibold text-break" id="assignVehiclePlate">—</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Driver <span class="text-danger">*</span></label>
+              <select name="driver_id" id="assignDriverSelect" class="form-select" required>
+                <option value="">Select driver</option>
+                @foreach($availableDrivers as $driver)
+                  <option value="{{ $driver->id }}">{{ $driver->name }}</option>
+                @endforeach
+              </select>
+              @if($availableDrivers->isEmpty())
+                <small class="text-muted d-block mt-1">No unassigned drivers available.</small>
+              @endif
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-4 pb-0 px-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary px-4" @disabled($availableDrivers->isEmpty())>Assign Driver</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- ========== VIEW (read-only) / EDIT VEHICLE MODAL ========== --}}
 <div class="modal fade" id="viewVehicleModal" tabindex="-1" aria-labelledby="viewVehicleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -280,17 +319,8 @@
               <span class="badge rounded-pill px-3 py-1" id="vDetailStatusBadge">—</span>
             </div>
           </div>
-          <div class="mt-4 d-flex gap-2">
-            <button type="button" class="btn btn-primary px-4 flex-grow-1" onclick="toggleEditMode(true)">
-              <i data-lucide="edit-2" class="icon-sm me-1"></i> Edit Vehicle
-            </button>
-            <form id="deleteVehicleForm" method="POST" class="d-inline" onsubmit="confirmDelete(event, this)">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="btn btn-danger px-3">
-                <i data-lucide="trash-2" class="icon-sm"></i>
-              </button>
-            </form>
+          <div class="mt-4">
+            <button type="button" class="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
 
@@ -340,7 +370,7 @@
               </div>
             </div>
             <div class="mt-4 d-flex gap-2">
-              <button type="button" class="btn btn-light px-4" onclick="toggleEditMode(false)">Cancel</button>
+              <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
               <button type="submit" class="btn btn-primary px-4 flex-grow-1">Save Changes</button>
             </div>
           </form>
@@ -363,12 +393,11 @@
   });
   @endif
 
-  @if($errors->any())
+  @if(session('error'))
   Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
+      icon: 'error', title: 'Error', text: @json(session('error')),
       toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
+      timer: 4000, timerProgressBar: true
   });
   @endif
 
@@ -385,6 +414,8 @@
 
   // View/Edit modal
   const viewModal = new bootstrap.Modal(document.getElementById('viewVehicleModal'));
+
+  const updateVehicleUrlTemplate = "{{ route('vehicles.update', ':id') }}";
 
   function openDetailsModal(vehicle, startInEdit = false) {
     toggleEditMode(!!startInEdit);
@@ -409,10 +440,7 @@
       badge.style.background = '#f3f4f6'; badge.style.color = '#6b7280';
     }
 
-    const appUrl = "{{ config('app.url') }}";
-
-    document.getElementById('deleteVehicleForm').action = `${appUrl}/vehicles/${vehicle.id}`;
-    document.getElementById('editVehicleForm').action   = `${appUrl}/vehicles/${vehicle.id}`;
+    document.getElementById('editVehicleForm').action   = updateVehicleUrlTemplate.replace(':id', vehicle.id);
 
     document.getElementById('vEditName').value    = vehicle.name          || '';
     document.getElementById('vEditPlate').value   = vehicle.license_plate || '';
@@ -426,9 +454,32 @@
     viewModal.show();
   }
 
+  // Dedicated Assign Driver form (separate from the View/Edit modal)
+  const assignModal = new bootstrap.Modal(document.getElementById('assignDriverModal'));
+  const assignUrlTemplate = "{{ route('vehicles.assign-driver', ':id') }}";
+
+  function openAssignDriverModal(vehicle) {
+    document.getElementById('assignVehicleName').textContent  = vehicle.name || '—';
+    document.getElementById('assignVehiclePlate').textContent = vehicle.license_plate || '—';
+    document.getElementById('assignDriverForm').action        = assignUrlTemplate.replace(':id', vehicle.id);
+    document.getElementById('assignDriverSelect').value       = '';
+    assignModal.show();
+  }
+
   function toggleEditMode(isEdit) {
     document.getElementById('vehicleViewMode').style.display = isEdit ? 'none'  : 'block';
     document.getElementById('vehicleEditMode').style.display = isEdit ? 'block' : 'none';
+  }
+
+  function confirmUnassign(event, form, driverName, vehicleName) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Unassign driver?',
+      text: (driverName ? driverName : 'This driver') + ' will be removed from ' + (vehicleName || 'this vehicle') + '.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#f59e0b', cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, unassign'
+    }).then(result => { if (result.isConfirmed) form.submit(); });
   }
 
   function confirmDelete(event, form) {

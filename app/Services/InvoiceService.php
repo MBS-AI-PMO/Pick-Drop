@@ -139,7 +139,7 @@ class InvoiceService
     {
         $existing = Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
-            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID])
+            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID, Invoice::STATUS_REFUNDED])
             ->latest('id')
             ->first();
 
@@ -217,7 +217,7 @@ class InvoiceService
     {
         Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
-            ->whereNotIn('status', [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])
+            ->whereNotIn('status', [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED, Invoice::STATUS_REFUNDED])
             ->get()
             ->each(function (Invoice $invoice) {
                 $this->cancel($invoice);
@@ -250,14 +250,18 @@ class InvoiceService
         $total = round($subtotal + $tax, 2);
 
         $paid = round((float) $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->sum('amount'), 2);
+        $hasRefund = $invoice->payments()->where('status', Payment::STATUS_REFUNDED)->exists();
 
         $status = $invoice->status;
         if ($status !== Invoice::STATUS_CANCELLED) {
             if ($paid >= $total && $total > 0) {
                 $status = Invoice::STATUS_PAID;
+            } elseif ($hasRefund && $paid <= 0) {
+                // everything that was paid has been given back
+                $status = Invoice::STATUS_REFUNDED;
             } elseif ($invoice->due_date && $invoice->due_date->lt(now()->startOfDay()) && $paid < $total) {
                 $status = Invoice::STATUS_OVERDUE;
-            } elseif ($status === Invoice::STATUS_PAID && $paid < $total) {
+            } elseif (in_array($status, [Invoice::STATUS_PAID, Invoice::STATUS_REFUNDED], true) && $paid < $total) {
                 $status = Invoice::STATUS_UNPAID;
             }
         }

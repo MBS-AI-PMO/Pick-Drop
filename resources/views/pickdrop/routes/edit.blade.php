@@ -489,6 +489,20 @@
     if (primaryAreaInput) primaryAreaInput.value = selectedIds[0] || '';
   }
 
+  // Display-only: area names are stored as typed ("n-17", "Bahria town islamabad"), so tidy the
+  // casing for the dropdown/chips. Sector codes (F-6, n-17, G-10/3) are upper-cased, ALL-CAPS words
+  // such as DHA are kept, everything else is Title Cased. Stored values are not changed.
+  function formatAreaName(name) {
+    const text = String(name || '').trim().replace(/\s+/g, ' ');
+    if (/^[a-z]{1,3}-\d+([\/-]\d+)*$/i.test(text)) return text.toUpperCase();
+    return text
+      .split(' ')
+      .map((word) => (word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word))
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function populateAreas(selectedAreaId = '', selectedAreaIds = []) {
     const areas = getSelectedCityAreas();
     areaSelect.innerHTML = '';
@@ -497,12 +511,43 @@
     areas.forEach((area) => {
       const option = document.createElement('option');
       option.value = area.id;
-      option.textContent = area.name;
+      option.textContent = formatAreaName(area.name);
       if (selectedSet.has(String(area.id))) option.selected = true;
       areaSelect.appendChild(option);
     });
+    const wantedId = areas.map((a) => String(a.id)).find((id) => selectedSet.has(id)) || '';
+    syncAreaPlaceholderOption(wantedId);
     initRouteAreaSelect2();
     syncPrimaryArea();
+  }
+
+  // A single <select> auto-selects its first option when none is chosen, which silently picked an
+  // area as soon as a city was chosen. Keep an empty "Select area" option first (single mode) and
+  // select it unless keepId names an area to keep, so the field stays empty until the user chooses.
+  // Multi mode has no blank row and its selection is left as is.
+  function syncAreaPlaceholderOption(keepId = '') {
+    const isMulti = !!allowMultiArea?.checked;
+    const existing = Array.from(areaSelect.options).find((opt) => opt.value === '');
+    if (isMulti) {
+      if (existing) existing.remove();
+      return;
+    }
+    let blank = existing;
+    if (!blank) {
+      blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = 'Select area';
+      areaSelect.insertBefore(blank, areaSelect.firstChild);
+    }
+    const keep = String(keepId || '');
+    let matched = false;
+    Array.from(areaSelect.options).forEach((opt) => {
+      if (opt === blank) return;
+      const isKept = keep !== '' && String(opt.value) === keep;
+      opt.selected = isKept;
+      if (isKept) matched = true;
+    });
+    blank.selected = !matched;
   }
 
   function getSelectedArea() {
@@ -633,14 +678,10 @@
   });
 
   allowMultiArea?.addEventListener('change', function () {
+    // Read the selection before changing .multiple, which can reset it.
+    const previousIds = getSelectedAreaIds();
     areaSelect.multiple = !!allowMultiArea.checked;
-    if (!allowMultiArea.checked) {
-      const selectedIds = getSelectedAreaIds();
-      const keepId = selectedIds[0] || '';
-      Array.from(areaSelect.options).forEach((opt) => {
-        opt.selected = keepId ? String(opt.value) === String(keepId) : false;
-      });
-    }
+    syncAreaPlaceholderOption(allowMultiArea.checked ? '' : (previousIds[0] || ''));
     initRouteAreaSelect2();
     syncPrimaryArea();
   });

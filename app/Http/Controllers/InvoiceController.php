@@ -239,7 +239,13 @@ class InvoiceController extends Controller
         try {
             $this->invoices->refundPayment($payment, $validated['reason'], $request->user()->id);
 
-            return back()->with('success', 'Payment refunded. Invoice balance updated.');
+            $invoice = $payment->invoice()->first();
+            $amount = $invoice ? $invoice->formatMoney((float) $payment->amount) : number_format((float) $payment->amount, 2);
+            $message = $invoice && $invoice->status === Invoice::STATUS_REFUNDED
+                ? "Refund of {$amount} recorded. Invoice {$invoice->invoice_number} is now marked as Refunded."
+                : "Refund of {$amount} recorded. The invoice balance has been updated.";
+
+            return back()->with('success', $message);
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -353,12 +359,13 @@ class InvoiceController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Invoice', 'Customer', 'Email', 'Student', 'Issue Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Status', 'Method']);
+            fputcsv($out, ['Invoice', 'Customer', 'Email', 'Role', 'Student', 'Issue Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Status', 'Method']);
             foreach ($rows as $invoice) {
                 fputcsv($out, [
                     $invoice->invoice_number,
                     $invoice->customer?->name,
                     $invoice->customer?->email,
+                    $invoice->customer?->role ? ucfirst(strtolower((string) $invoice->customer->role)) : '',
                     $invoice->student?->name,
                     $invoice->issue_date?->format('Y-m-d'),
                     $invoice->due_date?->format('Y-m-d'),

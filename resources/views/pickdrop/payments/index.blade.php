@@ -8,6 +8,7 @@
           'unpaid' => ['Unpaid', 'background:#fef9c3;color:#92400e;'],
           'overdue' => ['Overdue', 'background:#fee2e2;color:#991b1b;'],
           'cancelled' => ['Cancelled', 'background:#e5e7eb;color:#374151;'],
+          'refunded' => ['Refunded', 'background:#fae8ff;color:#86198f;'],
           default => ['Draft', 'background:#e0e7ff;color:#3730a3;'],
       };
   };
@@ -91,7 +92,7 @@
         <div class="col-12 col-md-2">
           <select class="form-select" name="status" onchange="this.form.submit()">
             <option value="">All statuses</option>
-            @foreach(['draft','unpaid','paid','overdue','cancelled'] as $st)
+            @foreach(['draft','unpaid','paid','overdue','cancelled','refunded'] as $st)
               <option value="{{ $st }}" {{ request('status') === $st ? 'selected' : '' }}>{{ ucfirst($st) }}</option>
             @endforeach
           </select>
@@ -127,7 +128,7 @@
           <tr>
             <th class="ps-4 py-3">Invoice</th>
             <th class="py-3">Customer</th>
-            <th class="py-3">Student</th>
+            <th class="py-3">Role</th>
             <th class="py-3">Due</th>
             <th class="py-3">Amount</th>
             <th class="py-3">Method</th>
@@ -144,7 +145,25 @@
                 <div>{{ $invoice->customer?->name }}</div>
                 <small class="text-muted">{{ $invoice->customer?->email }}</small>
               </td>
-              <td>{{ $invoice->student?->name ?? '—' }}</td>
+              <td>
+                @php
+                  $roleKey = strtolower(trim((string) $invoice->customer?->role));
+                  $roleStyle = match ($roleKey) {
+                    'parent' => 'background:#eef2ff;color:#4338ca;',
+                    'self' => 'background:#e6f7f3;color:#0f766e;',
+                    'driver' => 'background:#fff4db;color:#92400e;',
+                    default => 'background:#f3f4f6;color:#4b5563;',
+                  };
+                @endphp
+                @if($roleKey !== '')
+                  <span class="badge rounded-pill px-3 py-1" style="{{ $roleStyle }}">{{ ucfirst($roleKey) }}</span>
+                @else
+                  <span class="text-muted">—</span>
+                @endif
+                @if($invoice->student)
+                  <div class="text-muted small mt-1">Student: {{ $invoice->student->name }}</div>
+                @endif
+              </td>
               <td>{{ $invoice->due_date?->format('d M Y') }}</td>
               <td class="fw-semibold">{{ $invoice->formattedTotal() }}</td>
               <td>{{ $invoice->payment_method ? str_replace('_', ' ', $invoice->payment_method) : '—' }}</td>
@@ -188,7 +207,7 @@
         </div>
         <div class="modal-body">
           <div class="row g-3">
-            <div class="col-md-8">
+            <div class="col-12" id="invoiceCustomerCol">
               <label class="form-label">Customer</label>
               <select name="user_id" id="invoiceCustomer" class="form-select" required>
                 <option value="">Select parent / self</option>
@@ -197,11 +216,13 @@
                 @endforeach
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Student (optional)</label>
+            {{-- Only shown once a customer with registered students is chosen; otherwise there is nothing to pick. --}}
+            <div class="col-md-4 d-none" id="invoiceStudentCol">
+              <label class="form-label" for="invoiceStudent">Student (optional)</label>
               <select name="student_id" id="invoiceStudent" class="form-select">
                 <option value="">None</option>
               </select>
+              <div class="form-text">The child this invoice is for.</div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Issue date</label>
@@ -269,8 +290,12 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   addItem('Monthly pick & drop service', 1, '');
 
-  customerSelect.addEventListener('change', function () {
-    const list = students[this.value] || students[String(this.value)] || [];
+  const customerCol = document.getElementById('invoiceCustomerCol');
+  const studentCol = document.getElementById('invoiceStudentCol');
+
+  // Show the Student field only when the chosen customer has registered students.
+  function refreshStudentField() {
+    const list = students[customerSelect.value] || students[String(customerSelect.value)] || [];
     studentSelect.innerHTML = '<option value="">None</option>';
     list.forEach(function (s) {
       const opt = document.createElement('option');
@@ -278,7 +303,16 @@ document.addEventListener('DOMContentLoaded', function () {
       opt.textContent = s.name;
       studentSelect.appendChild(opt);
     });
-  });
+
+    const hasStudents = list.length > 0;
+    studentCol.classList.toggle('d-none', !hasStudents);
+    customerCol.classList.toggle('col-12', !hasStudents);
+    customerCol.classList.toggle('col-md-8', hasStudents);
+    studentSelect.value = ''; // hidden or freshly populated: no student chosen yet
+  }
+
+  customerSelect.addEventListener('change', refreshStudentField);
+  refreshStudentField();
 });
 </script>
 <script>

@@ -459,15 +459,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter
   const locationSearch = document.getElementById('locationSearch');
   if (locationSearch) {
@@ -492,6 +483,13 @@
   let areaGeocoder;
   let areaSearchAutocomplete;
   let mapReady = false;
+  let googleGeocodingUsable = true;
+  const mapSearchUrl = "{{ route('locations.map-search') }}";
+
+  // Google calls this when the key is rejected (e.g. billing not enabled).
+  window.gm_authFailure = function () {
+    googleGeocodingUsable = false;
+  };
 
   window.onGoogleMapsReady = function () {
     const modalEl = document.getElementById('areaModal');
@@ -626,60 +624,89 @@
     const queryHasCity = cityName && query.toLowerCase().includes(cityName.toLowerCase());
     const searchQuery = queryHasCity || !cityName ? query : `${query}, ${cityName}`;
 
-    function fallbackNominatim() {
-      fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(searchQuery) + '&countrycodes=pk&limit=5')
-        .then(res => res.json())
-        .then(data => {
-          if (mapSearchBtn) mapSearchBtn.disabled = false;
-          if (Array.isArray(data) && data.length > 0) {
-            const items = data.map(r => ({
-              title: r.name || r.display_name.split(',')[0],
-              subtitle: r.display_name,
-              lat: parseFloat(r.lat),
-              lng: parseFloat(r.lon)
-            }));
-            renderSearchResults(items);
-            setAreaCoordinates(items[0].lat, items[0].lng, true);
-            if (areaMap) areaMap.setZoom(15);
-          } else {
-            renderSearchResults([]);
-          }
-        })
-        .catch(() => {
-          if (mapSearchBtn) mapSearchBtn.disabled = false;
-          renderSearchResults([]);
-        });
+    function showItems(items) {
+      if (mapSearchBtn) mapSearchBtn.disabled = false;
+      renderSearchResults(items);
+      if (items.length > 0) {
+        setAreaCoordinates(items[0].lat, items[0].lng, true);
+        if (areaMap) areaMap.setZoom(15);
+      }
     }
 
-    if (areaGeocoder) {
+    // Server-side OpenStreetMap search; works without a Google key/billing.
+    function fallbackServerSearch() {
+      const params = new URLSearchParams({ q: query, country_code: 'pk' });
+      if (cityName) params.set('city_name', cityName);
+      if (activeCityContext?.latitude && activeCityContext?.longitude) {
+        params.set('city_lat', activeCityContext.latitude);
+        params.set('city_lng', activeCityContext.longitude);
+      }
+
+      fetch(mapSearchUrl + '?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then(res => res.ok ? res.json() : { results: [] })
+        .then(data => {
+          const items = (data.results || []).map(r => {
+            const parts = String(r.name || '').split(',');
+            return {
+              title: (parts[0] || r.name || 'Unknown place').trim(),
+              subtitle: parts.slice(1).join(',').trim() || r.name,
+              lat: Number(r.lat),
+              lng: Number(r.lng)
+            };
+          });
+          showItems(items);
+        })
+        .catch(() => showItems([]));
+    }
+
+    if (areaGeocoder && googleGeocodingUsable) {
+      let finished = false;
+      const finish = function (fn) {
+        if (finished) return;
+        finished = true;
+        clearTimeout(geocodeTimer);
+        fn();
+      };
+      // A denied/misconfigured Google key can leave the geocoder silent; never hang on it.
+      const geocodeTimer = setTimeout(() => finish(fallbackServerSearch), 4000);
+
       const geocodeReq = { address: searchQuery, region: 'PK' };
       if (areaMap && areaMap.getBounds()) {
         geocodeReq.bounds = areaMap.getBounds();
       }
 
-      areaGeocoder.geocode(geocodeReq, function (results, status) {
-        if (status === 'OK' && results && results.length > 0) {
-          if (mapSearchBtn) mapSearchBtn.disabled = false;
-          const items = results.map(r => {
-            const parts = r.formatted_address.split(',');
-            const title = parts[0] ? parts[0].trim() : r.formatted_address;
-            const subtitle = parts.slice(1).join(',').trim();
-            return {
-              title: title,
-              subtitle: subtitle || r.formatted_address,
-              lat: r.geometry.location.lat(),
-              lng: r.geometry.location.lng()
-            };
+      try {
+        const pending = areaGeocoder.geocode(geocodeReq, function (results, status) {
+          finish(function () {
+            if (status === 'OK' && results && results.length > 0) {
+              showItems(results.map(r => {
+                const parts = r.formatted_address.split(',');
+                const title = parts[0] ? parts[0].trim() : r.formatted_address;
+                const subtitle = parts.slice(1).join(',').trim();
+                return {
+                  title: title,
+                  subtitle: subtitle || r.formatted_address,
+                  lat: r.geometry.location.lat(),
+                  lng: r.geometry.location.lng()
+                };
+              }));
+              return;
+            }
+            if (status === 'REQUEST_DENIED') googleGeocodingUsable = false;
+            fallbackServerSearch();
           });
-          renderSearchResults(items);
-          setAreaCoordinates(items[0].lat, items[0].lng, true);
-          if (areaMap) areaMap.setZoom(15);
-        } else {
-          fallbackNominatim();
-        }
-      });
+        });
+        // Newer Maps JS returns a promise that rejects on denial; the callback above already handles it.
+        if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+      } catch (err) {
+        googleGeocodingUsable = false;
+        finish(fallbackServerSearch);
+      }
     } else {
-      fallbackNominatim();
+      fallbackServerSearch();
     }
   }
 

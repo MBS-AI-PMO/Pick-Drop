@@ -85,6 +85,10 @@ class Payment extends Model
 
     public function receiptStatusLabel(): string
     {
+        if ($this->status === self::STATUS_REFUNDED) {
+            return 'Refunded';
+        }
+
         return match ($this->receiptStatus()) {
             self::RECEIPT_RECEIVED => 'Received',
             self::RECEIPT_NOT_RECEIVED => 'Not received',

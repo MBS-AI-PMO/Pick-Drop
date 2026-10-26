@@ -57,6 +57,337 @@ Author: PickDrop Team
 
   <!-- Global Custom Styling for Pick-Drop -->
   <style>
+    /* SweetAlert2 loads after app.css and would otherwise force a white popup in dark mode. */
+    html .swal2-popup {
+      --swal2-background: var(--bs-body-bg);
+      --swal2-color: var(--bs-body-color);
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+    html .swal2-popup .swal2-title,
+    html .swal2-popup .swal2-html-container {
+      color: var(--bs-body-color);
+    }
+    /* Bootstrap's "dark" buttons are near-black: invisible text/border (btn-outline-dark) and a heavy
+       black block (btn-dark) on dark cards. Use light-on-dark equivalents in dark mode only. */
+    html[data-bs-theme="dark"] .btn-outline-dark {
+      --bs-btn-color: #f4f7fb;
+      --bs-btn-border-color: rgba(255, 255, 255, 0.35);
+      --bs-btn-hover-color: #ffffff;
+      --bs-btn-hover-bg: rgba(255, 255, 255, 0.12);
+      --bs-btn-hover-border-color: rgba(255, 255, 255, 0.55);
+      --bs-btn-active-color: #ffffff;
+      --bs-btn-active-bg: rgba(255, 255, 255, 0.18);
+      --bs-btn-active-border-color: rgba(255, 255, 255, 0.6);
+      --bs-btn-disabled-color: rgba(244, 247, 251, 0.45);
+      --bs-btn-disabled-border-color: rgba(255, 255, 255, 0.2);
+    }
+    /* Outline primary / secondary: the default blue and gray are too dim on dark surfaces
+       (text under 4.5:1, border nearly invisible). */
+    /* custom.css sets .btn-outline-primary's colour/border directly (32% opacity border), which
+       beats Bootstrap's variables, so these set the properties directly. Both themes. */
+    html .btn-outline-primary {
+      color: #4a58e8;
+      border-color: #6f7cf0;
+    }
+    html .btn-outline-primary:hover,
+    html .btn-outline-primary:focus-visible {
+      color: #ffffff;
+      background: #5b6cff;
+      border-color: #5b6cff;
+    }
+    html .btn-outline-secondary {
+      --bs-btn-color: #566074;
+      --bs-btn-border-color: #8a94a6;
+      --bs-btn-hover-color: #1d2b4a;
+      --bs-btn-hover-bg: #eef1f6;
+      --bs-btn-hover-border-color: #6e788c;
+      --bs-btn-active-color: #1d2b4a;
+      --bs-btn-active-bg: #e3e8f0;
+      --bs-btn-active-border-color: #6e788c;
+    }
+    html[data-bs-theme="dark"] .btn-outline-primary {
+      color: #9aa6ff;
+      border-color: rgba(154, 166, 255, 0.6);
+    }
+    html[data-bs-theme="dark"] .btn-outline-primary:hover,
+    html[data-bs-theme="dark"] .btn-outline-primary:focus-visible {
+      color: #ffffff;
+      background: rgba(91, 108, 255, 0.4);
+      border-color: rgba(154, 166, 255, 0.9);
+    }
+    html[data-bs-theme="dark"] .btn-outline-secondary {
+      --bs-btn-color: #c3cbdb;
+      --bs-btn-border-color: rgba(255, 255, 255, 0.4);
+      --bs-btn-hover-color: #ffffff;
+      --bs-btn-hover-bg: rgba(255, 255, 255, 0.12);
+      --bs-btn-hover-border-color: rgba(255, 255, 255, 0.55);
+      --bs-btn-active-color: #ffffff;
+      --bs-btn-active-bg: rgba(255, 255, 255, 0.18);
+      --bs-btn-active-border-color: rgba(255, 255, 255, 0.6);
+      --bs-btn-disabled-color: rgba(195, 203, 219, 0.5);
+      --bs-btn-disabled-border-color: rgba(255, 255, 255, 0.18);
+    }
+    /* SweetAlert input validation message ("Reason is required"): default is a bright light-gray strip. */
+    html[data-bs-theme="dark"] .swal2-popup .swal2-validation-message {
+      background: rgba(255, 255, 255, 0.06);
+      color: #ff9fb2;
+    }
+    html[data-bs-theme="dark"] .btn-dark {
+      --bs-btn-color: #ffffff;
+      --bs-btn-bg: #2b3345;
+      --bs-btn-border-color: #3a4358;
+      --bs-btn-hover-color: #ffffff;
+      --bs-btn-hover-bg: #364058;
+      --bs-btn-hover-border-color: #46506a;
+      --bs-btn-active-color: #ffffff;
+      --bs-btn-active-bg: #3f4a66;
+      --bs-btn-active-border-color: #4c577a;
+      --bs-btn-disabled-color: rgba(255, 255, 255, 0.55);
+      --bs-btn-disabled-bg: #2b3345;
+      --bs-btn-disabled-border-color: #3a4358;
+    }
+    /* Toasts: the app-wide 25px dialog title made every toast a big card. Keep them compact. */
+    html .swal2-popup.swal2-toast {
+      width: auto;
+      max-width: min(380px, calc(100vw - 32px));
+      padding: 10px 14px;
+      align-items: center;
+      border-radius: 10px;
+      border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.08));
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+    }
+    html .swal2-popup.swal2-toast .swal2-title {
+      margin: 0 8px;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1.3;
+      font-weight: 600;
+      text-align: left;
+    }
+    html .swal2-popup.swal2-toast .swal2-html-container {
+      margin: 2px 8px 0;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.35;
+      text-align: left;
+      color: var(--bs-secondary-color, #6c757d);
+    }
+    html .swal2-popup.swal2-toast .swal2-icon {
+      width: 1.9em;
+      height: 1.9em;
+      min-width: 1.9em;
+      margin: 0 4px 0 0;
+    }
+    html .swal2-popup.swal2-toast .swal2-icon .swal2-icon-content {
+      font-size: 1.3em;
+    }
+    /* Select2 single selects: select2.css sizes the box at 28px while app.css adds form-control
+       padding to the text area, so the placeholder/value sat low and was clipped. Match the
+       app's 36px inputs and centre the text. */
+    html .select2-container--default .select2-selection--single {
+        height: 36px !important;
+        display: flex;
+        align-items: center;
+    }
+    html .select2-container--default .select2-selection--single .select2-selection__rendered {
+        width: 100%;
+        line-height: 34px !important;
+        padding: 0 30px 0 12px !important;
+    }
+    html .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: var(--bs-secondary-color, #6c757d);
+    }
+    html .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+        top: 0 !important;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--single,
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--multiple {
+        background-color: #171a21 !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #f4f7fb;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #9aa7bb;
+    }
+    /* Opened Select2 dropdown: was white with near-white option text in dark mode. */
+    html[data-bs-theme="dark"] .select2-dropdown {
+        background-color: #171a21 !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        color: #f4f7fb;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-search--dropdown .select2-search__field {
+        background-color: #12151b !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        color: #f4f7fb;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option {
+        color: #f4f7fb;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option--disabled {
+        color: #7c8799;
+    }
+
+    /* Select2 dropdown rows, chips, clear button and scrollbar: themed instead of the default
+       light-gray look (low-contrast selected items/chips, unstyled scrollbar). */
+    html .select2-dropdown {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+    html .select2-container--default .select2-results__option {
+        padding: 8px 12px;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    /* selected rows */
+    html .select2-container--default .select2-results__option[aria-selected=true],
+    html .select2-container--default .select2-results__option--selected {
+        background-color: rgba(63, 111, 217, 0.12) !important;
+        color: #2f56b8 !important;
+        font-weight: 600;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option[aria-selected=true],
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option--selected {
+        background-color: rgba(99, 140, 255, 0.16) !important;
+        color: #cfdcff !important;
+    }
+    /* hovered / keyboard-highlighted row (declared after the selected rules so it wins) */
+    html .select2-container--default .select2-results__option--highlighted[aria-selected],
+    html .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background-color: #3f6fd9 !important;
+        color: #ffffff !important;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option--highlighted[aria-selected],
+    html[data-bs-theme="dark"] .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background-color: rgba(99, 140, 255, 0.34) !important;
+        color: #ffffff !important;
+    }
+    /* chips in multi-area mode */
+    html .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: rgba(63, 111, 217, 0.12) !important;
+        border: 1px solid rgba(63, 111, 217, 0.35) !important;
+        color: #2f56b8 !important;
+        border-radius: 6px !important;
+        /* left padding leaves room for the absolutely positioned remove button */
+        padding: 2px 8px 2px 24px !important;
+        font-size: 12.5px;
+        font-weight: 500;
+    }
+    html .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: inherit !important;
+        opacity: 0.65;
+        border: 0 !important;
+        background: transparent !important;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 100%;
+    }
+    html .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        opacity: 1;
+        color: #dc2626 !important;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: rgba(99, 140, 255, 0.2) !important;
+        border-color: rgba(99, 140, 255, 0.45) !important;
+        color: #dbe6ff !important;
+    }
+    html[data-bs-theme="dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #ff8a8a !important;
+    }
+    /* "clear all" button */
+    html .select2-container--default .select2-selection__clear {
+        color: var(--bs-secondary-color, #6c757d);
+        font-weight: 400;
+    }
+    html .select2-container--default .select2-selection__clear:hover {
+        color: #dc2626;
+    }
+    /* thin themed scrollbar in the options list */
+    html .select2-results__options {
+        max-height: 260px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+    }
+    html .select2-results__options::-webkit-scrollbar {
+        width: 8px;
+    }
+    html .select2-results__options::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    html .select2-results__options::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.45);
+        border-radius: 8px;
+    }
+    html .select2-results__options::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.7);
+    }
+    html[data-bs-theme="dark"] .select2-results__options {
+        scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+    }
+    html[data-bs-theme="dark"] .select2-results__options::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.22);
+    }
+    html[data-bs-theme="dark"] .select2-results__options::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.38);
+    }
+    /* Dark-mode search/input groups: the :root block below re-applies light --pd-* values, which
+       left a white outline and a dim icon. Use the dark palette explicitly for these groups. */
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group > .input-group-text,
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group > .form-control {
+        background-color: #171a21 !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        color: #f4f7fb;
+    }
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group > .input-group-text {
+        color: #9aa7bb;
+    }
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group > .input-group-text svg {
+        color: #9aa7bb;
+        stroke: currentColor;
+    }
+    html[data-bs-theme="dark"] .input-group > .form-control::placeholder {
+        color: #9aa7bb;
+        opacity: 1;
+    }
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group:focus-within > .input-group-text,
+    html[data-bs-theme="dark"] :not(.search-form) > .input-group:focus-within > .form-control {
+        border-color: rgba(99, 140, 255, 0.55) !important;
+    }
+    html[data-bs-theme="dark"] .input-group > .form-control:focus {
+        box-shadow: none;
+    }
+    /* Icon + input groups: join the two parts into one field (the global .form-control radius
+       rounds the input's left corners and leaves a notch at the seam). */
+    .input-group > .input-group-text:first-child:not(:last-child) {
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+    .input-group > .input-group-text:first-child + .form-control {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+    }
+    /* Header "Search menu..." pill: it is hard-coded white; give it a dark-theme look. */
+    html[data-bs-theme="dark"] .navbar .search-form .input-group {
+        background: #171a21 !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    }
+    html[data-bs-theme="dark"] .navbar .search-form .input-group:focus-within {
+        border-color: rgba(99, 140, 255, 0.55) !important;
+        box-shadow: 0 0 0 3px rgba(99, 140, 255, 0.14) !important;
+    }
+    html[data-bs-theme="dark"] .navbar .search-form .input-group-text {
+        color: #9aa7bb;
+    }
+    html[data-bs-theme="dark"] .navbar .search-form .form-control {
+        color: #f4f7fb;
+    }
     :root {
         --pd-surface: #ffffff;
         --pd-muted-surface: #eef3fb;
@@ -1630,7 +1961,7 @@ document.addEventListener('DOMContentLoaded', function () {
             Swal.fire({
                 icon: 'success',
                 title: 'Success!',
-                text: '{!! session('success') !!}',
+                text: @json(session('success')),
                 timer: 3000,
                 showConfirmButton: false,
                 scrollbarPadding: false,
@@ -1641,7 +1972,7 @@ document.addEventListener('DOMContentLoaded', function () {
             Swal.fire({
                 icon: 'error',
                 title: 'Oops...',
-                text: '{!! session('error') !!}',
+                text: @json(session('error')),
                 timer: 3000,
                 showConfirmButton: true,
                 scrollbarPadding: false,
@@ -1685,5 +2016,7 @@ document.addEventListener('DOMContentLoaded', function () {
     </script>
 
     @stack('custom-scripts')
+    @include('layout.partials.password-toggle')
+    @include('layout.partials.form-errors')
 </body>
 </html>

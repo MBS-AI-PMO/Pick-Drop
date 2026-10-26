@@ -379,15 +379,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter key
   document.getElementById('userSearch').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {

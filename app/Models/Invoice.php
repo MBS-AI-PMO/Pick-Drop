@@ -14,6 +14,7 @@ class Invoice extends Model
     public const STATUS_PAID = 'paid';
     public const STATUS_OVERDUE = 'overdue';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_REFUNDED = 'refunded'; // every payment on the invoice has been refunded
 
     protected $fillable = [
         'invoice_number',
@@ -104,7 +105,12 @@ class Invoice extends Model
     public function receiptStatus(): string
     {
         $this->loadMissing('payments');
+        // A refunded payment is no longer "received", so it must not drive the invoice's receipt state.
         $latest = $this->payments->sortByDesc('id')->first(function (Payment $payment) {
+            if ($payment->status === Payment::STATUS_REFUNDED) {
+                return false;
+            }
+
             return filled($payment->proof_path)
                 || in_array($payment->receiptStatus(), [Payment::RECEIPT_NOT_RECEIVED, Payment::RECEIPT_RECEIVED], true);
         });
