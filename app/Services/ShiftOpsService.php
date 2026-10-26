@@ -42,7 +42,7 @@ class ShiftOpsService
         $sent = 0;
 
         $invoices = Invoice::query()
-            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_OVERDUE])
+            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL, Invoice::STATUS_OVERDUE])
             ->whereColumn('amount_paid', '<', 'total')
             ->where(function ($q) {
                 $q->whereNull('reminder_sent_at')
@@ -59,7 +59,11 @@ class ShiftOpsService
                     'Invoice %s of %s is %s. Please pay to keep your shift active.',
                     $invoice->invoice_number,
                     $invoice->formattedTotal(),
-                    $invoice->status === Invoice::STATUS_OVERDUE ? 'overdue' : 'unpaid'
+                    match ($invoice->status) {
+                        Invoice::STATUS_OVERDUE => 'overdue',
+                        Invoice::STATUS_PARTIAL => 'partially paid',
+                        default => 'unpaid',
+                    }
                 ),
                 ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->invoice_number],
                 'payment_reminders'

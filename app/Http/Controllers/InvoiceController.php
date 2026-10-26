@@ -28,7 +28,15 @@ class InvoiceController extends Controller
             ->with(['invoice.customer', 'invoice.student', 'user'])
             ->whereNotNull('proof_path')
             ->when($request->filled('receipt_status'), function ($query) use ($request) {
-                $query->where('receipt_status', $request->string('receipt_status'));
+                $filter = (string) $request->string('receipt_status');
+
+                if ($filter === Payment::STATUS_REFUNDED) {
+                    $query->where('status', Payment::STATUS_REFUNDED);
+                } else {
+                    // a refunded payment is no longer "received" / "not received"
+                    $query->where('receipt_status', $filter)
+                        ->where('status', '!=', Payment::STATUS_REFUNDED);
+                }
             })
             ->latest('id')
             ->paginate(AppPagination::PER_PAGE);
@@ -94,8 +102,10 @@ class InvoiceController extends Controller
         $settings = PaymentSetting::current();
 
         $summary = [
-            'collected' => (float) Invoice::query()->where('status', Invoice::STATUS_PAID)->sum('amount_paid'),
-            'pending' => (float) Invoice::query()->where('status', Invoice::STATUS_UNPAID)->selectRaw('SUM(total - amount_paid) as bal')->value('bal'),
+            // money actually received: every completed payment, whatever state its invoice is in
+            // (paid, partial, overdue, even cancelled). Refunded / pending / failed payments are not completed.
+            'collected' => (float) Payment::query()->where('status', Payment::STATUS_COMPLETED)->sum('amount'),
+            'pending' => (float) Invoice::query()->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL])->selectRaw('SUM(total - amount_paid) as bal')->value('bal'),
             'overdue' => (float) Invoice::query()->where('status', Invoice::STATUS_OVERDUE)->selectRaw('SUM(total - amount_paid) as bal')->value('bal'),
             'count' => Invoice::count(),
         ];
@@ -198,7 +208,24 @@ class InvoiceController extends Controller
                 $request->user()->id
             );
 
-            return back()->with('success', 'Payment received. Invoice emailed to the customer.');
+            $fresh = $invoice->fresh(['customer']);
+            $email = $fresh?->customer?->email;
+            $sent = $this->invoices->paymentEmailWasSent();
+            $amount = $fresh ? $fresh->formatMoney((float) $validated['amount']) : number_format((float) $validated['amount'], 2);
+
+            if ($fresh && ! $fresh->isPaid()) {
+                $message = "Payment of {$amount} recorded. Remaining balance: {$fresh->formatMoney($fresh->balance())}.";
+                $emailNote = $sent === true && $email
+                    ? " A payment confirmation with the remaining balance was emailed to {$email}."
+                    : ' The payment confirmation email could not be sent.';
+            } else {
+                $message = "Payment of {$amount} recorded. The invoice is now fully paid.";
+                $emailNote = $sent === true && $email
+                    ? " The invoice and receipt were emailed to {$email}."
+                    : ' The invoice email could not be sent.';
+            }
+
+            return back()->with('success', $message . $emailNote);
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -239,7 +266,23 @@ class InvoiceController extends Controller
         try {
             $this->invoices->refundPayment($payment, $validated['reason'], $request->user()->id);
 
-            return back()->with('success', 'Payment refunded. Invoice balance updated.');
+            $invoice = $payment->invoice()->first();
+            $amount = $invoice ? $invoice->formatMoney((float) $payment->amount) : number_format((float) $payment->amount, 2);
+            $message = $invoice && $invoice->status === Invoice::STATUS_REFUNDED
+                ? "Refund of {$amount} recorded. Invoice {$invoice->invoice_number} is now marked as Refunded."
+                : "Refund of {$amount} recorded. The invoice balance has been updated.";
+
+            $email = $invoice?->customer?->email;
+            $sent = $this->invoices->refundEmailWasSent();
+            if ($sent === true && $email) {
+                $message .= " A refund confirmation was emailed to {$email}.";
+            } elseif ($sent === false && ! $email) {
+                $message .= ' No confirmation email was sent because the customer has no email address.';
+            } elseif ($sent === false) {
+                $message .= ' The refund confirmation email could not be sent.';
+            }
+
+            return back()->with('success', $message);
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -353,12 +396,13 @@ class InvoiceController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Invoice', 'Customer', 'Email', 'Student', 'Issue Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Status', 'Method']);
+            fputcsv($out, ['Invoice', 'Customer', 'Email', 'Role', 'Student', 'Issue Date', 'Due Date', 'Total', 'Paid', 'Balance', 'Status', 'Method']);
             foreach ($rows as $invoice) {
                 fputcsv($out, [
                     $invoice->invoice_number,
                     $invoice->customer?->name,
                     $invoice->customer?->email,
+                    $invoice->customer?->role ? ucfirst(strtolower((string) $invoice->customer->role)) : '',
                     $invoice->student?->name,
                     $invoice->issue_date?->format('Y-m-d'),
                     $invoice->due_date?->format('Y-m-d'),

@@ -29,6 +29,7 @@
           <option value="">All statuses</option>
           <option value="not_received" {{ request('receipt_status') === 'not_received' ? 'selected' : '' }}>Not received</option>
           <option value="received" {{ request('receipt_status') === 'received' ? 'selected' : '' }}>Received</option>
+          <option value="refunded" {{ request('receipt_status') === 'refunded' ? 'selected' : '' }}>Refunded</option>
         </select>
       </div>
       @if(request()->filled('receipt_status'))
@@ -58,7 +59,12 @@
         </thead>
         <tbody>
           @forelse($payments as $payment)
-            @php [$label, $style] = $badge($payment->receiptStatus()); @endphp
+            @php
+              $isRefunded = $payment->status === 'refunded';
+              [$label, $style] = $isRefunded
+                  ? ['Refunded', 'background:#fae8ff;color:#86198f;']
+                  : $badge($payment->receiptStatus());
+            @endphp
             <tr>
               <td class="ps-4">
                 @if($payment->proofUrl())
@@ -89,17 +95,30 @@
               <td>{{ str_replace('_', ' ', $payment->method) }}</td>
               <td class="fw-semibold">{{ $payment->invoice?->formatMoney((float) $payment->amount) ?? number_format((float) $payment->amount, 2) }}</td>
               <td>{{ $payment->created_at?->format('d M Y, h:i A') }}</td>
-              <td><span class="badge rounded-pill px-3 py-1" style="{{ $style }}">{{ $label }}</span></td>
+              <td>
+                <span class="badge rounded-pill px-3 py-1" style="{{ $style }}">{{ $label }}</span>
+                @if($isRefunded)
+                  <div class="small mt-1">
+                    <span class="fw-semibold">{{ $payment->refunded_at?->format('d M Y, h:i A') ?? '—' }}</span>
+                    · {{ $payment->invoice?->formatMoney((float) $payment->amount) ?? number_format((float) $payment->amount, 2) }}
+                  </div>
+                  <div class="text-muted small">Reason: {{ $payment->refund_reason ?: '—' }}</div>
+                @endif
+              </td>
               <td class="text-end pe-4">
                 <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
                   @csrf
                   <input type="hidden" name="receipt_status" value="received">
-                  <button class="btn btn-sm btn-dark" type="submit" {{ $payment->receiptStatus() === 'received' ? 'disabled' : '' }}>Received</button>
+                  <button class="btn btn-sm btn-dark" type="submit"
+                          {{ $isRefunded || $payment->receiptStatus() === 'received' ? 'disabled' : '' }}
+                          @if($isRefunded) title="Refunded payments can't be changed" @endif>Received</button>
                 </form>
                 <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
                   @csrf
                   <input type="hidden" name="receipt_status" value="not_received">
-                  <button class="btn btn-sm btn-outline-danger" type="submit" {{ $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}>Not received</button>
+                  <button class="btn btn-sm btn-outline-danger" type="submit"
+                          {{ $isRefunded || $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}
+                          @if($isRefunded) title="Refunded payments can't be changed" @endif>Not received</button>
                 </form>
               </td>
             </tr>

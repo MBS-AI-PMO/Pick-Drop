@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/locations/cities', [LocationController::class, 'citiesIndex'])->name('locations.cities.index');
     Route::get('/locations/areas', [LocationController::class, 'areasIndex'])->name('locations.areas.index');
     Route::get('/locations/points', [LocationController::class, 'pointsIndex'])->name('locations.points.index');
+    Route::get('/locations/map-search', [LocationController::class, 'searchMapLocations'])->name('locations.map-search');
     Route::post('/locations/cities', [LocationController::class, 'storeCity'])->name('locations.cities.store');
     Route::post('/locations/cities/import', [LocationController::class, 'importCities'])->name('locations.cities.import');
     Route::put('/locations/cities/{city}', [LocationController::class, 'updateCity'])->name('locations.cities.update');
@@ -174,6 +175,7 @@ Route::middleware(['auth'])->group(function () {
     })->where('any', '.*');
     Route::get('/driver-payments', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
     Route::get('/driver-payments/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
+    Route::get('/driver-payments/drivers/{user}/bill-options', [DriverPayrollController::class, 'billOptions'])->name('driver-payroll.bill-options');
     Route::post('/driver-payments/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
     Route::post('/driver-payments/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
     Route::get('/driver-payments/{bill}', [DriverPayrollController::class, 'show'])
@@ -200,6 +202,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
         ->whereNumber('notification')
         ->name('notifications.destroy');
+    Route::post('/vehicles/{vehicle}/assign-driver', [VehicleController::class, 'assignDriver'])
+        ->name('vehicles.assign-driver');
     Route::post('/vehicles/{vehicle}/unassign', [VehicleController::class, 'unassign'])
         ->name('vehicles.unassign');
 });

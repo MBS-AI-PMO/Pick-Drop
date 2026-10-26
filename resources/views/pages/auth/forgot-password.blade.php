@@ -230,25 +230,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     @endif
 
-    @if($errors->any())
-        Swal.fire({
-            icon: 'error',
-            title: 'Validation Error',
-            html: `
-                <ul class="text-start mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            `,
-            timer: 4000,
-            showConfirmButton: true,
-            confirmButtonText: 'Ok',
-            confirmButtonColor: '#e63946',
-            scrollbarPadding: false,
-            customClass: { popup: 'rounded-4' }
-        });
-    @endif
 });
 </script>
 @endpush

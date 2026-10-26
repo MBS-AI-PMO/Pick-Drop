@@ -86,14 +86,53 @@ class DriverPayrollController extends Controller
 
         $readyMonths = $payrolls->readyBillingMonths();
 
+        // drivers for the "New driver bill" form; their billable shifts are loaded when one is chosen
+        $drivers = User::query()
+            ->whereRaw('LOWER(role) = ?', ['driver'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone']);
+
         return view('pickdrop.driver-payroll.index', compact(
             'bills',
             'summary',
             'groupedReady',
             'readyMonth',
             'readyMonths',
-            'billMonths'
+            'billMonths',
+            'drivers'
         ));
+    }
+
+    /**
+     * Billable shifts and periods for one driver (powers the "New driver bill" form).
+     * Only shifts the payroll rules allow billing for are returned, so the form cannot offer an invalid choice.
+     */
+    public function billOptions(User $user, DriverPayrollService $payrolls)
+    {
+        abort_unless(strcasecmp((string) $user->role, 'driver') === 0, 404);
+
+        $shifts = $payrolls->readyForBilling($user->id)
+            ->groupBy('pickup_request_id')
+            ->map(function ($rows, $requestId) {
+                $first = $rows->first();
+                $who = $first['student_name'] ?: $first['requester_name'];
+
+                return [
+                    'id' => (int) $requestId,
+                    'title' => 'Shift #'.$requestId.' · '.$who,
+                    'periods' => $rows->sortBy('period_start')->map(fn (array $row) => [
+                        'start' => $row['period_start'],
+                        'end' => $row['period_end'],
+                        'label' => $row['label'].' ('.Carbon::parse($row['period_start'])->format('d M').' – '
+                            .Carbon::parse($row['period_end'])->format('d M Y').')',
+                        'amount' => round((float) $row['preview_amount'], 2),
+                    ])->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['driver' => $user->name, 'shifts' => $shifts]);
     }
 
     public function driver(Request $request, User $user, DriverPayrollService $payrolls)

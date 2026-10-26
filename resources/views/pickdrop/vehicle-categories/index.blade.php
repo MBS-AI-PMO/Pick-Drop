@@ -245,15 +245,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter
   document.getElementById('categorySearch').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') document.getElementById('filterForm').submit();
@@ -270,11 +261,14 @@
     new bootstrap.Modal(document.getElementById('viewCategoryModal')).show();
   }
 
+  // route() keeps the correct base path when the app is served from a sub-folder.
+  const updateCategoryUrlTemplate = "{{ route('vehicle-categories.update', ':id') }}";
+
   function openEditModal(category) {
     document.getElementById('edit_vehicle_name').value      = category.vehicle_name;
     document.getElementById('edit_passenger_capacity').value = category.passenger_capacity;
     document.getElementById('edit_status').value            = category.status;
-    document.getElementById('editCategoryForm').action      = `/vehicle-categories/${category.id}`;
+    document.getElementById('editCategoryForm').action      = updateCategoryUrlTemplate.replace(':id', category.id);
     editModal.show();
   }
 

@@ -34,13 +34,17 @@
         </div>
         <div class="pd-cal-grid">
           @foreach($days as $day)
+            @php $isPast = \Illuminate\Support\Carbon::parse($day['date'])->lt(now()->startOfDay()); @endphp
             <button type="button"
-                    class="pd-cal-day {{ $day['in_month'] ? '' : 'is-muted' }} {{ $day['is_today'] ? 'is-today' : '' }} {{ $day['holidays']->isNotEmpty() ? 'has-off' : '' }}"
+                    class="pd-cal-day {{ $day['in_month'] ? '' : 'is-muted' }} {{ $day['is_today'] ? 'is-today' : '' }} {{ $day['holidays']->isNotEmpty() ? 'has-off' : '' }} {{ $isPast ? 'is-past' : '' }}"
                     data-date="{{ $day['date'] }}"
-                    title="Announce off day on {{ \Illuminate\Support\Carbon::parse($day['date'])->format('d M Y') }}">
+                    title="{{ $isPast ? 'Past dates cannot be selected' : 'Announce off day on '.\Illuminate\Support\Carbon::parse($day['date'])->format('d M Y') }}">
               <span class="pd-cal-num">{{ $day['label'] }}</span>
-              @foreach($day['holidays'] as $holiday)
-                <span class="pd-cal-chip pd-cal-chip-{{ $holiday->type }}">{{ $holiday->name }}</span>
+              {{-- one chip per announcement; the same title announced for several cities is merged --}}
+              @foreach($day['holidays']->groupBy(fn ($h) => $h->name.'|'.$h->type) as $group)
+                @php $first = $group->first(); @endphp
+                <span class="pd-cal-chip pd-cal-chip-{{ $first->type }}"
+                      title="{{ $first->name }} · {{ $group->map(fn ($h) => $h->city?->name ?? 'All cities')->unique()->implode(', ') }}">{{ $first->name }}</span>
               @endforeach
               @if(($day['trips'] ?? 0) > 0)
                 <span class="pd-cal-chip pd-cal-chip-trip">{{ $day['trips'] }} trips</span>
@@ -83,7 +87,8 @@
                     <div class="text-secondary small">{{ $holiday->date?->format('d M Y') }} · {{ $holiday->typeLabel() }} · {{ $holiday->city?->name ?? 'All cities' }}</div>
                   </td>
                   <td class="text-end pe-3">
-                    <form method="POST" action="{{ route('holidays.destroy', $holiday) }}" onsubmit="return confirm('Remove this announcement?')">
+                    <form method="POST" action="{{ route('holidays.destroy', $holiday) }}"
+                          onsubmit="confirmAnnouncementRemove(event, this, {{ Js::from($holiday->name) }}, {{ Js::from(($holiday->city?->name ?? 'All cities').' · '.$holiday->date?->format('d M Y')) }})">
                       @csrf
                       @method('DELETE')
                       <input type="hidden" name="year" value="{{ $cursor->year }}">
@@ -117,24 +122,50 @@
       <form method="POST" action="{{ route('holidays.store') }}">
         @csrf
         <div class="modal-body pt-2">
-          <p class="text-secondary small">Pickups in the selected city will be skipped on this date.</p>
+          <p class="text-secondary small">Pickups in the selected cities will be skipped on this date.</p>
           <label class="form-label">Date</label>
-          <input type="date" name="date" id="holiday_date" class="form-control mb-3" value="{{ old('date') }}" required>
+          <input type="date" name="date" id="holiday_date" min="{{ now()->toDateString() }}" class="form-control mb-3 {{ $errors->has('date') ? 'is-invalid' : '' }}" value="{{ old('date') }}" required>
           <label class="form-label">Title</label>
-          <input type="text" name="name" class="form-control mb-3" value="{{ old('name') }}" placeholder="e.g. Eid holiday, Summer break" required>
+          <input type="text" name="name" class="form-control mb-3 {{ $errors->has('name') ? 'is-invalid' : '' }}" value="{{ old('name') }}" placeholder="e.g. Eid holiday, Summer break" required>
           <label class="form-label">Type</label>
           <select name="type" class="form-select mb-3" required>
             @foreach($types as $value => $label)
               <option value="{{ $value }}" {{ old('type', 'custom') === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
           </select>
-          <label class="form-label">City</label>
-          <select name="city_id" class="form-select">
-            <option value="">All cities</option>
-            @foreach($cities as $city)
-              <option value="{{ $city->id }}" {{ (string) old('city_id') === (string) $city->id ? 'selected' : '' }}>{{ $city->name }}</option>
-            @endforeach
-          </select>
+          @php
+            $hasOld = session()->hasOldInput();
+            $allChecked = $hasOld ? (bool) old('all_cities') : true;
+            $oldCityIds = array_map('strval', (array) old('city_ids', []));
+          @endphp
+          <label class="form-label">Cities <span class="text-danger">*</span></label>
+          {{-- Inline expanding list (not a floating dropdown): it pushes the form down instead of
+               covering the fields above it or getting clipped inside the modal. --}}
+          <div id="cityPicker">
+            <button type="button" id="cityPickerBtn"
+                    class="form-select text-start {{ $errors->has('city_ids') ? 'is-invalid' : '' }}"
+                    data-bs-toggle="collapse" data-bs-target="#cityPickerMenu" aria-expanded="false" aria-controls="cityPickerMenu">
+              <span id="cityPickerLabel">All cities</span>
+            </button>
+            <div class="collapse" id="cityPickerMenu">
+             <div class="border rounded p-2 mt-1" style="max-height:200px;overflow-y:auto;">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="all_cities" value="1" id="cityAll" {{ $allChecked ? 'checked' : '' }}>
+                <label class="form-check-label fw-semibold" for="cityAll">All cities</label>
+              </div>
+              <hr class="my-2">
+              @foreach($cities as $city)
+                <div class="form-check">
+                  <input class="form-check-input city-option" type="checkbox" name="city_ids[]" value="{{ $city->id }}"
+                         id="city_opt_{{ $city->id }}" data-name="{{ $city->name }}"
+                         {{ in_array((string) $city->id, $oldCityIds, true) ? 'checked' : '' }}>
+                  <label class="form-check-label" for="city_opt_{{ $city->id }}">{{ $city->name }}</label>
+                </div>
+              @endforeach
+             </div>
+            </div>
+          </div>
+          <div class="form-text">Select one or more cities, or all cities.</div>
         </div>
         <div class="modal-footer border-0 pt-0">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -188,6 +219,14 @@
   }
   .pd-cal-day.is-muted {
     opacity: .38;
+  }
+  .pd-cal-day.is-past {
+    cursor: not-allowed;
+  }
+  .pd-cal-day.is-past:hover {
+    border-color: var(--pd-border, #e6ebf2);
+    box-shadow: none;
+    transform: none;
   }
   .pd-cal-day.is-today {
     border-color: #3f6fd9;
@@ -244,14 +283,128 @@
 
 @push('custom-scripts')
 <script>
+  // Styled in-app confirmation (replaces the browser's confirm() popup).
+  function confirmAnnouncementRemove(event, form, name, details) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Remove announcement?',
+      html: '<strong></strong><br><span class="text-secondary"></span>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, remove it',
+      cancelButtonText: 'Cancel',
+      focusCancel: true,
+      scrollbarPadding: false,
+      customClass: { popup: 'rounded-4' },
+      didOpen: function (popup) {
+        // textContent keeps titles containing quotes or HTML safe
+        popup.querySelector('.swal2-html-container strong').textContent = name;
+        popup.querySelector('.swal2-html-container span').textContent = details;
+      }
+    }).then(function (result) {
+      if (result.isConfirmed) form.submit();
+    });
+  }
+
+  var PAST_DATE_MESSAGE = 'Past dates cannot be selected. Choose today or a later date.';
+  var todayStr = @json(now()->toDateString());
+
+  function showPastDateMessage() {
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'error', title: PAST_DATE_MESSAGE, toast: true, position: 'top-end',
+        showConfirmButton: false, timer: 4000, timerProgressBar: true,
+        customClass: { popup: 'pd-toast pd-toast-single' }
+      });
+    }
+  }
+
+  // Calendar day click: past days cannot be announced.
   document.querySelectorAll('.pd-cal-day').forEach(function (day) {
     day.addEventListener('click', function () {
+      var date = this.getAttribute('data-date');
+      if (date < todayStr) {
+        showPastDateMessage();
+        return;
+      }
       var dateInput = document.getElementById('holiday_date');
-      if (dateInput) dateInput.value = this.getAttribute('data-date');
+      if (dateInput) {
+        dateInput.value = date;
+        dateInput.setCustomValidity('');
+        dateInput.classList.remove('is-invalid');
+      }
       var modal = new bootstrap.Modal(document.getElementById('announceOffDayModal'));
       modal.show();
     });
   });
+
+  // Date input: same message when a past date is typed or picked.
+  (function () {
+    var dateInput = document.getElementById('holiday_date');
+    if (!dateInput) return;
+    function check() {
+      var past = dateInput.value && dateInput.value < todayStr;
+      dateInput.setCustomValidity(past ? PAST_DATE_MESSAGE : '');
+      dateInput.classList.toggle('is-invalid', !!past);
+    }
+    dateInput.addEventListener('input', check);
+    dateInput.addEventListener('change', check);
+    dateInput.addEventListener('invalid', function () {
+      if (dateInput.value && dateInput.value < todayStr) dateInput.classList.add('is-invalid');
+    });
+  })();
+
+  // Multi-city picker: "All cities" or any number of specific cities.
+  (function () {
+    var allBox = document.getElementById('cityAll');
+    var label = document.getElementById('cityPickerLabel');
+    var button = document.getElementById('cityPickerBtn');
+    var options = Array.prototype.slice.call(document.querySelectorAll('.city-option'));
+    if (!allBox || !label) return;
+
+    function selectedOptions() {
+      return options.filter(function (box) { return box.checked; });
+    }
+
+    function refreshLabel() {
+      var picked = selectedOptions();
+      if (allBox.checked) {
+        label.textContent = 'All cities';
+      } else if (picked.length === 0) {
+        label.textContent = 'Select cities';
+      } else if (picked.length <= 2) {
+        label.textContent = picked.map(function (b) { return b.getAttribute('data-name'); }).join(', ');
+      } else {
+        label.textContent = picked.length + ' cities selected';
+      }
+      if (button && (allBox.checked || picked.length)) button.classList.remove('is-invalid');
+    }
+
+    allBox.addEventListener('change', function () {
+      if (allBox.checked) {
+        options.forEach(function (box) { box.checked = false; });
+      } else if (selectedOptions().length === 0) {
+        // never leave the picker empty: fall back to "All cities"
+        allBox.checked = true;
+      }
+      refreshLabel();
+    });
+
+    options.forEach(function (box) {
+      box.addEventListener('change', function () {
+        if (box.checked) {
+          allBox.checked = false;
+        } else if (selectedOptions().length === 0) {
+          allBox.checked = true;
+        }
+        refreshLabel();
+      });
+    });
+
+    refreshLabel();
+  })();
 
   @if($errors->any())
   document.addEventListener('DOMContentLoaded', function () {

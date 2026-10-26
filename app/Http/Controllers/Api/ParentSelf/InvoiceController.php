@@ -31,7 +31,10 @@ class InvoiceController extends BaseApiController
             $invoices = Invoice::query()
                 ->with(['items', 'student', 'payments'])
                 ->where('user_id', $user->id)
-                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+                // apps see a partly paid invoice as "unpaid", so the unpaid filter must include it
+                ->when($request->filled('status'), fn ($q) => $request->status === Invoice::STATUS_UNPAID
+                    ? $q->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL])
+                    : $q->where('status', $request->status))
                 ->latest('id')
                 ->paginate(\App\Support\AppPagination::PER_PAGE);
 

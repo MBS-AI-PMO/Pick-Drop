@@ -12,7 +12,7 @@
 
 <div class="row g-3">
   <div class="col-lg-8">
-    <div class="card mb-3">
+    <div class="card h-100">
       <div class="card-header"><h6 class="mb-0">Alert</h6></div>
       <div class="card-body">
         <div class="row g-3">
@@ -59,7 +59,7 @@
     </div>
   </div>
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header"><h6 class="mb-0">Actions</h6></div>
       <div class="card-body">
         @if($alert->status === 'open')

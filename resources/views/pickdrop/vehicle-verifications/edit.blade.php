@@ -143,15 +143,5 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-    icon: 'error',
-    title: 'Validation Error',
-    html: `{!! implode('<br>', $errors->all()) !!}`,
-    confirmButtonText: 'OK',
-    confirmButtonColor: '#e63946',
-    customClass: { popup: 'rounded-4' }
-  });
-  @endif
 </script>
 @endpush

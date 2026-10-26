@@ -7,7 +7,8 @@
     <p class="text-secondary mb-0">Active paid trips and driver GPS — Baig/UTS style ops board</p>
   </div>
   <div class="d-flex gap-2 align-items-center">
-    <span class="badge bg-light text-dark" id="fleetSummary">Loading…</span>
+    <small class="text-secondary" id="fleetUpdated"></small>
+    <span class="badge bg-body-secondary text-body border" id="fleetSummary">Loading…</span>
     <button type="button" class="btn btn-outline-primary btn-sm" id="fleetRefresh">Refresh</button>
   </div>
 </div>
@@ -55,11 +56,47 @@
     markers = [];
   }
 
+  const refreshBtn = document.getElementById('fleetRefresh');
+  const updatedEl = document.getElementById('fleetUpdated');
+  let loading = false;
+
+  // Wraps the fetch with a visible loading state, a "last updated" time and error feedback.
+  async function refreshFleet() {
+    if (loading) return;
+    loading = true;
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Refreshing…';
+    }
+    try {
+      // Keep the loading state visible briefly so a fast response still looks like it did something.
+      await Promise.all([loadFleet(), new Promise(resolve => setTimeout(resolve, 400))]);
+      if (updatedEl) updatedEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch (err) {
+      if (updatedEl) updatedEl.textContent = 'Update failed';
+      if (window.Swal) {
+        Swal.fire({
+          icon: 'error', title: 'Could not refresh',
+          text: 'Live fleet data could not be loaded. Please try again.',
+          toast: true, position: 'top-end', showConfirmButton: false, timer: 4000
+        });
+      }
+    } finally {
+      loading = false;
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh';
+      }
+    }
+  }
+
   async function loadFleet() {
     ensureMap();
     const res = await fetch(@json(route('fleet.live')), {
-      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     summaryEl.textContent = (data.summary?.active_trips || 0) + ' trips · ' + (data.summary?.drivers_on_map || 0) + ' on map · ' + (data.summary?.drivers_on_duty || 0) + ' on duty';
 
@@ -79,7 +116,7 @@
       item.innerHTML = '<div class="fw-semibold">#' + trip.id + ' · ' + (trip.passenger || 'Passenger') + '</div>'
         + '<div class="small text-secondary">' + (trip.driver?.name || 'No driver') + ' · ' + (trip.vehicle?.plate || 'No plate') + '</div>'
         + '<div class="small">' + (trip.pickup || '') + ' → ' + (trip.drop || '') + '</div>'
-        + '<span class="badge bg-light text-dark mt-1">' + (trip.status || '') + '</span>';
+        + '<span class="badge bg-body-secondary text-body border mt-1">' + (trip.status || '') + '</span>';
 
       if (trip.driver?.lat && trip.driver?.lng && map) {
         const marker = L.marker([trip.driver.lat, trip.driver.lng]).addTo(map)
@@ -99,7 +136,7 @@
     }
   }
 
-  document.getElementById('fleetRefresh')?.addEventListener('click', loadFleet);
+  refreshBtn?.addEventListener('click', refreshFleet);
 
   function boot() {
     if (!window.L) {
@@ -109,11 +146,12 @@
       document.head.appendChild(css);
       const js = document.createElement('script');
       js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      js.onload = () => { loadFleet(); setInterval(loadFleet, 20000); };
+      js.onload = () => { refreshFleet(); setInterval(refreshFleet, 20000); };
+      js.onerror = () => { summaryEl.textContent = 'Map library failed to load'; };
       document.body.appendChild(js);
     } else {
-      loadFleet();
-      setInterval(loadFleet, 20000);
+      refreshFleet();
+      setInterval(refreshFleet, 20000);
     }
   }
   boot();

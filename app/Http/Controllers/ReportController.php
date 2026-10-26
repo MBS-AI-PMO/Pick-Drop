@@ -74,7 +74,7 @@ class ReportController extends Controller
                 ->whereBetween('paid_at', [$from, $to])
                 ->sum('total'),
             'pending_invoices' => (int) Invoice::query()
-                ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_OVERDUE])
+                ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL, Invoice::STATUS_OVERDUE])
                 ->count(),
             'refunds' => (float) Payment::query()
                 ->where('status', Payment::STATUS_REFUNDED)
