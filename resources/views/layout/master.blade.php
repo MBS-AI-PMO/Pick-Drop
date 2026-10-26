@@ -491,8 +491,15 @@ Author: PickDrop Team
         display: flex !important;
         flex-direction: column;
         justify-content: flex-start;
+        /* Bootstrap's .nav is flex-wrap: wrap. In a fixed-height column that pushes the items that don't fit
+           into a second, hidden column (Payments / Driver Payments vanished once a group was expanded).
+           Keep one column and let it scroll instead. */
+        flex-wrap: nowrap;
         overflow-y: auto;
         overflow-x: hidden;
+    }
+    nav.sidebar.pd-sidebar .sidebar-body .nav#sidebarNav > li {
+        flex: 0 0 auto;
     }
     nav.sidebar.pd-sidebar .sidebar-footer {
         flex: 0 0 auto;
@@ -1986,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const nav = document.getElementById('sidebarNav');
         if (!nav) return;
 
-        const sectionIds = ['nav-people', 'nav-locations', 'nav-vehicles', 'nav-operations'];
+        const sectionIds = ['nav-people', 'nav-locations', 'nav-vehicles', 'nav-operations', 'nav-payments'];
 
         sectionIds.forEach(function (id) {
             const panel = document.getElementById(id);

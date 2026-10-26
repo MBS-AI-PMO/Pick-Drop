@@ -5,6 +5,7 @@
   $statusBadge = match ($invoice->status) {
       'paid' => ['Paid', 'background:#f3f4f6;color:#111111;'],
       'unpaid' => ['Unpaid', 'background:#fef9c3;color:#92400e;'],
+      'partial' => ['Partial', 'background:#e0f2fe;color:#075985;'],
       'overdue' => ['Overdue', 'background:#fee2e2;color:#991b1b;'],
       'cancelled' => ['Cancelled', 'background:#e5e7eb;color:#374151;'],
       'refunded' => ['Refunded', 'background:#fae8ff;color:#86198f;'],
@@ -31,7 +32,7 @@
         <i data-lucide="trash-2" class="icon-xs me-1"></i> Delete
       </button>
     </form>
-    @if($invoice->status !== 'cancelled' && !$invoice->isPaid())
+    @if(! in_array($invoice->status, ['cancelled', 'refunded'], true) && !$invoice->isPaid())
       <form method="POST" action="{{ route('payments.send', $invoice) }}">
         @csrf
         <button class="btn btn-dark" type="submit">

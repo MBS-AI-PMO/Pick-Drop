@@ -15,6 +15,7 @@ class Invoice extends Model
     public const STATUS_OVERDUE = 'overdue';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED = 'refunded'; // every payment on the invoice has been refunded
+    public const STATUS_PARTIAL = 'partial';   // some, but not all, of the total has been paid
 
     protected $fillable = [
         'invoice_number',
@@ -93,7 +94,7 @@ class Invoice extends Model
 
     public function isPayable(): bool
     {
-        return in_array($this->status, [self::STATUS_UNPAID, self::STATUS_OVERDUE, self::STATUS_DRAFT], true)
+        return in_array($this->status, [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_OVERDUE, self::STATUS_DRAFT], true)
             && $this->balance() > 0;
     }
 
@@ -171,7 +172,7 @@ class Invoice extends Model
     public function syncOverdueStatus(): void
     {
         if (
-            in_array($this->status, [self::STATUS_UNPAID, self::STATUS_OVERDUE], true)
+            in_array($this->status, [self::STATUS_UNPAID, self::STATUS_PARTIAL, self::STATUS_OVERDUE], true)
             && $this->due_date
             && $this->due_date->lt(now()->startOfDay())
             && $this->balance() > 0
@@ -193,7 +194,10 @@ class Invoice extends Model
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
             'pickup_request_id' => $this->pickup_request_id,
-            'status' => $this->status,
+            // Mobile apps only know unpaid/paid/overdue/...: report a partly paid invoice as "unpaid" and
+            // flag it separately, so existing app builds keep working.
+            'status' => $this->status === self::STATUS_PARTIAL ? self::STATUS_UNPAID : $this->status,
+            'partially_paid' => $this->status === self::STATUS_PARTIAL,
             'currency' => $this->currency,
             'subtotal' => $this->subtotal,
             'tax_percent' => $this->tax_percent,

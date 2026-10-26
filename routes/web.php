@@ -175,6 +175,7 @@ Route::middleware(['auth'])->group(function () {
     })->where('any', '.*');
     Route::get('/driver-payments', [DriverPayrollController::class, 'index'])->name('driver-payroll.index');
     Route::get('/driver-payments/drivers/{user}', [DriverPayrollController::class, 'driver'])->name('driver-payroll.driver');
+    Route::get('/driver-payments/drivers/{user}/bill-options', [DriverPayrollController::class, 'billOptions'])->name('driver-payroll.bill-options');
     Route::post('/driver-payments/generate', [DriverPayrollController::class, 'generate'])->name('driver-payroll.generate');
     Route::post('/driver-payments/drivers/{user}/generate-all', [DriverPayrollController::class, 'generateAll'])->name('driver-payroll.generate-all');
     Route::get('/driver-payments/{bill}', [DriverPayrollController::class, 'show'])

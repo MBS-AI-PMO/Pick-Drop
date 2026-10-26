@@ -3,11 +3,14 @@
 
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
+<div class="d-flex justify-content-between align-items-center flex-wrap grid-margin gap-2">
   <div>
     <h4 class="mb-1">Driver Payments</h4>
     <p class="text-secondary mb-0">Review driver payment requests, generate shift-wise bills, and record payouts.</p>
   </div>
+  <button type="button" class="btn btn-primary" id="newDriverBillBtn" data-bs-toggle="modal" data-bs-target="#newDriverBillModal">
+    <i data-lucide="plus" class="icon-sm me-1"></i> New driver bill
+  </button>
 </div>
 
 <ul class="nav nav-pills gap-2 mb-4">
@@ -258,6 +261,60 @@
     </table>
   </div>
   <x-app-pagination :paginator="$bills" label="bills" />
+</div>
+
+{{-- ========== NEW DRIVER BILL ========== --}}
+<div class="modal fade" id="newDriverBillModal" tabindex="-1" aria-labelledby="newDriverBillModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="newDriverBillModalLabel">New driver bill</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ route('driver-payroll.generate') }}" id="newDriverBillForm" novalidate>
+        @csrf
+        <input type="hidden" name="pickup_request_id" id="ndbRequestId">
+        <input type="hidden" name="period_start" id="ndbPeriodStart">
+        <input type="hidden" name="period_end" id="ndbPeriodEnd">
+        <div class="modal-body pt-2">
+          <p class="text-secondary small mb-3">
+            Create a payment bill for one shift and month. The amount is calculated from attendance and the driver's
+            monthly rate. Only completed months of shifts the customer has paid for can be billed.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="ndbDriver">Driver <span class="text-danger">*</span></label>
+            <select id="ndbDriver" class="form-select">
+              <option value="">Select driver</option>
+              @foreach($drivers as $driver)
+                <option value="{{ $driver->id }}">{{ $driver->name }}@if($driver->phone) · {{ $driver->phone }}@endif</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="ndbShift">Shift <span class="text-danger">*</span></label>
+            <select id="ndbShift" class="form-select" disabled>
+              <option value="">Select a driver first</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="ndbPeriod">Billing period <span class="text-danger">*</span></label>
+            <select id="ndbPeriod" class="form-select" disabled>
+              <option value="">Select a shift first</option>
+            </select>
+          </div>
+          <div id="ndbEstimate" class="alert alert-light border py-2 mb-0 d-none">
+            Estimated bill: <strong id="ndbEstimateAmount">—</strong>
+            <span class="text-secondary small d-block">Final amount is calculated when the bill is generated; you can review it before approving.</span>
+          </div>
+          <div id="ndbEmpty" class="text-secondary small mt-2 d-none"></div>
+        </div>
+        <div class="modal-footer border-0 pt-2">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4" id="ndbSubmit" disabled>Generate bill</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 @endsection
@@ -554,6 +611,119 @@
 
     document.addEventListener('click', (e) => {
       if (!root.contains(e.target)) setOpen(false);
+    });
+  })();
+</script>
+<script>
+  // "New driver bill": driver -> shift -> billing period, loaded from what is actually billable.
+  (function () {
+    const driverSel = document.getElementById('ndbDriver');
+    const shiftSel = document.getElementById('ndbShift');
+    const periodSel = document.getElementById('ndbPeriod');
+    const submit = document.getElementById('ndbSubmit');
+    const estimate = document.getElementById('ndbEstimate');
+    const estimateAmount = document.getElementById('ndbEstimateAmount');
+    const emptyNote = document.getElementById('ndbEmpty');
+    const reqId = document.getElementById('ndbRequestId');
+    const pStart = document.getElementById('ndbPeriodStart');
+    const pEnd = document.getElementById('ndbPeriodEnd');
+    const optionsUrl = @json(route('driver-payroll.bill-options', ':id'));
+    let shifts = [];
+
+    if (!driverSel) return;
+
+    function reset(select, placeholder, disabled) {
+      select.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = placeholder;
+      select.appendChild(opt);
+      select.disabled = disabled;
+    }
+
+    function clearChoice() {
+      reqId.value = pStart.value = pEnd.value = '';
+      submit.disabled = true;
+      estimate.classList.add('d-none');
+    }
+
+    function money(value) {
+      return 'PKR ' + Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    driverSel.addEventListener('change', function () {
+      clearChoice();
+      emptyNote.classList.add('d-none');
+      reset(periodSel, 'Select a shift first', true);
+      shifts = [];
+
+      if (!driverSel.value) {
+        reset(shiftSel, 'Select a driver first', true);
+        return;
+      }
+
+      reset(shiftSel, 'Loading shifts…', true);
+      fetch(optionsUrl.replace(':id', driverSel.value), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+        .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+        .then((data) => {
+          shifts = data.shifts || [];
+          if (!shifts.length) {
+            reset(shiftSel, 'No shifts ready for billing', true);
+            emptyNote.textContent = (data.driver || 'This driver') + ' has no completed, paid shift months waiting for a bill.';
+            emptyNote.classList.remove('d-none');
+            return;
+          }
+          reset(shiftSel, 'Select shift', false);
+          shifts.forEach((shift, index) => {
+            const opt = document.createElement('option');
+            opt.value = String(index);
+            opt.textContent = shift.title;
+            shiftSel.appendChild(opt);
+          });
+        })
+        .catch(() => {
+          reset(shiftSel, 'Could not load shifts', true);
+          emptyNote.textContent = 'Shifts could not be loaded. Please try again.';
+          emptyNote.classList.remove('d-none');
+        });
+    });
+
+    shiftSel.addEventListener('change', function () {
+      clearChoice();
+      reset(periodSel, 'Select a shift first', true);
+      const shift = shifts[Number(shiftSel.value)];
+      if (shiftSel.value === '' || !shift) return;
+
+      reset(periodSel, 'Select billing period', false);
+      shift.periods.forEach((period, index) => {
+        const opt = document.createElement('option');
+        opt.value = String(index);
+        opt.textContent = period.label;
+        periodSel.appendChild(opt);
+      });
+      if (shift.periods.length === 1) {
+        periodSel.value = '0';
+        periodSel.dispatchEvent(new Event('change'));
+      }
+    });
+
+    periodSel.addEventListener('change', function () {
+      clearChoice();
+      const shift = shifts[Number(shiftSel.value)];
+      const period = shift && shift.periods[Number(periodSel.value)];
+      if (periodSel.value === '' || !period) return;
+
+      reqId.value = shift.id;
+      pStart.value = period.start;
+      pEnd.value = period.end;
+      estimateAmount.textContent = money(period.amount);
+      estimate.classList.remove('d-none');
+      submit.disabled = false;
+    });
+
+    document.getElementById('newDriverBillModal').addEventListener('hidden.bs.modal', function () {
+      driverSel.value = '';
+      driverSel.dispatchEvent(new Event('change'));
     });
   })();
 </script>

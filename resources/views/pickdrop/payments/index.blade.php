@@ -6,6 +6,7 @@
       return match ($status) {
           'paid' => ['Paid', 'background:#f3f4f6;color:#111111;'],
           'unpaid' => ['Unpaid', 'background:#fef9c3;color:#92400e;'],
+          'partial' => ['Partial', 'background:#e0f2fe;color:#075985;'],
           'overdue' => ['Overdue', 'background:#fee2e2;color:#991b1b;'],
           'cancelled' => ['Cancelled', 'background:#e5e7eb;color:#374151;'],
           'refunded' => ['Refunded', 'background:#fae8ff;color:#86198f;'],
@@ -92,7 +93,7 @@
         <div class="col-12 col-md-2">
           <select class="form-select" name="status" onchange="this.form.submit()">
             <option value="">All statuses</option>
-            @foreach(['draft','unpaid','paid','overdue','cancelled','refunded'] as $st)
+            @foreach(['draft','unpaid','partial','paid','overdue','cancelled','refunded'] as $st)
               <option value="{{ $st }}" {{ request('status') === $st ? 'selected' : '' }}>{{ ucfirst($st) }}</option>
             @endforeach
           </select>

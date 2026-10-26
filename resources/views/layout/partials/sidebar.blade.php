@@ -10,6 +10,10 @@
     || request()->is('fleet*')
     || request()->is('routes*')
     || request()->is('schools*');
+  $paymentsOpen = request()->is('payments*')
+    || request()->is('driver-payments*')
+    || request()->is('driver-payroll*')
+    || request()->is('payrolls*');
 @endphp
 <nav class="sidebar pd-sidebar">
   <div class="sidebar-header">
@@ -182,25 +186,32 @@
       </li>
 
       {{-- 4. Money --}}
-      <li class="pd-nav-section pd-nav-section--link">
-        <a href="{{ route('payments.index') }}" class="pd-nav-section-toggle {{ active_class(['payments', 'payments/*']) }}">
+      <li class="pd-nav-section {{ $paymentsOpen ? 'is-open' : '' }}">
+        <a class="pd-nav-section-toggle {{ $paymentsOpen ? 'active' : '' }}"
+           data-bs-toggle="collapse" href="#nav-payments"
+           role="button"
+           aria-expanded="{{ $paymentsOpen ? 'true' : 'false' }}"
+           aria-controls="nav-payments">
           <span class="pd-nav-ico"><i class="link-icon" data-lucide="credit-card"></i></span>
           <span class="link-title">Payments</span>
+          <i class="link-arrow" data-lucide="chevron-down"></i>
         </a>
+        <div class="collapse {{ $paymentsOpen ? 'show' : '' }}" id="nav-payments">
+          <ul class="pd-nav-section-list">
+            <li class="nav-item {{ active_class(['payments', 'payments/*']) }}">
+              <a href="{{ route('payments.index') }}" class="nav-link"><span class="link-title">Invoices &amp; Payments</span></a>
+            </li>
+            <li class="nav-item {{ active_class(['driver-payments', 'driver-payments/*', 'driver-payroll', 'driver-payroll/*', 'payrolls', 'payrolls/*']) }}">
+              <a href="{{ route('driver-payroll.index') }}" class="nav-link"><span class="link-title">Driver Payments</span></a>
+            </li>
+          </ul>
+        </div>
       </li>
 
       <li class="pd-nav-section pd-nav-section--link">
         <a href="{{ route('charges.index') }}" class="pd-nav-section-toggle {{ active_class(['charges', 'charges/*']) }}">
           <span class="pd-nav-ico"><i class="link-icon" data-lucide="badge-dollar-sign"></i></span>
           <span class="link-title">Pick-Drop Charges</span>
-        </a>
-      </li>
-
-      <li class="pd-nav-section pd-nav-section--link">
-        <a href="{{ route('driver-payroll.index') }}"
-           class="pd-nav-section-toggle {{ active_class(['driver-payments', 'driver-payments/*', 'driver-payroll', 'driver-payroll/*', 'payrolls', 'payrolls/*']) }}">
-          <span class="pd-nav-ico"><i class="link-icon" data-lucide="wallet"></i></span>
-          <span class="link-title">Driver Payments</span>
         </a>
       </li>
 
