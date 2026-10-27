@@ -5,8 +5,10 @@
   $statusBadge = match ($invoice->status) {
       'paid' => ['Paid', 'background:#f3f4f6;color:#111111;'],
       'unpaid' => ['Unpaid', 'background:#fef9c3;color:#92400e;'],
+      'partial' => ['Partial', 'background:#e0f2fe;color:#075985;'],
       'overdue' => ['Overdue', 'background:#fee2e2;color:#991b1b;'],
       'cancelled' => ['Cancelled', 'background:#e5e7eb;color:#374151;'],
+      'refunded' => ['Refunded', 'background:#fae8ff;color:#86198f;'],
       default => ['Draft', 'background:#e0e7ff;color:#3730a3;'],
   };
 @endphp
@@ -30,7 +32,7 @@
         <i data-lucide="trash-2" class="icon-xs me-1"></i> Delete
       </button>
     </form>
-    @if($invoice->status !== 'cancelled' && !$invoice->isPaid())
+    @if(! in_array($invoice->status, ['cancelled', 'refunded'], true) && !$invoice->isPaid())
       <form method="POST" action="{{ route('payments.send', $invoice) }}">
         @csrf
         <button class="btn btn-dark" type="submit">
@@ -102,7 +104,15 @@
               <tr><td>Tax ({{ rtrim(rtrim(number_format($invoice->tax_percent, 2), '0'), '.') }}%)</td><td class="text-end">{{ $invoice->formatMoney((float) $invoice->tax_amount) }}</td></tr>
               <tr><td class="fw-bold">Total</td><td class="text-end fw-bold">{{ $invoice->formattedTotal() }}</td></tr>
               <tr><td>Paid</td><td class="text-end fw-semibold">{{ $invoice->formatMoney((float) $invoice->amount_paid) }}</td></tr>
-              <tr><td class="fw-bold">Balance</td><td class="text-end fw-bold">{{ $invoice->formatMoney($invoice->balance()) }}</td></tr>
+              @if($invoice->status === 'refunded')
+                {{-- fully refunded: nothing is owed, so don't show the invoice total as an outstanding balance --}}
+                <tr>
+                  <td class="fw-bold">Balance</td>
+                  <td class="text-end"><span class="fw-bold">{{ $invoice->formatMoney(0) }}</span> <small class="text-muted">· refunded</small></td>
+                </tr>
+              @else
+                <tr><td class="fw-bold">Balance</td><td class="text-end fw-bold">{{ $invoice->formatMoney($invoice->balance()) }}</td></tr>
+              @endif
             </table>
           </div>
         </div>
@@ -134,15 +144,32 @@
                   <td>{{ str_replace('_', ' ', $payment->method) }}</td>
                   <td>{{ $payment->reference ?: '—' }}</td>
                   <td>{{ $invoice->formatMoney((float) $payment->amount) }}</td>
-                  <td>{{ $payment->receiptStatusLabel() }}</td>
+                  <td>
+                    @if($payment->status === 'refunded')
+                      <span class="badge rounded-pill px-3 py-1" style="background:#fae8ff;color:#86198f;">Refunded</span>
+                      <div class="small mt-1">
+                        <span class="fw-semibold">{{ $payment->refunded_at?->format('d M Y, h:i A') ?? '—' }}</span>
+                        · {{ $invoice->formatMoney((float) $payment->amount) }}
+                      </div>
+                      <div class="text-muted small">Reason: {{ $payment->refund_reason ?: '—' }}</div>
+                    @else
+                      {{ $payment->receiptStatusLabel() }}
+                    @endif
+                  </td>
                   <td class="text-center">
                     <div class="action-btns">
                       @if($payment->proof_path)
-                        <a href="{{ $payment->proofUrl() }}" target="_blank" class="action-btn action-btn-view" title="View">
+                        <button type="button"
+                                class="action-btn action-btn-view screenshot-thumb"
+                                title="View"
+                                data-bs-toggle="modal"
+                                data-bs-target="#paymentScreenshotModal"
+                                data-screenshot-url="{{ $payment->proofUrl() }}"
+                                data-screenshot-title="{{ $invoice->invoice_number }} screenshot">
                           <i data-lucide="eye"></i>
-                        </a>
+                        </button>
                       @endif
-                      @if($payment->proof_path)
+                      @if($payment->proof_path && $payment->status !== 'refunded')
                         <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
                           @csrf
                           <input type="hidden" name="receipt_status" value="received">
@@ -267,10 +294,50 @@
   @endif
 </div>
 
+{{-- Screenshot overlay --}}
+<div class="modal fade" id="paymentScreenshotModal" tabindex="-1" aria-labelledby="paymentScreenshotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-semibold" id="paymentScreenshotModalLabel">Payment screenshot</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3 text-center">
+        <img id="paymentScreenshotModalImg" src="" alt="Payment screenshot"
+             class="img-fluid rounded-3"
+             style="max-height:75vh;width:auto;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('custom-scripts')
 <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('paymentScreenshotModal');
+    if (!modalEl) return;
+
+    modalEl.addEventListener('show.bs.modal', function (event) {
+      var trigger = event.relatedTarget;
+      if (!trigger) return;
+
+      var url = trigger.getAttribute('data-screenshot-url') || '';
+      var title = trigger.getAttribute('data-screenshot-title') || 'Payment screenshot';
+      var img = document.getElementById('paymentScreenshotModalImg');
+      var label = document.getElementById('paymentScreenshotModalLabel');
+
+      if (img) img.src = url;
+      if (label) label.textContent = title;
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      var img = document.getElementById('paymentScreenshotModalImg');
+      if (img) img.src = '';
+    });
+  });
+
   function confirmDeleteInvoice(event, form) {
     event.preventDefault();
     Swal.fire({

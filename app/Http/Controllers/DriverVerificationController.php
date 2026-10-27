@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ManagesVerificationDocuments;
+use App\Models\City;
 use App\Models\DriverVerification;
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
@@ -10,9 +12,12 @@ use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class DriverVerificationController extends Controller
 {
+    use ManagesVerificationDocuments;
+
     public function index(Request $request)
     {
         try {
@@ -55,6 +60,87 @@ class DriverVerificationController extends Controller
         return view('pickdrop.driver-verifications.show', [
             'verification' => $driverVerification,
         ]);
+    }
+
+    public function edit(DriverVerification $driverVerification)
+    {
+        $driverVerification->load(['user', 'city']);
+        $cities = City::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('pickdrop.driver-verifications.edit', [
+            'verification' => $driverVerification,
+            'cities' => $cities,
+        ]);
+    }
+
+    public function update(Request $request, DriverVerification $driverVerification)
+    {
+        $validated = $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'father_name' => ['nullable', 'string', 'max:255'],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'address' => ['required', 'string', 'max:500'],
+            'city_id' => ['required', 'integer', 'exists:cities,id'],
+            'cnic_number' => [
+                'required',
+                'string',
+                'max:20',
+                'regex:/^[0-9]{5}-?[0-9]{7}-?[0-9]{1}$/',
+                Rule::unique('driver_verifications', 'cnic_number')->ignore($driverVerification->id),
+            ],
+            'license_number' => ['required', 'string', 'max:100'],
+            'license_expiry' => ['required', 'date'],
+            'cnic_front' => ['nullable', 'image', 'max:5120'],
+            'cnic_back' => ['nullable', 'image', 'max:5120'],
+            'selfie_photo' => ['nullable', 'image', 'max:5120'],
+            'license_front' => ['nullable', 'image', 'max:5120'],
+            'license_back' => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $payload = [
+                'full_name' => $validated['full_name'],
+                'father_name' => $validated['father_name'] ?? null,
+                'date_of_birth' => $validated['date_of_birth'],
+                'address' => $validated['address'],
+                'city_id' => (int) $validated['city_id'],
+                'cnic_number' => $this->normalizeCnicNumber($validated['cnic_number']),
+                'license_number' => $validated['license_number'],
+                'license_expiry' => $validated['license_expiry'],
+            ];
+
+            $documentUpdates = $this->replaceVerificationDocuments(
+                $driverVerification,
+                $request->allFiles(),
+                'driver-kyc/' . $driverVerification->user_id,
+                [
+                    'cnic_front' => 'cnic_front',
+                    'cnic_back' => 'cnic_back',
+                    'selfie_photo' => 'selfie',
+                    'license_front' => 'license_front',
+                    'license_back' => 'license_back',
+                ]
+            );
+
+            $driverVerification->update(array_merge($payload, $documentUpdates));
+
+            $driverVerification->user?->update([
+                'city_id' => (int) $validated['city_id'],
+            ]);
+
+            return redirect()
+                ->route('driver-verifications.show', $driverVerification)
+                ->with('success', 'Driver verification updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to update driver verification details', [
+                'id' => $driverVerification->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update verification: ' . $e->getMessage());
+        }
     }
 
     public function approve(Request $request, DriverVerification $driverVerification)

@@ -56,7 +56,7 @@ class VerificationController extends BaseApiController
             $request->merge(['service_areas' => array_values($rawAreas)]);
 
             $validated = $request->validate([
-                // name / phone / email registration se auto aate hain — yahan change nahi
+                // Name, phone, and email come from registration and cannot be changed here
                 'father_name' => ['nullable', 'string', 'max:255'],
                 'date_of_birth' => ['required', 'date', 'before:today'],
                 'address' => ['required', 'string', 'max:500'],
@@ -200,7 +200,7 @@ class VerificationController extends BaseApiController
     }
 
     /**
-     * Registration details — KYC form mein auto-fill / locked.
+     * Registration details for KYC auto-fill. These fields stay locked.
      *
      * @return array{full_name: string, phone: ?string, email: string, readonly_fields: list<string>}
      */

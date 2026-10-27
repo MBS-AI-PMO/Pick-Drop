@@ -101,7 +101,6 @@
               'shift' => $route->shift ? ucfirst($route->shift) : '—',
               'stops_count' => $route->stops_count,
               'description' => $route->description,
-              'edit_url' => route('routes.edit', $route),
             ];
           @endphp
           <tr>
@@ -210,54 +209,51 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
-        <div class="row g-3">
+        <div class="row g-3 view-detail-grid">
           <div class="col-6">
-            <p class="text-secondary small mb-1">Code</p>
-            <p class="fw-semibold mb-0" id="viewRouteCode">—</p>
+            <label class="form-label mb-1">Code</label>
+            <div class="fw-semibold text-break" id="viewRouteCode">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Name</p>
-            <p class="fw-semibold mb-0" id="viewRouteName">—</p>
+            <label class="form-label mb-1">Name</label>
+            <div class="fw-semibold text-break" id="viewRouteName">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">City</p>
-            <p class="fw-semibold mb-0" id="viewRouteCity">—</p>
+            <label class="form-label mb-1">City</label>
+            <div class="fw-semibold text-break" id="viewRouteCity">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Area</p>
-            <p class="fw-semibold mb-0" id="viewRouteArea">—</p>
+            <label class="form-label mb-1">Area</label>
+            <div class="fw-semibold text-break" id="viewRouteArea">—</div>
           </div>
           <div class="col-12">
-            <p class="text-secondary small mb-1">Destination</p>
-            <p class="fw-semibold mb-0" id="viewRouteDestination">—</p>
+            <label class="form-label mb-1">Destination</label>
+            <div class="fw-semibold text-break" id="viewRouteDestination">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Vehicle</p>
-            <p class="fw-semibold mb-0" id="viewRouteVehicle">—</p>
+            <label class="form-label mb-1">Vehicle</label>
+            <div class="fw-semibold text-break" id="viewRouteVehicle">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Timing</p>
-            <p class="fw-semibold mb-0" id="viewRouteTiming">—</p>
+            <label class="form-label mb-1">Timing</label>
+            <div class="fw-semibold text-break" id="viewRouteTiming">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Shift</p>
-            <p class="fw-semibold mb-0" id="viewRouteShift">—</p>
+            <label class="form-label mb-1">Shift</label>
+            <div class="fw-semibold text-break" id="viewRouteShift">—</div>
           </div>
           <div class="col-6">
-            <p class="text-secondary small mb-1">Stops</p>
-            <p class="fw-semibold mb-0" id="viewRouteStops">—</p>
+            <label class="form-label mb-1">Stops</label>
+            <div class="fw-semibold text-break" id="viewRouteStops">—</div>
           </div>
           <div class="col-12">
-            <p class="text-secondary small mb-1">Description</p>
-            <p class="fw-semibold mb-0" id="viewRouteDescription">—</p>
+            <label class="form-label mb-1">Description</label>
+            <div class="fw-semibold text-break" id="viewRouteDescription">—</div>
           </div>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-        <a href="#" id="viewRouteEditBtn" class="btn btn-primary">
-          <i data-lucide="edit-2" class="icon-sm me-1"></i> Edit
-        </a>
       </div>
     </div>
   </div>
@@ -300,15 +296,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter
   const routeSearch = document.getElementById('routeSearch');
   if (routeSearch) {
@@ -328,7 +315,6 @@
     document.getElementById('viewRouteShift').textContent = route.shift || '—';
     document.getElementById('viewRouteStops').textContent = (route.stops_count ?? 0) + ' Stops';
     document.getElementById('viewRouteDescription').textContent = route.description || '—';
-    document.getElementById('viewRouteEditBtn').href = route.edit_url || '#';
     new bootstrap.Modal(document.getElementById('viewRouteModal')).show();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }

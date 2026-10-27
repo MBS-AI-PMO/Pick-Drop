@@ -88,11 +88,14 @@ class LocationController extends Controller
             'status'    => 'nullable|string',
         ]);
 
+        $latitude  = (isset($data['latitude']) && $data['latitude'] !== '') ? $data['latitude'] : null;
+        $longitude = (isset($data['longitude']) && $data['longitude'] !== '') ? $data['longitude'] : null;
+
         try {
             City::create([
                 'name'      => $data['name'],
-                'latitude'  => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
+                'latitude'  => $latitude,
+                'longitude' => $longitude,
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
@@ -152,7 +155,7 @@ class LocationController extends Controller
             fclose($handle);
 
             return redirect()
-                ->route('locations.index')
+                ->route('locations.cities.index')
                 ->with('success', "Imported {$imported} cities successfully.");
         } catch (\Throwable $e) {
             Log::error('Failed to import cities', [
@@ -174,11 +177,14 @@ class LocationController extends Controller
             'status'    => 'nullable|string',
         ]);
 
+        $latitude  = (isset($data['latitude']) && $data['latitude'] !== '') ? $data['latitude'] : null;
+        $longitude = (isset($data['longitude']) && $data['longitude'] !== '') ? $data['longitude'] : null;
+
         try {
             $city->update([
                 'name'      => $data['name'],
-                'latitude'  => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
+                'latitude'  => $latitude,
+                'longitude' => $longitude,
                 'status'    => $data['status'] ?? 'Active',
             ]);
 
@@ -201,14 +207,14 @@ class LocationController extends Controller
         try {
             $city->delete();
 
-            return redirect()->route('locations.index')->with('success', 'City deleted successfully!');
+            return redirect()->route('locations.cities.index')->with('success', 'City deleted successfully!');
         } catch (\Throwable $e) {
             Log::error('Failed to delete city', [
                 'city_id' => $city->id,
                 'error'   => $e->getMessage(),
             ]);
 
-            return redirect()->route('locations.index')->with('error', 'Failed to delete city: ' . $e->getMessage());
+            return redirect()->route('locations.cities.index')->with('error', 'Failed to delete city: ' . $e->getMessage());
         }
     }
 

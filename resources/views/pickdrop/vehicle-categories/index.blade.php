@@ -211,18 +211,18 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
-        <div class="row g-3">
+        <div class="row g-3 view-detail-grid">
           <div class="col-12">
-            <p class="text-secondary small mb-1">Vehicle Name</p>
-            <p class="fw-semibold mb-0" id="viewCategoryName">—</p>
+            <label class="form-label mb-1">Vehicle Name</label>
+            <div class="fw-semibold text-break" id="viewCategoryName">—</div>
           </div>
           <div class="col-md-6">
-            <p class="text-secondary small mb-1">Passenger Capacity</p>
-            <p class="fw-semibold mb-0" id="viewCategoryCapacity">—</p>
+            <label class="form-label mb-1">Passenger Capacity</label>
+            <div class="fw-semibold text-break" id="viewCategoryCapacity">—</div>
           </div>
           <div class="col-md-6">
-            <p class="text-secondary small mb-1">Status</p>
-            <p class="fw-semibold mb-0" id="viewCategoryStatus">—</p>
+            <label class="form-label mb-1">Status</label>
+            <div class="fw-semibold text-break" id="viewCategoryStatus">—</div>
           </div>
         </div>
       </div>
@@ -245,15 +245,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter
   document.getElementById('categorySearch').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') document.getElementById('filterForm').submit();
@@ -270,11 +261,14 @@
     new bootstrap.Modal(document.getElementById('viewCategoryModal')).show();
   }
 
+  // route() keeps the correct base path when the app is served from a sub-folder.
+  const updateCategoryUrlTemplate = "{{ route('vehicle-categories.update', ':id') }}";
+
   function openEditModal(category) {
     document.getElementById('edit_vehicle_name').value      = category.vehicle_name;
     document.getElementById('edit_passenger_capacity').value = category.passenger_capacity;
     document.getElementById('edit_status').value            = category.status;
-    document.getElementById('editCategoryForm').action      = `/vehicle-categories/${category.id}`;
+    document.getElementById('editCategoryForm').action      = updateCategoryUrlTemplate.replace(':id', category.id);
     editModal.show();
   }
 

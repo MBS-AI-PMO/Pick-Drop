@@ -7,15 +7,26 @@
     <h4 class="mb-1">Pickup Requests</h4>
     <p class="text-secondary mb-0">See who submitted a request, current status, and assigned driver</p>
   </div>
-  @if(($counts['all'] ?? 0) > 0)
-    <form action="{{ route('pickup-requests.clear') }}" method="POST">
-      @csrf
-      <button type="submit" class="btn btn-outline-danger">
-        <i data-lucide="trash-2" class="icon-xs"></i>
-        Clear all
-      </button>
-    </form>
-  @endif
+  <div class="d-flex gap-2">
+    @if(($counts['cleared'] ?? 0) > 0)
+      <form action="{{ route('pickup-requests.recover') }}" method="POST" onsubmit="confirmRecoverRequests(event, this)">
+        @csrf
+        <button type="submit" class="btn btn-outline-primary">
+          <i data-lucide="rotate-ccw" class="icon-xs"></i>
+          Recover ({{ number_format($counts['cleared']) }})
+        </button>
+      </form>
+    @endif
+    @if(($counts['all'] ?? 0) > 0)
+      <form action="{{ route('pickup-requests.clear') }}" method="POST" onsubmit="confirmClearRequests(event, this)">
+        @csrf
+        <button type="submit" class="btn btn-outline-danger">
+          <i data-lucide="trash-2" class="icon-xs"></i>
+          Clear all
+        </button>
+      </form>
+    @endif
+  </div>
 </div>
 
 <div class="row g-3 mb-3">
@@ -167,7 +178,7 @@
               </td>
               <td>
                 @if($item->tripMode() === \App\Models\PickupRequest::TRIP_ROUND)
-                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Ana-jana</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Round trip</span>
                 @else
                   <span class="badge bg-secondary">One way</span>
                 @endif
@@ -227,3 +238,43 @@
 </div>
 
 @endsection
+
+@push('custom-scripts')
+<script>
+  function confirmClearRequests(event, form) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Clear all data?',
+      text: 'Are you sure you want to clear all pickup requests? You can recover them later.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, clear all',
+      cancelButtonText: 'Cancel',
+      scrollbarPadding: false,
+      customClass: { popup: 'rounded-4' }
+    }).then(function (result) {
+      if (result.isConfirmed) form.submit();
+    });
+  }
+
+  function confirmRecoverRequests(event, form) {
+    event.preventDefault();
+    Swal.fire({
+      title: 'Recover cleared data?',
+      text: 'This will put the cleared pickup requests back on the list.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0d6efd',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, recover',
+      cancelButtonText: 'Cancel',
+      scrollbarPadding: false,
+      customClass: { popup: 'rounded-4' }
+    }).then(function (result) {
+      if (result.isConfirmed) form.submit();
+    });
+  }
+</script>
+@endpush

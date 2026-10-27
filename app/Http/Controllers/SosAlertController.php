@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\SosAlert;
+use App\Services\ShiftDayService;
 use App\Support\AppPagination;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class SosAlertController extends Controller
 {
@@ -45,6 +47,29 @@ class SosAlertController extends Controller
         ]);
 
         return back()->with('success', 'SOS acknowledged.');
+    }
+
+    public function endTrip(Request $request, SosAlert $sosAlert)
+    {
+        $driver = $sosAlert->user;
+        if (!$driver || $driver->role !== 'driver') {
+            return back()->with('error', 'This alert is not from a driver.');
+        }
+
+        try {
+            app(ShiftDayService::class)->endTripByAdmin($driver);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $sosAlert->update([
+            'status' => SosAlert::RESOLVED,
+            'handled_by' => $request->user()->id,
+            'resolved_at' => now(),
+            'acknowledged_at' => $sosAlert->acknowledged_at ?: now(),
+        ]);
+
+        return back()->with('success', 'Trip ended.');
     }
 
     public function resolve(Request $request, SosAlert $sosAlert)

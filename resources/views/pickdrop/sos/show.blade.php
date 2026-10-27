@@ -12,7 +12,7 @@
 
 <div class="row g-3">
   <div class="col-lg-8">
-    <div class="card mb-3">
+    <div class="card h-100">
       <div class="card-header"><h6 class="mb-0">Alert</h6></div>
       <div class="card-body">
         <div class="row g-3">
@@ -24,6 +24,10 @@
           <div class="col-md-6">
             <label class="text-muted small">Status</label>
             <div class="fw-semibold">{{ ucfirst($alert->status) }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small">Type</label>
+            <div class="fw-semibold">{{ $alert->type ? ucfirst($alert->type) : '—' }}</div>
           </div>
           <div class="col-md-6">
             <label class="text-muted small">Request</label>
@@ -55,7 +59,7 @@
     </div>
   </div>
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header"><h6 class="mb-0">Actions</h6></div>
       <div class="card-body">
         @if($alert->status === 'open')
@@ -63,6 +67,13 @@
             @csrf
             <button class="btn btn-outline-dark w-100" type="submit">Acknowledge</button>
           </form>
+        @endif
+        @if($alert->status !== 'resolved' && $alert->user?->role === 'driver')
+          <form method="POST" action="{{ route('sos.end-trip', $alert) }}" class="mb-2">
+            @csrf
+            <button class="btn btn-danger w-100" type="submit">End trip</button>
+          </form>
+          <p class="text-muted small">The driver cannot end this trip. Ending it here closes today's trip.</p>
         @endif
         @if($alert->status !== 'resolved')
           <form method="POST" action="{{ route('sos.resolve', $alert) }}" class="mb-2">

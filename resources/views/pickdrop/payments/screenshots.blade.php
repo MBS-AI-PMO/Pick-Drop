@@ -29,6 +29,7 @@
           <option value="">All statuses</option>
           <option value="not_received" {{ request('receipt_status') === 'not_received' ? 'selected' : '' }}>Not received</option>
           <option value="received" {{ request('receipt_status') === 'received' ? 'selected' : '' }}>Received</option>
+          <option value="refunded" {{ request('receipt_status') === 'refunded' ? 'selected' : '' }}>Refunded</option>
         </select>
       </div>
       @if(request()->filled('receipt_status'))
@@ -58,13 +59,24 @@
         </thead>
         <tbody>
           @forelse($payments as $payment)
-            @php [$label, $style] = $badge($payment->receiptStatus()); @endphp
+            @php
+              $isRefunded = $payment->status === 'refunded';
+              [$label, $style] = $isRefunded
+                  ? ['Refunded', 'background:#fae8ff;color:#86198f;']
+                  : $badge($payment->receiptStatus());
+            @endphp
             <tr>
               <td class="ps-4">
                 @if($payment->proofUrl())
-                  <a href="{{ $payment->proofUrl() }}" target="_blank">
-                    <img src="{{ $payment->proofUrl() }}" alt="Payment screenshot" style="width:72px;height:72px;object-fit:cover;border-radius:8px;">
-                  </a>
+                  <button type="button"
+                          class="btn p-0 border-0 bg-transparent screenshot-thumb"
+                          data-bs-toggle="modal"
+                          data-bs-target="#paymentScreenshotModal"
+                          data-screenshot-url="{{ $payment->proofUrl() }}"
+                          data-screenshot-title="{{ $payment->invoice?->invoice_number ?: 'Payment screenshot' }}"
+                          title="View screenshot">
+                    <img src="{{ $payment->proofUrl() }}" alt="Payment screenshot" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;">
+                  </button>
                 @else
                   —
                 @endif
@@ -83,17 +95,30 @@
               <td>{{ str_replace('_', ' ', $payment->method) }}</td>
               <td class="fw-semibold">{{ $payment->invoice?->formatMoney((float) $payment->amount) ?? number_format((float) $payment->amount, 2) }}</td>
               <td>{{ $payment->created_at?->format('d M Y, h:i A') }}</td>
-              <td><span class="badge rounded-pill px-3 py-1" style="{{ $style }}">{{ $label }}</span></td>
+              <td>
+                <span class="badge rounded-pill px-3 py-1" style="{{ $style }}">{{ $label }}</span>
+                @if($isRefunded)
+                  <div class="small mt-1">
+                    <span class="fw-semibold">{{ $payment->refunded_at?->format('d M Y, h:i A') ?? '—' }}</span>
+                    · {{ $payment->invoice?->formatMoney((float) $payment->amount) ?? number_format((float) $payment->amount, 2) }}
+                  </div>
+                  <div class="text-muted small">Reason: {{ $payment->refund_reason ?: '—' }}</div>
+                @endif
+              </td>
               <td class="text-end pe-4">
                 <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
                   @csrf
                   <input type="hidden" name="receipt_status" value="received">
-                  <button class="btn btn-sm btn-dark" type="submit" {{ $payment->receiptStatus() === 'received' ? 'disabled' : '' }}>Received</button>
+                  <button class="btn btn-sm btn-dark" type="submit"
+                          {{ $isRefunded || $payment->receiptStatus() === 'received' ? 'disabled' : '' }}
+                          @if($isRefunded) title="Refunded payments can't be changed" @endif>Received</button>
                 </form>
                 <form method="POST" action="{{ route('payments.receipt', $payment) }}" class="d-inline">
                   @csrf
                   <input type="hidden" name="receipt_status" value="not_received">
-                  <button class="btn btn-sm btn-outline-danger" type="submit" {{ $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}>Not received</button>
+                  <button class="btn btn-sm btn-outline-danger" type="submit"
+                          {{ $isRefunded || $payment->receiptStatus() === 'not_received' ? 'disabled' : '' }}
+                          @if($isRefunded) title="Refunded payments can't be changed" @endif>Not received</button>
                 </form>
               </td>
             </tr>
@@ -109,4 +134,48 @@
   <x-app-pagination :paginator="$payments" label="screenshots" />
 </div>
 
+{{-- Screenshot overlay --}}
+<div class="modal fade" id="paymentScreenshotModal" tabindex="-1" aria-labelledby="paymentScreenshotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-semibold" id="paymentScreenshotModalLabel">Payment screenshot</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3 text-center">
+        <img id="paymentScreenshotModalImg" src="" alt="Payment screenshot"
+             class="img-fluid rounded-3"
+             style="max-height:75vh;width:auto;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var modalEl = document.getElementById('paymentScreenshotModal');
+  if (!modalEl) return;
+
+  modalEl.addEventListener('show.bs.modal', function (event) {
+    var trigger = event.relatedTarget;
+    if (!trigger) return;
+
+    var url = trigger.getAttribute('data-screenshot-url') || '';
+    var title = trigger.getAttribute('data-screenshot-title') || 'Payment screenshot';
+    var img = document.getElementById('paymentScreenshotModalImg');
+    var label = document.getElementById('paymentScreenshotModalLabel');
+
+    if (img) img.src = url;
+    if (label) label.textContent = title;
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    var img = document.getElementById('paymentScreenshotModalImg');
+    if (img) img.src = '';
+  });
+});
+</script>
+@endpush

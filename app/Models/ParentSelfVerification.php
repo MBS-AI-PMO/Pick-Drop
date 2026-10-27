@@ -110,10 +110,15 @@ class ParentSelfVerification extends Model
     {
         $this->loadMissing(['city', 'user']);
 
+        $status = is_string($this->status) ? strtolower(trim($this->status)) : '';
+        if ($status === '' || $status === 'null') {
+            $status = self::STATUS_PENDING;
+        }
+
         return [
             'id' => $this->id,
             'account_type' => $this->account_type,
-            'status' => $this->status,
+            'status' => $status,
             'rejection_reason' => $this->rejection_reason,
             'full_name' => $this->user?->name ?? $this->full_name,
             'phone' => $this->contactPhone(),

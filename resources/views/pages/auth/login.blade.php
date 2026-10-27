@@ -104,6 +104,67 @@ body {
     border-color: #e63946;
 }
 
+.password-field.input-group > .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.password-field.input-group > .password-toggle {
+    margin-left: -1px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    color: #6c757d;
+    border-radius: 0 12px 12px 0;
+    padding: 0 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.password-field.input-group > .password-toggle svg {
+    width: 18px;
+    height: 18px;
+}
+.password-field.input-group > .password-toggle:hover,
+.password-field.input-group > .password-toggle:focus {
+    background: #f8f9fa;
+    color: #1d3557;
+    border-color: #dee2e6;
+    box-shadow: none;
+    outline: none;
+}
+.password-field.input-group > .form-control:focus {
+    box-shadow: none;
+    z-index: 3;
+}
+.password-field.input-group:focus-within {
+    border-radius: 12px;
+    box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.15);
+}
+.password-field.input-group:focus-within > .form-control,
+.password-field.input-group:focus-within > .password-toggle {
+    border-color: #e63946;
+    background: #fff;
+}
+[data-bs-theme="dark"] .password-field.input-group > .password-toggle {
+    background: #252833;
+    border-color: #323644;
+    color: #adb5bd;
+}
+[data-bs-theme="dark"] .password-field.input-group > .password-toggle:hover,
+[data-bs-theme="dark"] .password-field.input-group > .password-toggle:focus {
+    background: #252833;
+    border-color: #323644;
+    color: #f1faee;
+}
+[data-bs-theme="dark"] .password-field.input-group:focus-within > .form-control,
+[data-bs-theme="dark"] .password-field.input-group:focus-within > .password-toggle {
+    background: #252833;
+    border-color: #ff4d6d;
+}
+[data-bs-theme="dark"] .password-field.input-group:focus-within {
+    box-shadow: 0 0 0 4px rgba(255, 77, 109, 0.15);
+}
+
 .text-primary-custom {
     color: #e63946 !important;
     text-decoration: none;
@@ -187,25 +248,16 @@ body {
               <div class="mb-4 micro-anim">
                   <label for="userPassword" class="form-label fw-medium">Password</label>
               
-                  <div class="input-group">
-                      <input
-                          type="password"
-                          class="form-control"
-                          id="userPassword"
-                          name="password"
-                          autocomplete="current-password"
-                          placeholder="••••••••"
-                          required
-                      >
-              
-                      <button
-                          class="btn btn-outline-secondary"
-                          type="button"
-                          id="togglePassword"
-                      >
-                          <i data-lucide="eye" id="passwordIcon"></i>
-                      </button>
-                  </div>
+                  {{-- The show/hide eye is added automatically by layout/partials/password-toggle --}}
+                  <input
+                      type="password"
+                      class="form-control"
+                      id="userPassword"
+                      name="password"
+                      autocomplete="current-password"
+                      placeholder="••••••••"
+                      required
+                  >
               </div>
               <div class="mb-4 d-flex justify-content-between align-items-center micro-anim auth-options-row">
                 <div class="form-check">
@@ -274,44 +326,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     @endif
 
-    @if($errors->any())
-        Swal.fire({
-            icon: 'error',
-            title: 'Validation Error',
-            html: `
-                <ul class="text-start mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            `,
-            timer: 4000,
-            showConfirmButton: true,
-            confirmButtonText: 'Ok',
-            confirmButtonColor: '#e63946',
-            scrollbarPadding: false,
-            customClass: { popup: 'rounded-4' }
-        });
-    @endif
-    const passwordField = document.getElementById('userPassword');
-const togglePassword = document.getElementById('togglePassword');
-const passwordIcon = document.getElementById('passwordIcon');
-
-togglePassword.addEventListener('click', function () {
-
-    const type = passwordField.getAttribute('type') === 'password'
-        ? 'text'
-        : 'password';
-
-    passwordField.setAttribute('type', type);
-
-    passwordIcon.setAttribute(
-        'data-lucide',
-        type === 'password' ? 'eye' : 'eye-off'
-    );
-
-    lucide.createIcons();
-});
 });
 </script>
 @endpush

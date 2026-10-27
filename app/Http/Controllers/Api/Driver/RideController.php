@@ -27,17 +27,22 @@ class RideController extends BaseApiController
                 return $denied;
             }
 
-            $stops = app(ShiftDayService::class)->todayStopsForDriver($driver);
+            $day = app(ShiftDayService::class);
+            $stops = $day->todayStopsForDriver($driver);
             $stops->loadMissing(['pickupRequest.stops.area', 'pickupRequest.student', 'pickupRequest.parent', 'pickupRequest.vehicle']);
             $payload = $stops->map(fn (PickupRequestStop $stop) => $stop->toApiArray())->values();
-            $trips = $stops->groupBy('pickup_request_id')->map(function ($group) {
+            $trips = $stops->groupBy('pickup_request_id')->map(function ($group) use ($day) {
                 $pickupRequest = $group->first()?->pickupRequest;
                 $student = $pickupRequest?->student;
+                $progress = $day->passengerProgress($group);
 
                 return [
                     'pickup_request_id' => $pickupRequest?->id,
                     'passenger' => $student?->name ?: $pickupRequest?->requesterName(),
                     'passenger_count' => (int) ($pickupRequest?->passenger_count ?: 1),
+                    'passenger_status' => $progress['passenger_status'],
+                    'not_going_reason' => $progress['not_going_reason'],
+                    'can_mark_not_going' => $progress['can_mark_not_going'],
                     'manifest' => [
                         'name' => $student?->name ?: $pickupRequest?->requesterName(),
                         'type' => $pickupRequest?->type,
@@ -61,6 +66,7 @@ class RideController extends BaseApiController
                 'weekday' => strtolower(Carbon::now()->englishDayOfWeek),
                 'optimized' => true,
                 'round_trip_rule' => 'Drop every passenger back at the same pickup point.',
+                'trip' => $day->todayTripSummary($driver, $stops),
                 'summary' => [
                     'total' => $payload->count(),
                     'pending' => $payload->where('status', PickupRequestStop::STATUS_PENDING)->count(),
@@ -133,6 +139,64 @@ class RideController extends BaseApiController
             return $this->errorResponse($e->getMessage(), 422);
         } catch (Throwable $e) {
             return $this->handleException($e, 'Unable to start trip');
+        }
+    }
+
+    public function end(Request $request): JsonResponse
+    {
+        try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $trip = app(ShiftDayService::class)->endTripByDriver($driver);
+
+            return $this->successResponse([
+                'trip' => $trip,
+            ], 'Trip ended');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to end trip');
+        }
+    }
+
+    public function notGoing(Request $request, PickupRequest $pickupRequest): JsonResponse
+    {
+        try {
+            $driver = $request->user();
+            $denied = $this->denyUnlessDriverReady($driver);
+            if ($denied) {
+                return $denied;
+            }
+
+            $validated = $request->validate([
+                'reason' => ['required', 'string', 'max:500'],
+            ]);
+
+            $updated = app(ShiftDayService::class)->markPassengerNotGoing(
+                $pickupRequest,
+                $driver,
+                $validated['reason']
+            );
+            $stops = app(ShiftDayService::class)->todayStopsForDriver($driver);
+            $group = $stops->where('pickup_request_id', $updated->id)->values();
+
+            return $this->successResponse([
+                'passenger_status' => 'not_going',
+                'not_going_reason' => $validated['reason'],
+                'request' => $updated->toApiArray('driver'),
+                'trip' => app(ShiftDayService::class)->todayTripSummary($driver, $stops),
+                'today' => $group->first()?->getAttribute('today_run')?->toApiArray(false),
+            ], 'Passenger marked as not going');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', 422, $e->errors());
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        } catch (Throwable $e) {
+            return $this->handleException($e, 'Unable to mark passenger');
         }
     }
 

@@ -145,6 +145,29 @@ class PickupRequestMatchingService
      */
     public function eligibleDrivers(PickupRequest $pickupRequest, bool $excludeRejectors = true): Collection
     {
+        return $this->matchingDrivers($pickupRequest, $excludeRejectors, true);
+    }
+
+    /**
+     * Drivers who should receive push/in-app alerts for a request.
+     * Same city/area/KYC rules as available list, but does not require availability-hours match
+     * so drivers still hear about nearby jobs outside their usual window.
+     *
+     * @return Collection<int, User>
+     */
+    public function notifiableDrivers(PickupRequest $pickupRequest, bool $excludeRejectors = true): Collection
+    {
+        return $this->matchingDrivers($pickupRequest, $excludeRejectors, false);
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function matchingDrivers(
+        PickupRequest $pickupRequest,
+        bool $excludeRejectors,
+        bool $requireAvailability
+    ): Collection {
         $requestAreas = $this->requestAreaIds($pickupRequest);
         if ($requestAreas === [] || !$pickupRequest->city_id) {
             return collect();
@@ -155,17 +178,44 @@ class PickupRequestMatchingService
             : [];
 
         return User::query()
-            ->where('role', 'driver')
-            ->where('status', 'Active')
+            ->whereRaw('LOWER(TRIM(role)) = ?', ['driver'])
+            ->whereRaw('LOWER(TRIM(status)) = ?', ['active'])
             ->whereNotNull('service_areas')
-            ->with(['driverVerification', 'assignedVehicle.category'])
+            ->with(['driverVerification', 'assignedVehicle.category', 'vehicle'])
             ->get()
-            ->filter(function (User $driver) use ($pickupRequest, $rejectedIds) {
+            ->filter(function (User $driver) use ($pickupRequest, $rejectedIds, $requireAvailability) {
                 if ($rejectedIds !== [] && in_array((int) $driver->id, $rejectedIds, true)) {
                     return false;
                 }
 
-                return $this->driverCanServe($driver, $pickupRequest);
+                if (! $this->driverIsEligible($driver)) {
+                    return false;
+                }
+
+                $cityId = $driver->driverCityId();
+                if (! $cityId || (int) $pickupRequest->city_id !== $cityId) {
+                    return false;
+                }
+
+                $serviceAreas = $this->serviceAreaIds($driver);
+                $requestAreas = $this->requestAreaIds($pickupRequest);
+                if ($serviceAreas === [] || $requestAreas === []) {
+                    return false;
+                }
+
+                if (count(array_intersect($serviceAreas, $requestAreas)) === 0) {
+                    return false;
+                }
+
+                if (! $this->hasSeatCapacity($driver, $pickupRequest)) {
+                    return false;
+                }
+
+                if ($requireAvailability && ! $this->matchesAvailability($driver, $pickupRequest)) {
+                    return false;
+                }
+
+                return true;
             })
             ->sortBy(fn (User $driver) => $this->distanceKm($driver, $pickupRequest) ?? 9999)
             ->values();

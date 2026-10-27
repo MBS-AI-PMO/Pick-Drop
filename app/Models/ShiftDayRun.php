@@ -28,6 +28,9 @@ class ShiftDayRun extends Model
         'arrival_notified_at',
         'started_at',
         'arrived_at',
+        'ended_at',
+        'ended_by',
+        'emergency_locked',
     ];
 
     protected function casts(): array
@@ -38,6 +41,8 @@ class ShiftDayRun extends Model
             'arrival_notified_at' => 'datetime',
             'started_at' => 'datetime',
             'arrived_at' => 'datetime',
+            'ended_at' => 'datetime',
+            'emergency_locked' => 'boolean',
         ];
     }
 
@@ -73,6 +78,9 @@ class ShiftDayRun extends Model
             'pickup_verified_at' => $this->pickup_verified_at?->toIso8601String(),
             'started_at' => $this->started_at?->toIso8601String(),
             'arrived_at' => $this->arrived_at?->toIso8601String(),
+            'ended_at' => $this->ended_at?->toIso8601String(),
+            'ended_by' => $this->ended_by,
+            'emergency_locked' => (bool) $this->emergency_locked,
             'arrival_notified_at' => $this->arrival_notified_at?->toIso8601String(),
         ];
     }

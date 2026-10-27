@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Mail\InvoiceMail;
+use App\Mail\PartialPaymentMail;
+use App\Mail\RefundMail;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Notification;
@@ -34,6 +36,8 @@ class InvoiceService
     {
         $settings = PaymentSetting::current();
         $charge = PickDropCharge::query()->first();
+        $send = ! array_key_exists('send', $payload) || (bool) $payload['send'];
+        unset($payload['send']);
 
         $invoice = DB::transaction(function () use ($payload, $items, $issuedBy, $settings, $charge) {
             $invoice = Invoice::create([
@@ -58,18 +62,22 @@ class InvoiceService
             return $invoice->fresh(['items', 'customer', 'student']);
         });
 
-        Notification::create([
-            'title' => 'Invoice created',
-            'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
-            'type' => 'info',
-        ]);
+        if ($send) {
+            Notification::create([
+                'title' => 'Invoice created',
+                'message' => $invoice->invoice_number . ' was created for ' . ($invoice->customer?->name ?? 'a customer') . '.',
+                'type' => 'info',
+            ]);
 
-        $this->sendQuietly($invoice);
+            $this->sendQuietly($invoice);
+        } elseif ($invoice->status === Invoice::STATUS_DRAFT) {
+            $invoice->update(['status' => Invoice::STATUS_UNPAID]);
+        }
 
         return $invoice->fresh(['items', 'customer', 'student']);
     }
 
-    public function createForAcceptedShift(PickupRequest $pickupRequest): Invoice
+    public function createForAcceptedShift(PickupRequest $pickupRequest, bool $send = true): Invoice
     {
         $existing = Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
@@ -99,6 +107,7 @@ class InvoiceService
                 $pickupRequest->id
             ),
             'terms' => 'This is an advance monthly service fee. The shift starts only after full payment. Minimum duration is 1 month. The driver is paid separately by PickDrop at month end.',
+            'send' => $send,
         ], [
             [
                 'description' => sprintf(
@@ -116,11 +125,60 @@ class InvoiceService
         ]);
 
         $pickupRequest->update([
-            'payment_status' => PickupRequest::PAYMENT_UNPAID,
+            'payment_status' => $pickupRequest->payment_status === PickupRequest::PAYMENT_PAID
+                ? PickupRequest::PAYMENT_PAID
+                : PickupRequest::PAYMENT_UNPAID,
             'estimated_amount' => $invoice->total,
         ]);
 
         return $invoice;
+    }
+
+    /**
+     * Keep the open distance bill in step with the request fare after an edit.
+     */
+    public function syncOpenShiftQuote(PickupRequest $pickupRequest): ?Invoice
+    {
+        $existing = Invoice::query()
+            ->where('pickup_request_id', $pickupRequest->id)
+            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_PAID, Invoice::STATUS_REFUNDED])
+            ->latest('id')
+            ->first();
+
+        if (! $existing) {
+            return null;
+        }
+
+        $locked = $existing->payments()
+            ->whereIn('status', [Payment::STATUS_COMPLETED, Payment::STATUS_PENDING])
+            ->exists();
+
+        if ($locked) {
+            return $existing->load(['items', 'customer', 'student']);
+        }
+
+        $quote = app(ShiftFareService::class)->quoteFromRequest($pickupRequest);
+        $this->syncItems($existing, [[
+            'description' => sprintf(
+                'Advance monthly pick-drop: %s km one-way × %d trips (%d month%s, %s to %s)',
+                number_format($quote['distance_km'], 2),
+                $quote['trip_count'],
+                $quote['duration_months'],
+                $quote['duration_months'] === 1 ? '' : 's',
+                $quote['shift_start_date'],
+                $quote['shift_end_date']
+            ),
+            'quantity' => $quote['trip_count'],
+            'unit_price' => $quote['per_trip_amount'],
+        ]]);
+        $this->recalculate($existing);
+        $existing = $existing->fresh(['items', 'customer', 'student']);
+
+        $pickupRequest->update([
+            'estimated_amount' => $existing->total,
+        ]);
+
+        return $existing;
     }
 
     public function syncPickupRequestPayment(Invoice $invoice): void
@@ -161,7 +219,7 @@ class InvoiceService
     {
         Invoice::query()
             ->where('pickup_request_id', $pickupRequest->id)
-            ->whereNotIn('status', [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])
+            ->whereNotIn('status', [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED, Invoice::STATUS_REFUNDED])
             ->get()
             ->each(function (Invoice $invoice) {
                 $this->cancel($invoice);
@@ -194,14 +252,21 @@ class InvoiceService
         $total = round($subtotal + $tax, 2);
 
         $paid = round((float) $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->sum('amount'), 2);
+        $hasRefund = $invoice->payments()->where('status', Payment::STATUS_REFUNDED)->exists();
 
         $status = $invoice->status;
         if ($status !== Invoice::STATUS_CANCELLED) {
             if ($paid >= $total && $total > 0) {
                 $status = Invoice::STATUS_PAID;
+            } elseif ($hasRefund && $paid <= 0) {
+                // everything that was paid has been given back
+                $status = Invoice::STATUS_REFUNDED;
             } elseif ($invoice->due_date && $invoice->due_date->lt(now()->startOfDay()) && $paid < $total) {
                 $status = Invoice::STATUS_OVERDUE;
-            } elseif ($status === Invoice::STATUS_PAID && $paid < $total) {
+            } elseif ($paid > 0 && $paid < $total) {
+                // some money in, but not everything
+                $status = Invoice::STATUS_PARTIAL;
+            } elseif (in_array($status, [Invoice::STATUS_PAID, Invoice::STATUS_REFUNDED, Invoice::STATUS_PARTIAL], true) && $paid < $total) {
                 $status = Invoice::STATUS_UNPAID;
             }
         }
@@ -234,11 +299,14 @@ class InvoiceService
 
         $this->deliverInvoiceMail($invoice);
 
+        // Only a draft/unpaid/overdue invoice becomes "unpaid" when sent; a partial or refunded invoice keeps its status.
         $invoice->update([
             'sent_at' => now(),
             'status' => $invoice->isPaid()
                 ? Invoice::STATUS_PAID
-                : ($markUnpaid ? Invoice::STATUS_UNPAID : $invoice->status),
+                : ($markUnpaid && in_array($invoice->status, [Invoice::STATUS_DRAFT, Invoice::STATUS_UNPAID, Invoice::STATUS_OVERDUE], true)
+                    ? Invoice::STATUS_UNPAID
+                    : $invoice->status),
         ]);
         $invoice->syncOverdueStatus();
 
@@ -309,8 +377,10 @@ class InvoiceService
             return $payment;
         });
 
+        $this->paymentEmailSent = null;
+
         if ($status === Payment::STATUS_COMPLETED) {
-            $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']));
+            $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']), $payment);
         } else {
             $fresh = $invoice->fresh(['customer', 'items', 'student', 'payments']);
             $this->emailInvoicePdfQuietly($fresh);
@@ -340,7 +410,7 @@ class InvoiceService
             $invoice->update(['payment_method' => Payment::METHOD_BANK]);
         }
 
-        $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']));
+        $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']), $payment->fresh());
 
         return $payment->fresh();
     }
@@ -444,6 +514,11 @@ class InvoiceService
             throw new RuntimeException('Status must be received or not received.');
         }
 
+        if ($payment->status === Payment::STATUS_REFUNDED) {
+            // Changing the receipt state would silently undo the refund (payment back to pending/completed).
+            throw new RuntimeException('This payment was refunded, so its receipt status can no longer be changed.');
+        }
+
         if (! $payment->proof_path) {
             throw new RuntimeException('This payment has no screenshot yet.');
         }
@@ -475,7 +550,7 @@ class InvoiceService
         $this->syncPickupRequestPayment($invoice->fresh());
 
         if ($receiptStatus === Payment::RECEIPT_RECEIVED) {
-            $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']));
+            $this->notifyPayment($invoice->fresh(['customer', 'items', 'student', 'payments']), $payment->fresh());
         }
 
         return $payment->fresh();
@@ -617,7 +692,7 @@ class InvoiceService
     public function markOverdueInvoices(): int
     {
         return Invoice::query()
-            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_OVERDUE])
+            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL, Invoice::STATUS_OVERDUE])
             ->whereDate('due_date', '<', now()->toDateString())
             ->whereColumn('amount_paid', '<', 'total')
             ->update(['status' => Invoice::STATUS_OVERDUE]);
@@ -628,7 +703,7 @@ class InvoiceService
         Mail::to($invoice->customer->email)->send(new InvoiceMail($invoice, PaymentSetting::current()));
     }
 
-    private function emailInvoicePdfQuietly(Invoice $invoice): void
+    private function emailInvoicePdfQuietly(Invoice $invoice): bool
     {
         $invoice->loadMissing(['items', 'customer', 'student', 'payments']);
 
@@ -640,7 +715,7 @@ class InvoiceService
                 'items' => $invoice->items->count(),
             ]);
 
-            return;
+            return false;
         }
 
         try {
@@ -648,13 +723,63 @@ class InvoiceService
             if (!$invoice->sent_at) {
                 $invoice->update(['sent_at' => now()]);
             }
+
+            return true;
         } catch (Throwable $e) {
             Log::error('Failed to send invoice PDF email', [
                 'invoice_id' => $invoice->id,
                 'email' => $invoice->customer->email,
                 'error' => $e->getMessage(),
             ]);
+
+            return false;
         }
+    }
+
+    /**
+     * Payment confirmation for an invoice that is not fully paid yet: how much was paid and how much remains.
+     * Like the other invoice emails it never throws; a mail failure is logged only.
+     */
+    private function emailPartialPaymentQuietly(Invoice $invoice, Payment $payment): bool
+    {
+        $invoice->loadMissing(['items', 'customer', 'student', 'payments']);
+
+        if (!$invoice->customer?->email || $invoice->status === Invoice::STATUS_CANCELLED) {
+            Log::warning('Partial payment email skipped', [
+                'invoice_id' => $invoice->id,
+                'payment_id' => $payment->id,
+                'email' => $invoice->customer?->email,
+                'status' => $invoice->status,
+            ]);
+
+            return false;
+        }
+
+        try {
+            Mail::to($invoice->customer->email)->send(new PartialPaymentMail($invoice, $payment, PaymentSetting::current()));
+            if (!$invoice->sent_at) {
+                $invoice->update(['sent_at' => now()]);
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            Log::error('Failed to send partial payment email', [
+                'invoice_id' => $invoice->id,
+                'payment_id' => $payment->id,
+                'email' => $invoice->customer->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private ?bool $paymentEmailSent = null;
+
+    /** Whether the last recorded payment's confirmation email went out (null = no payment email attempted). */
+    public function paymentEmailWasSent(): ?bool
+    {
+        return $this->paymentEmailSent;
     }
 
     private function notifyBankTransferSubmitted(Invoice $invoice): void
@@ -675,9 +800,18 @@ class InvoiceService
         ]);
     }
 
-    private function notifyPayment(Invoice $invoice): void
+    private function notifyPayment(Invoice $invoice, ?Payment $payment = null): void
     {
-        $this->emailInvoicePdfQuietly($invoice);
+        if ($invoice->isPaid()) {
+            // fully paid: invoice + receipt PDFs
+            $this->paymentEmailSent = $this->emailInvoicePdfQuietly($invoice);
+        } else {
+            // partly paid: tell the customer what was paid and what is still remaining
+            $payment ??= $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->latest('id')->first();
+            $this->paymentEmailSent = $payment
+                ? $this->emailPartialPaymentQuietly($invoice, $payment)
+                : $this->emailInvoicePdfQuietly($invoice);
+        }
 
         $title = $invoice->isPaid() ? 'Payment received' : 'Partial payment received';
         $body = $invoice->isPaid()
@@ -741,8 +875,12 @@ class InvoiceService
         return $payment->fresh();
     }
 
+    private ?bool $refundEmailSent = null;
+
     public function refundPayment(Payment $payment, string $reason, ?int $recordedBy = null): Payment
     {
+        $this->refundEmailSent = null;
+
         if ($payment->status !== Payment::STATUS_COMPLETED) {
             throw new RuntimeException('Only completed payments can be refunded.');
         }
@@ -778,7 +916,48 @@ class InvoiceService
             'type' => 'warning',
         ]);
 
+        $this->refundEmailSent = $this->emailRefundQuietly($invoice, $payment->fresh());
+
         return $payment->fresh();
+    }
+
+    /** Whether the last refundPayment() call emailed the customer (null = no email address / nothing sent). */
+    public function refundEmailWasSent(): ?bool
+    {
+        return $this->refundEmailSent;
+    }
+
+    /**
+     * Email the refund confirmation to the customer. Like the invoice email this never throws: a mail
+     * failure is logged and must not undo or block the refund itself.
+     */
+    private function emailRefundQuietly(Invoice $invoice, Payment $payment): bool
+    {
+        $invoice->loadMissing(['items', 'customer', 'student', 'payments']);
+
+        if (! $invoice->customer?->email) {
+            Log::warning('Refund email skipped: customer has no email', [
+                'invoice_id' => $invoice->id,
+                'payment_id' => $payment->id,
+            ]);
+
+            return false;
+        }
+
+        try {
+            Mail::to($invoice->customer->email)->send(new RefundMail($invoice->fresh(['customer', 'student']), $payment, PaymentSetting::current()));
+
+            return true;
+        } catch (Throwable $e) {
+            Log::error('Failed to send refund email', [
+                'invoice_id' => $invoice->id,
+                'payment_id' => $payment->id,
+                'email' => $invoice->customer->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     public function createRenewalInvoice(PickupRequest $pickupRequest, int $months = 1): Invoice

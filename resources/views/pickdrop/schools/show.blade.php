@@ -20,26 +20,40 @@
     <div class="card">
       <div class="card-header"><h6 class="mb-0">Edit</h6></div>
       <div class="card-body">
-        <form method="POST" action="{{ route('schools.update', $school) }}">
+        <form method="POST" action="{{ route('schools.update', $school) }}" id="schoolEditForm" novalidate>
           @csrf
           @method('PUT')
-          <label class="form-label">Name</label>
-          <input class="form-control mb-3" name="name" value="{{ $school->name }}" required>
-          <label class="form-label">Category</label>
-          <select class="form-select mb-3" name="category" required>
-            @foreach($categories as $value => $label)
-              <option value="{{ $value }}" {{ old('category', $school->category) === $value ? 'selected' : '' }}>{{ $label }}</option>
-            @endforeach
-          </select>
-          <label class="form-label">Phone</label>
-          <input class="form-control mb-3" name="phone" value="{{ $school->phone }}">
-          <label class="form-label">Address</label>
-          <input class="form-control mb-3" name="address" value="{{ $school->address }}">
-          <label class="form-label">Status</label>
-          <select class="form-select mb-3" name="status">
-            <option value="Active" {{ $school->status === 'Active' ? 'selected' : '' }}>Active</option>
-            <option value="Inactive" {{ $school->status === 'Inactive' ? 'selected' : '' }}>Inactive</option>
-          </select>
+          <div class="mb-3">
+            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <input class="form-control @error('name', 'editSchool') is-invalid @enderror" name="name" value="{{ old('name', $school->name) }}" maxlength="255" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category <span class="text-danger">*</span></label>
+            <select class="form-select @error('category', 'editSchool') is-invalid @enderror" name="category" required>
+              @foreach($categories as $value => $label)
+                <option value="{{ $value }}" {{ old('category', $school->category) === $value ? 'selected' : '' }}>{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <input class="form-control @error('phone', 'editSchool') is-invalid @enderror" type="tel" inputmode="tel" name="phone" value="{{ old('phone', $school->phone) }}" maxlength="50" placeholder="e.g. +92 300 1234567" autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input class="form-control @error('email', 'editSchool') is-invalid @enderror" type="email" inputmode="email" name="email" value="{{ old('email', $school->email) }}" maxlength="255" placeholder="name@example.com" autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <input class="form-control @error('address', 'editSchool') is-invalid @enderror" name="address" value="{{ old('address', $school->address) }}" maxlength="255">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select @error('status', 'editSchool') is-invalid @enderror" name="status">
+              <option value="Active" {{ old('status', $school->status) === 'Active' ? 'selected' : '' }}>Active</option>
+              <option value="Inactive" {{ old('status', $school->status) === 'Inactive' ? 'selected' : '' }}>Inactive</option>
+            </select>
+          </div>
           <button class="btn btn-dark w-100" type="submit">Update</button>
         </form>
       </div>
@@ -68,3 +82,4 @@
   </div>
 </div>
 @endsection
+

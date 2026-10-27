@@ -101,8 +101,6 @@ class DriverVehicleVerification extends Model
             'number_plate_photo' => $this->documentUrl($this->number_plate_photo),
             'owner_name' => $this->owner_name,
             'owner_cnic_number' => $this->owner_cnic_number,
-            'owner_document_front' => $this->documentUrl($this->owner_document_front),
-            'owner_document_back' => $this->documentUrl($this->owner_document_back),
             'reviewed_at' => $this->reviewed_at?->toIso8601String(),
             'submitted_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

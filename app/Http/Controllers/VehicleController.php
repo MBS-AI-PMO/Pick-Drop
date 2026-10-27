@@ -43,7 +43,13 @@ $drivers = User::where('role', 'driver')
               ->orWhereHas('vehicle');
     })
     ->get();
-            return view('pickdrop.vehicles.index', compact('vehicles', 'types', 'drivers'));
+            // Drivers who are not yet attached to any vehicle (for the Assign Driver form)
+            $availableDrivers = User::where('role', 'driver')
+                ->whereNotIn('id', $assignedDriverIds)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            return view('pickdrop.vehicles.index', compact('vehicles', 'types', 'drivers', 'availableDrivers'));
         } catch (\Throwable $e) {
             Log::error('Failed to load vehicles index', [
                 'error' => $e->getMessage(),
@@ -52,6 +58,44 @@ $drivers = User::where('role', 'driver')
             return redirect()->back()->with('error', 'Failed to load vehicles: ' . $e->getMessage());
         }
     }
+    public function assignDriver(Request $request, Vehicle $vehicle)
+    {
+        $request->validate([
+            'driver_id' => 'required|exists:users,id',
+        ]);
+
+        try {
+            if ($vehicle->driver_id) {
+                return back()->with('error', 'This vehicle already has a driver. Unassign the current driver first.');
+            }
+
+            if (strcasecmp((string) $vehicle->status, 'Maintenance') === 0) {
+                return back()->with('error', 'Cannot assign a driver to a vehicle under maintenance.');
+            }
+
+            $driver = User::where('id', $request->driver_id)->where('role', 'driver')->first();
+            if (! $driver) {
+                return back()->with('error', 'Selected user is not a driver.');
+            }
+
+            if (Vehicle::where('driver_id', $driver->id)->exists()) {
+                return back()->with('error', 'This driver is already assigned to another vehicle.');
+            }
+
+            $vehicle->update(['driver_id' => $driver->id]);
+
+            return redirect()->route('vehicles.index')
+                ->with('success', "{$driver->name} assigned to {$vehicle->name}.");
+        } catch (\Throwable $e) {
+            Log::error('Failed to assign driver', [
+                'vehicle_id' => $vehicle->id,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Unable to assign driver.');
+        }
+    }
+
     public function unassign(Vehicle $vehicle)
 {
     try {

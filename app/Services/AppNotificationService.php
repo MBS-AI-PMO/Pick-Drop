@@ -456,7 +456,8 @@ class AppNotificationService
      */
     private function eligibleDriversForRequest(PickupRequest $pickupRequest): Collection
     {
-        return app(PickupRequestMatchingService::class)->eligibleDrivers($pickupRequest);
+        // Use notifiableDrivers so drivers still get alerts even outside availability hours.
+        return app(PickupRequestMatchingService::class)->notifiableDrivers($pickupRequest);
     }
 
     public function notifyAdminPanel(string $title, string $message, string $type = 'info'): void

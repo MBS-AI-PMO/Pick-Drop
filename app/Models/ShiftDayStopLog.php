@@ -12,6 +12,7 @@ class ShiftDayStopLog extends Model
         'shift_day_run_id',
         'pickup_request_stop_id',
         'status',
+        'reason',
         'photo_path',
         'completed_at',
     ];

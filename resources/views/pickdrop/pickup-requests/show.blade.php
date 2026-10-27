@@ -118,9 +118,9 @@
             <div class="fw-semibold">{{ $requestItem->tripModeLabel() }}</div>
             <small class="text-muted">
               @if($requestItem->tripMode() === \App\Models\PickupRequest::TRIP_ROUND)
-                Subah A→B, wapsi B→A (drop point se pickup, morning pickup pe drop)
+                Morning A to B, return B to A (pick up from the drop point, drop at the morning pickup).
               @else
-                Sirf ek taraf — return nahi
+                One direction only. No return.
               @endif
             </small>
           </div>

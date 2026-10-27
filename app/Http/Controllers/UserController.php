@@ -15,7 +15,8 @@ class UserController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = User::whereNotIn('role', ['Admin', 'Super Admin']);
+            $query = User::with(['driverVerification', 'parentSelfVerification'])
+                ->whereNotIn('role', ['Admin', 'Super Admin']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -44,12 +45,14 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $this->mergeCanonicalRoleAndStatus($request);
+
         $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role'     => ['required', 'in:Driver,Parent,Student'],
-            'status'   => 'nullable|string',
+            'role'     => ['required', 'in:Driver,Parent,Self'],
+            'status'   => ['required', 'in:Active,Inactive,Pending'],
             'details'  => 'nullable|string',
         ]);
 
@@ -59,7 +62,7 @@ class UserController extends Controller
     'email'    => $request->email,
     'password' => Hash::make($request->password),
     'role'     => $request->role,
-    'status'   => $request->status ?? 'Active',
+    'status'   => $request->status,
     'details'  => $request->details,
 ]);
 Notification::create([
@@ -86,11 +89,13 @@ Notification::create([
         if ($user->isPanelAdmin()) {
             return redirect()->route('users.index')->with('error', 'Admin accounts cannot be updated from here.');
         }
+        $this->mergeCanonicalRoleAndStatus($request);
+
         $request->validate([
             'name'    => 'required|string|max:255',
             'email'   => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role'    => ['required', 'in:Driver,Parent,Student'],
-            'status'  => 'nullable|string',
+            'role'    => ['required', 'in:Driver,Parent,Self'],
+            'status'  => ['required', 'in:Active,Inactive,Pending'],
             'details' => 'nullable|string',
         ]);
 
@@ -142,5 +147,27 @@ Notification::create([
 
             return redirect()->route('users.index')->with('error', 'Failed to delete user: ' . $e->getMessage());
         }
+    }
+
+    private function mergeCanonicalRoleAndStatus(Request $request): void
+    {
+        $roles = [
+            'driver' => 'Driver',
+            'parent' => 'Parent',
+            'self' => 'Self',
+        ];
+        $statuses = [
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+            'pending' => 'Pending',
+        ];
+
+        $roleKey = strtolower(trim((string) $request->input('role')));
+        $statusKey = strtolower(trim((string) $request->input('status', 'active')));
+
+        $request->merge([
+            'role' => $roles[$roleKey] ?? $request->input('role'),
+            'status' => $statuses[$statusKey] ?? ($request->input('status') ?: 'Active'),
+        ]);
     }
 }

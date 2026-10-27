@@ -331,11 +331,12 @@ class DriverPayrollService
      *     preview_amount: float
      * }>
      */
-    public function readyForBilling(): Collection
+    public function readyForBilling(?int $driverId = null): Collection
     {
         $requests = PickupRequest::query()
-            ->with(['driver', 'student', 'attendances'])
+            ->with(['driver', 'student', 'parent', 'attendances'])
             ->whereNotNull('driver_id')
+            ->when($driverId, fn ($query) => $query->where('driver_id', $driverId))
             ->where('payment_status', PickupRequest::PAYMENT_PAID)
             ->whereNotIn('status', ['cancelled', 'pending'])
             ->get();
@@ -355,6 +356,7 @@ class DriverPayrollService
                     'pickup_request_id' => $request->id,
                     'driver_name' => $request->driver?->name ?? 'Driver',
                     'student_name' => $request->student?->name,
+                    'requester_name' => $request->requesterName(),
                     'period_start' => $period['period_start'],
                     'period_end' => $period['period_end'],
                     'label' => $period['label'],

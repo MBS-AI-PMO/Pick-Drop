@@ -32,9 +32,9 @@
         <div class="col-12 col-md-3">
           <select class="form-select" name="role" id="roleFilter" onchange="this.form.submit()">
             <option value="">All Roles</option>
-            <option value="Driver"   {{ request('role') === 'Driver'   ? 'selected' : '' }}>Driver</option>
-            <option value="Parent"   {{ request('role') === 'Parent'   ? 'selected' : '' }}>Parent</option>
-            <option value="Student"  {{ request('role') === 'Student'  ? 'selected' : '' }}>Student</option>
+            <option value="Driver" {{ request('role') === 'Driver' ? 'selected' : '' }}>Driver</option>
+            <option value="Parent" {{ request('role') === 'Parent' ? 'selected' : '' }}>Parent</option>
+            <option value="Self"   {{ request('role') === 'Self'   ? 'selected' : '' }}>Self</option>
           </select>
         </div>
 
@@ -77,6 +77,7 @@
             <th class="py-3">Role</th>
             <th class="py-3">Details</th>
             <th class="py-3">Status</th>
+            <th class="py-3">Verified</th>
             <th class="py-3 text-center">Actions</th>
           </tr>
         </thead>
@@ -100,20 +101,54 @@
             </td>
             <td class="py-3 text-secondary">{{ is_array($user->details) ? json_encode($user->details) : ($user->details ?: '—') }}</td>
             <td class="py-3">
-              @if(strtolower($user->status) === 'active')
+              @php $accountStatus = trim((string) ($user->status ?? '')); @endphp
+              @if(strtolower($accountStatus) === 'active')
                 <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
+              @elseif($accountStatus !== '')
+                <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $accountStatus }}</span>
               @else
-                <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $user->status }}</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">Pending</span>
+              @endif
+            </td>
+            <td class="py-3">
+              @php
+                $roleKey = strtolower((string) $user->role);
+                $showsVerification = in_array($roleKey, ['driver', 'parent', 'self'], true);
+                $kycStatus = $user->kycStatus();
+                $verifiedLabel = $user->verificationBadgeLabel();
+              @endphp
+              @if($showsVerification)
+                @if($kycStatus === 'approved')
+                  <span class="badge rounded-pill px-3 py-1" style="background:#e8f7ee;color:#157347;">{{ $verifiedLabel }}</span>
+                @elseif($kycStatus === 'pending')
+                  <span class="badge rounded-pill px-3 py-1" style="background:#fff7e6;color:#b54708;">{{ $verifiedLabel }}</span>
+                @elseif($kycStatus === 'rejected')
+                  <span class="badge rounded-pill px-3 py-1" style="background:#fdecec;color:#b42318;">{{ $verifiedLabel }}</span>
+                @else
+                  <span class="badge rounded-pill px-3 py-1" style="background:#fdecec;color:#b42318;">{{ $verifiedLabel }}</span>
+                @endif
+              @else
+                <span class="text-muted">—</span>
               @endif
             </td>
             <td class="py-3 text-center">
+              @php
+                $userPayload = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'status' => $user->status,
+                    'details' => is_array($user->details) ? null : $user->details,
+                ];
+              @endphp
               <div class="action-btns">
                 <button type="button" class="action-btn action-btn-view" title="View"
-                        onclick='openViewModal(event, @json($user))'>
+                        onclick="openViewModal(event, {{ json_encode($userPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}, {{ json_encode($verifiedLabel, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }})">
                   <i data-lucide="eye"></i>
                 </button>
                 <button type="button" class="action-btn action-btn-edit" title="Edit"
-                        onclick='openEditModal(event, @json($user))'>
+                        onclick="openEditModal(event, {{ json_encode($userPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }})">
                   <i data-lucide="edit-2"></i>
                 </button>
                 <form action="{{ route('users.destroy', $user->id) }}" method="POST"
@@ -129,7 +164,7 @@
           </tr>
           @empty
           <tr>
-            <td colspan="7" class="text-center py-5">
+            <td colspan="8" class="text-center py-5">
               <div class="mb-3 text-muted">
                 <i data-lucide="users" style="width:48px;height:48px;opacity:0.4;"></i>
               </div>
@@ -174,14 +209,15 @@
                 <option value="">Select role</option>
                 <option value="Driver">Driver</option>
                 <option value="Parent">Parent</option>
-                <option value="Student">Student</option>
+                <option value="Self">Self</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Status</label>
-              <select name="status" class="form-select">
+              <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+              <select name="status" class="form-select" required>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
+                <option value="Pending">Pending</option>
               </select>
             </div>
             <div class="col-12">
@@ -189,8 +225,22 @@
               <input type="text" name="details" class="form-control" placeholder="e.g. Child: Emma / Vehicle: Bus #45">
             </div>
             <div class="col-12">
-              <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
-              <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+              <label for="addUserPassword" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+              <div class="password-field">
+                <input
+                  type="password"
+                  name="password"
+                  id="addUserPassword"
+                  class="form-control"
+                  placeholder="Enter password"
+                  required
+                  autocomplete="new-password"
+                >
+                <button class="password-toggle" type="button" id="toggleAddUserPassword" aria-label="Show password">
+                  <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-4.97"/><path d="m2 2 20 20"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="modal-footer border-0 pt-4 pb-0 px-0">
@@ -227,16 +277,17 @@
             <div class="col-md-6">
               <label class="form-label fw-semibold">Role <span class="text-danger">*</span></label>
               <select name="role" id="editUserRole" class="form-select" required>
-                <option value="Parent">Parent</option>
                 <option value="Driver">Driver</option>
-                <option value="Student">Student</option>
+                <option value="Parent">Parent</option>
+                <option value="Self">Self</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Status</label>
-              <select name="status" id="editUserStatus" class="form-select">
+              <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+              <select name="status" id="editUserStatus" class="form-select" required>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
+                <option value="Pending">Pending</option>
               </select>
             </div>
             <div class="col-12">
@@ -244,10 +295,23 @@
               <input type="text" name="details" id="editUserDetails" class="form-control">
             </div>
             <div class="col-12">
-              <label class="form-label fw-semibold">Password
+              <label for="editUserPassword" class="form-label fw-semibold">Password
                 <small class="text-muted fw-normal">(Leave blank to keep current)</small>
               </label>
-              <input type="password" name="password" class="form-control" placeholder="Update password (optional)">
+              <div class="password-field">
+                <input
+                  type="password"
+                  name="password"
+                  id="editUserPassword"
+                  class="form-control"
+                  placeholder="Update password (optional)"
+                  autocomplete="new-password"
+                >
+                <button class="password-toggle" type="button" id="toggleEditUserPassword" aria-label="Show password">
+                  <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-4.97"/><path d="m2 2 20 20"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="modal-footer border-0 pt-4 pb-0 px-0">
@@ -264,35 +328,39 @@
 <div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
+      <div class="modal-header">
         <h5 class="modal-title fw-bold">User Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body pt-2">
-        <div class="row g-3">
+      <div class="modal-body">
+        <div class="row g-3 view-user-grid">
           <div class="col-12">
-            <p class="text-secondary small mb-1">Full Name</p>
-            <p class="fw-semibold mb-0" id="viewUserName">—</p>
-          </div>
-          <div class="col-12">
-            <p class="text-secondary small mb-1">Email</p>
-            <p class="fw-semibold mb-0" id="viewUserEmail">—</p>
-          </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Role</p>
-            <p class="fw-semibold mb-0" id="viewUserRole">—</p>
-          </div>
-          <div class="col-md-6">
-            <p class="text-secondary small mb-1">Status</p>
-            <p class="fw-semibold mb-0" id="viewUserStatus">—</p>
+            <label class="form-label mb-1">Full Name</label>
+            <div class="fw-semibold text-break" id="viewUserName">—</div>
           </div>
           <div class="col-12">
-            <p class="text-secondary small mb-1">Details</p>
-            <p class="fw-semibold mb-0" id="viewUserDetails">—</p>
+            <label class="form-label mb-1">Email Address</label>
+            <div class="fw-semibold text-break" id="viewUserEmail">—</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Role</label>
+            <div class="fw-semibold text-break" id="viewUserRole">—</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label mb-1">Status</label>
+            <div class="fw-semibold text-break" id="viewUserStatus">—</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Verified</label>
+            <div class="fw-semibold text-break" id="viewUserVerified">—</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Details</label>
+            <div class="fw-semibold text-break" id="viewUserDetails">—</div>
           </div>
         </div>
       </div>
-      <div class="modal-footer border-0 pt-0">
+      <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -311,15 +379,6 @@
   });
   @endif
 
-  @if($errors->any())
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `{!! implode('<br>', $errors->all()) !!}`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  @endif
-
   // Submit search on Enter key
   document.getElementById('userSearch').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
@@ -327,30 +386,84 @@
     }
   });
 
+  // Add / Edit User: show / hide password (inline SVG eye / eye-off)
+  function bindPasswordToggle(passwordId, toggleId, modalId) {
+    const passwordField = document.getElementById(passwordId);
+    const togglePassword = document.getElementById(toggleId);
+    const modal = modalId ? document.getElementById(modalId) : null;
+
+    if (!passwordField || !togglePassword) {
+      return;
+    }
+
+    function setVisible(isVisible) {
+      passwordField.setAttribute('type', isVisible ? 'text' : 'password');
+      togglePassword.classList.toggle('is-visible', isVisible);
+      togglePassword.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+    }
+
+    togglePassword.addEventListener('click', function () {
+      setVisible(passwordField.getAttribute('type') === 'password');
+    });
+
+    if (modal) {
+      modal.addEventListener('hidden.bs.modal', function () {
+        passwordField.value = '';
+        setVisible(false);
+      });
+    }
+  }
+
+  bindPasswordToggle('addUserPassword', 'toggleAddUserPassword', 'addUserModal');
+  bindPasswordToggle('editUserPassword', 'toggleEditUserPassword', 'editUserModal');
+
   // Edit Modal
   const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
   const viewUserModal = new bootstrap.Modal(document.getElementById('viewUserModal'));
 
-  function openViewModal(event, user) {
+  function openViewModal(event, user, verifiedLabel) {
     event.preventDefault();
     document.getElementById('viewUserName').textContent = user.name || '—';
     document.getElementById('viewUserEmail').textContent = user.email || '—';
     document.getElementById('viewUserRole').textContent = user.role || '—';
-    document.getElementById('viewUserStatus').textContent = user.status || '—';
+    document.getElementById('viewUserStatus').textContent = user.status || 'Pending';
+    document.getElementById('viewUserVerified').textContent = verifiedLabel || '—';
     document.getElementById('viewUserDetails').textContent = (typeof user.details === 'object' && user.details)
       ? JSON.stringify(user.details)
       : (user.details || '—');
     viewUserModal.show();
   }
 
+  const userUpdateBase = @json(rtrim(url('/users'), '/'));
+
+  function selectSavedValue(select, value) {
+    const wanted = (value || '').toString().trim().toLowerCase();
+    const match = Array.from(select.options).find(function (option) {
+      return option.value.toLowerCase() === wanted;
+    });
+    select.value = match ? match.value : '';
+  }
+
   function openEditModal(event, user) {
     event.preventDefault();
     document.getElementById('editUserName').value    = user.name    || '';
     document.getElementById('editUserEmail').value   = user.email   || '';
-    document.getElementById('editUserRole').value    = user.role    || 'Student';
-    document.getElementById('editUserStatus').value  = user.status  || 'Active';
-    document.getElementById('editUserDetails').value = user.details || '';
-    document.getElementById('editUserForm').action   = `/users/${user.id}`;
+    selectSavedValue(document.getElementById('editUserRole'), user.role || 'Parent');
+    selectSavedValue(document.getElementById('editUserStatus'), user.status || 'Active');
+    document.getElementById('editUserDetails').value = (typeof user.details === 'object' && user.details)
+      ? ''
+      : (user.details || '');
+    const editPassword = document.getElementById('editUserPassword');
+    const editToggle = document.getElementById('toggleEditUserPassword');
+    if (editPassword) {
+      editPassword.value = '';
+      editPassword.setAttribute('type', 'password');
+    }
+    if (editToggle) {
+      editToggle.classList.remove('is-visible');
+      editToggle.setAttribute('aria-label', 'Show password');
+    }
+    document.getElementById('editUserForm').action   = userUpdateBase + '/' + user.id;
     editModal.show();
   }
 

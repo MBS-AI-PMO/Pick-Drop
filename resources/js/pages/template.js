@@ -324,4 +324,137 @@
     });
   });
 
+  // Live notification bell: mark read / dismiss without full page reload
+  (function initNotificationBell() {
+    var notifyRoot = document.querySelector('.pd-notify');
+    if (!notifyRoot) {
+      return;
+    }
+
+    var csrfToken = (document.querySelector('meta[name="_token"]') || {}).content || '';
+
+    function badgeLabel(count) {
+      return count > 99 ? '99+' : String(count);
+    }
+
+    function updateUnreadUi(count) {
+      var safeCount = Math.max(0, Number(count) || 0);
+      notifyRoot.setAttribute('data-unread-count', String(safeCount));
+
+      var bellBadge = notifyRoot.querySelector('.pd-notify-count');
+      if (bellBadge) {
+        bellBadge.textContent = badgeLabel(safeCount);
+        bellBadge.setAttribute('aria-label', safeCount + ' unread');
+        if (safeCount > 0) {
+          bellBadge.removeAttribute('hidden');
+        } else {
+          bellBadge.setAttribute('hidden', 'hidden');
+        }
+      }
+
+      var headerBadge = notifyRoot.querySelector('.notification-count-badge');
+      if (headerBadge) {
+        headerBadge.textContent = safeCount + ' new';
+        if (safeCount > 0) {
+          headerBadge.removeAttribute('hidden');
+        } else {
+          headerBadge.setAttribute('hidden', 'hidden');
+        }
+      }
+
+      var clearLink = notifyRoot.querySelector('.notification-clear-link');
+      var remainingCards = notifyRoot.querySelectorAll('.notification-dropdown__card').length;
+      if (clearLink) {
+        if (remainingCards > 0) {
+          clearLink.removeAttribute('hidden');
+        } else {
+          clearLink.setAttribute('hidden', 'hidden');
+        }
+      }
+
+      var emptyState = notifyRoot.querySelector('.js-notification-empty');
+      if (emptyState) {
+        if (remainingCards > 0) {
+          emptyState.setAttribute('hidden', 'hidden');
+        } else {
+          emptyState.removeAttribute('hidden');
+        }
+      }
+
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+      }
+    }
+
+    function requestJson(url, method) {
+      return fetch(url, {
+        method: method,
+        headers: {
+          'X-CSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+        },
+        credentials: 'same-origin',
+      }).then(function (response) {
+        if (!response.ok) {
+          throw new Error('Notification request failed');
+        }
+        return response.json();
+      });
+    }
+
+    notifyRoot.addEventListener('click', function (event) {
+      var openLink = event.target.closest('.js-notification-open');
+      if (!openLink || !notifyRoot.contains(openLink)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      var card = openLink.closest('.notification-dropdown__card');
+      var readUrl = openLink.getAttribute('data-read-url');
+      var showUrl = openLink.getAttribute('href');
+
+      if (!readUrl) {
+        window.location.href = showUrl;
+        return;
+      }
+
+      requestJson(readUrl, 'POST')
+        .then(function (data) {
+          if (card) {
+            card.remove();
+          }
+          updateUnreadUi(data.unread_count);
+          window.location.href = showUrl;
+        })
+        .catch(function () {
+          window.location.href = showUrl;
+        });
+    });
+
+    notifyRoot.addEventListener('submit', function (event) {
+      var form = event.target.closest('.js-notification-dismiss');
+      if (!form || !notifyRoot.contains(form)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      var card = form.closest('.notification-dropdown__card');
+      var action = form.getAttribute('action');
+
+      requestJson(action, 'DELETE')
+        .then(function (data) {
+          if (card) {
+            card.remove();
+          }
+          updateUnreadUi(data.unread_count);
+        })
+        .catch(function () {
+          form.submit();
+        });
+    });
+  })();
+
 })();

@@ -3,7 +3,7 @@
     "_postman_id": "3a1c1a6c-aecf-4a9f-b69b-0a22db524001",
     "name": "Pick-Drop Mobile APIs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Collection for Parent, Self, and Driver mobile APIs.\n\nSource of truth: routes/api.php (includes routes/driver.php + routes/parent.php).\n\nParent/Self register: a 6-digit email verification code is sent to the given email. Use POST .../email/verify with body {\"code\":\"123456\"} after login. With MAIL_MAILER=log, read the code from storage/logs/laravel.log.\n\nPhone verify: POST .../phone/verify/send (no body; uses account phone), then POST .../phone/verify with {\"code\":\"123456\"}.\n\nKYC / vehicle / bank pay use multipart form-data — attach the file fields in Postman before sending.\n\nParent students: create with name/grade/school/emergency only — city, area, pickup/drop are on the pick-drop request.\nRequests support trip_mode: round_trip | one_way (or round_trip bool), service_type: both | pickup_only | drop_only, and multi-stop via stops[]. Pickup request (pickup_only) requires only pickup_time. Drop request (drop_only) requires only drop_time. Round trip (both) needs both times. Create/update do not take duration_months or passenger_count. Round trip return swaps points (evening pickup = morning drop). List filter: ?trip_mode=round_trip|one_way.\nDriver service-areas / profile support available_seats + availability_hours."
+    "description": "Collection for Parent, Self, and Driver mobile APIs.\n\nSource of truth: routes/api.php (includes routes/driver.php + routes/parent.php).\n\nParent/Self register: a 6-digit email verification code is sent to the given email. Use POST .../email/verify with body {\"code\":\"123456\"} after login. With MAIL_MAILER=log, read the code from storage/logs/laravel.log.\n\nPhone verify: POST .../phone/verify/send (no body; uses account phone), then POST .../phone/verify with {\"code\":\"123456\"}.\n\nKYC / vehicle / bank pay use multipart form-data — attach the file fields in Postman before sending.\n\nParent students: create with name/grade/school/emergency only — city, area, pickup/drop are on the pick-drop request.\nRequests support trip_mode: round_trip | one_way (or round_trip bool), service_type: both | pickup_only | drop_only, and multi-stop via stops[]. Pickup, drop, and both always need both a pickup location and a drop location, on one_way and round_trip. Pickup request requires pickup_time. Drop request requires drop_time. Both needs both times. Create/update do not take duration_months or passenger_count. Each request includes bill (distance_km, per_km_rate, trip_count, amount, formatted_amount, summary) and payment.invoice so the history card can show the distance fare before a driver accepts. Round trip return swaps points: pick up from the morning drop, drop where the morning pickup was. List filter: ?trip_mode=round_trip|one_way.\nDriver service-areas / profile support available_seats + availability_hours."
   },
   "variable": [
     { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
@@ -69,6 +69,7 @@
         { "name": "Payment Methods", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/payment-methods" } },
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "url": "{{base_url}}/parent/invoices/{{invoice_id}}" } },
+        { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/parent/invoices/{{invoice_id}}/pay/stripe" } },
         { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{parent_token}}" }], "body": { "mode": "formdata", "formdata": [
           { "key": "reference", "value": "TRX-123456", "type": "text" },
           { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
@@ -176,6 +177,7 @@
         { "name": "Payment Methods", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/payment-methods" } },
         { "name": "Invoices - List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices" } },
         { "name": "Invoices - Show", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "url": "{{base_url}}/self/invoices/{{invoice_id}}" } },
+        { "name": "Invoices - Pay Stripe", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"return_url\": \"https://example.com/return\"\n}" }, "url": "{{base_url}}/self/invoices/{{invoice_id}}/pay/stripe" } },
         { "name": "Invoices - Pay Bank", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{self_token}}" }], "body": { "mode": "formdata", "formdata": [
           { "key": "reference", "value": "TRX-654321", "type": "text" },
           { "key": "notes", "value": "Bank transfer for invoice", "type": "text" },
@@ -270,7 +272,7 @@
           { "key": "license_expiry", "value": "2028-12-31", "type": "text" },
           { "key": "terms_accepted", "value": "1", "type": "text" }
         ] }, "url": "{{base_url}}/driver/verification" } },
-        { "name": "Vehicle Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/vehicle-verification" } },
+        { "name": "Vehicle Verification - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/vehicle-verification", "description": "Dropdown list is data.vehicle_categories: [{ id, vehicle_name, passenger_capacity }]. Active categories only." } },
         { "name": "Vehicle Verification - Submit", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "body": { "mode": "formdata", "formdata": [
           { "key": "vehicle_category_id", "value": "1", "type": "text" },
           { "key": "vehicle_name", "value": "Suzuki WagonR", "type": "text" },
@@ -283,9 +285,7 @@
           { "key": "vehicle_back_photo", "type": "file", "src": [] },
           { "key": "number_plate_photo", "type": "file", "src": [] },
           { "key": "owner_name", "value": "Driver User", "type": "text" },
-          { "key": "owner_cnic_number", "value": "35202-1111111-1", "type": "text" },
-          { "key": "owner_document_front", "type": "file", "src": [] },
-          { "key": "owner_document_back", "type": "file", "src": [] }
+          { "key": "owner_cnic_number", "value": "35202-1111111-1", "type": "text" }
         ] }, "url": "{{base_url}}/driver/vehicle-verification" } },
 
         { "name": "Profile - Get", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/me" } },
@@ -325,6 +325,8 @@
           { "key": "otp", "value": "123456", "type": "text" },
           { "key": "photo", "type": "file", "src": [] }
         ] }, "url": "{{base_url}}/driver/rides/{{ride_id}}/drop" } },
+        { "name": "Rides - End Trip", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/rides/end", "description": "Ends today's trip only after every passenger is dropped or marked not going. Fails while an emergency is open. Today payload trip.can_end and trip.end_blocked_reason tell the app when to allow it." } },
+        { "name": "Rides - Passenger Not Going", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Does not want to go today\"\n}" }, "url": "{{base_url}}/driver/rides/{{pickup_request_id}}/not-going", "description": "Use at pickup when this passenger will not go. Show passenger_status not_going and not_going_reason on the passenger row. They no longer block trip end." } },
 
         { "name": "Location - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/location/update" } },
         { "name": "Status - Update", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"on_the_way\"\n}" }, "url": "{{base_url}}/driver/status/update" } },
@@ -339,7 +341,7 @@
         { "name": "Phone Verify - Send", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/phone/verify/send" } },
         { "name": "Phone Verify - Verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{phone_verification_code}}\"\n}" }, "url": "{{base_url}}/driver/phone/verify" } },
 
-        { "name": "SOS - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_request_id\": {{pickup_request_id}},\n  \"message\": \"Emergency\",\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/sos" } },
+        { "name": "SOS - Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickup_request_id\": {{pickup_request_id}},\n  \"type\": \"accident\",\n  \"message\": \"Accident on the route\",\n  \"lat\": 33.6844,\n  \"lng\": 73.0479\n}" }, "url": "{{base_url}}/driver/sos", "description": "type: accident | medical | breakdown | security. Sends the emergency to admin. Admin ends the trip from SOS. The driver cannot end it while this is open." } },
         { "name": "Holidays", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/holidays" } },
         { "name": "Earnings", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}" }], "url": "{{base_url}}/driver/earnings" } },
 
