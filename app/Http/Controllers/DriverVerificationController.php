@@ -8,6 +8,7 @@ use App\Models\DriverVerification;
 use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
 use App\Models\Vehicle;
+use App\Services\AppNotificationService;
 use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -246,6 +247,36 @@ class DriverVerificationController extends Controller
         };
 
         Notification::create($payload);
+
+        // Send in-app notification to the driver's mobile app
+        $driverMessages = match ($status) {
+            DriverVerification::STATUS_APPROVED => [
+                'title' => 'KYC Approved',
+                'body'  => 'Your identity verification has been approved. Please complete vehicle verification to start accepting rides.',
+            ],
+            DriverVerification::STATUS_REJECTED => [
+                'title' => 'KYC Declined',
+                'body'  => 'Your identity verification was declined.' . ($driverVerification->rejection_reason ? ' Reason: ' . $driverVerification->rejection_reason : ' Please re-submit your documents.'),
+            ],
+            default => [
+                'title' => 'KYC Status Updated',
+                'body'  => 'Your identity verification status has been moved back to pending.',
+            ],
+        };
+
+        if ($driverVerification->user_id) {
+            app(AppNotificationService::class)->notify(
+                (int) $driverVerification->user_id,
+                'verification_status',
+                $driverMessages['title'],
+                $driverMessages['body'],
+                [
+                    'verification_type' => 'driver_kyc',
+                    'verification_id'   => $driverVerification->id,
+                    'status'            => $status,
+                ]
+            );
+        }
     }
 
     public function document(DriverVerification $driverVerification, string $field)

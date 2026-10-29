@@ -399,6 +399,7 @@ class InvoiceService
 
         $payment->update([
             'status' => Payment::STATUS_COMPLETED,
+            'receipt_status' => Payment::RECEIPT_RECEIVED,
             'paid_at' => now(),
             'recorded_by' => $recordedBy,
         ]);

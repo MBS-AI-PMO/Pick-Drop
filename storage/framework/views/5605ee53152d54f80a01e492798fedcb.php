@@ -449,7 +449,14 @@
   $googleMapsApiKey = config('services.google.maps_api_key');
 ?>
 <?php if($googleMapsApiKey): ?>
-<script src="https://maps.googleapis.com/maps/api/js?key=<?php echo e($googleMapsApiKey); ?>&libraries=places&language=en&region=PK" async defer></script>
+<script>
+  window.initPickDropAreaMap = function () {
+    if (typeof window.onGoogleMapsReady === 'function') {
+      window.onGoogleMapsReady();
+    }
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?php echo e($googleMapsApiKey); ?>&libraries=places&language=en&region=PK&callback=initPickDropAreaMap&loading=async"></script>
 <?php endif; ?>
 <?php $__env->stopPush(); ?>
 
@@ -468,15 +475,6 @@
       icon: 'error', title: 'Error', text: "<?php echo e(session('error')); ?>",
       toast: true, position: 'top-end', showConfirmButton: false,
       timer: 4000, timerProgressBar: true
-  });
-  <?php endif; ?>
-
-  <?php if($errors->any()): ?>
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `<?php echo implode('<br>', $errors->all()); ?>`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
   });
   <?php endif; ?>
 
@@ -504,45 +502,69 @@
   let areaGeocoder;
   let areaSearchAutocomplete;
   let mapReady = false;
+  let googleGeocodingUsable = true;
+  const mapSearchUrl = "<?php echo e(route('locations.map-search')); ?>";
+
+  // Google calls this when the key is rejected (e.g. billing not enabled).
+  window.gm_authFailure = function () {
+    googleGeocodingUsable = false;
+  };
+
+  window.onGoogleMapsReady = function () {
+    const modalEl = document.getElementById('areaModal');
+    if (modalEl && modalEl.classList.contains('show')) {
+      initAreaMap();
+      focusMapToCityContext();
+    }
+  };
 
   function initAreaMap() {
-    if (areaMap || !areaMapEl || typeof google === 'undefined' || !google.maps) return;
+    if (!areaMapEl || typeof google === 'undefined' || !google.maps) return;
 
-    areaMap = new google.maps.Map(areaMapEl, {
-      center: { lat: 24.8607, lng: 67.0011 },
-      zoom: 11,
-      mapTypeControl: true,
-      streetViewControl: false,
-      fullscreenControl: false
-    });
-    areaGeocoder = new google.maps.Geocoder();
-    mapReady = true;
-
-    areaMap.addListener('click', function (event) {
-      setAreaCoordinates(event.latLng.lat(), event.latLng.lng(), true);
-    });
-
-    if (mapSearchEl && google.maps.places) {
-      areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
-        fields: ['geometry', 'formatted_address', 'name'],
-        componentRestrictions: { country: 'pk' }
+    if (!areaMap) {
+      areaMap = new google.maps.Map(areaMapEl, {
+        center: { lat: 24.8607, lng: 67.0011 },
+        zoom: 11,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: false
       });
-      areaSearchAutocomplete.bindTo('bounds', areaMap);
-      areaSearchAutocomplete.addListener('place_changed', function () {
-        const place = areaSearchAutocomplete.getPlace();
-        if (!place || !place.geometry || !place.geometry.location) return;
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        setAreaCoordinates(lat, lng, true);
+      areaGeocoder = new google.maps.Geocoder();
+      mapReady = true;
+
+      areaMap.addListener('click', function (event) {
+        setAreaCoordinates(event.latLng.lat(), event.latLng.lng(), true);
       });
+
+      if (mapSearchEl && google.maps.places) {
+        areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
+          fields: ['geometry', 'formatted_address', 'name'],
+          componentRestrictions: { country: 'pk' }
+        });
+        areaSearchAutocomplete.bindTo('bounds', areaMap);
+        areaSearchAutocomplete.addListener('place_changed', function () {
+          const place = areaSearchAutocomplete.getPlace();
+          if (!place || !place.geometry || !place.geometry.location) {
+            searchOnMap();
+            return;
+          }
+          hideMapSearchResults();
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          setAreaCoordinates(lat, lng, true);
+          if (areaMap) areaMap.setZoom(15);
+        });
+      }
+    } else {
+      mapReady = true;
     }
   }
 
   function setAreaCoordinates(lat, lng, moveMap = false) {
     const fixedLat = Number(lat).toFixed(7);
     const fixedLng = Number(lng).toFixed(7);
-    areaLatEl.value = fixedLat;
-    areaLngEl.value = fixedLng;
+    if (areaLatEl) areaLatEl.value = fixedLat;
+    if (areaLngEl) areaLngEl.value = fixedLng;
 
     if (!areaMap || typeof google === 'undefined' || !google.maps) return;
     const markerPosition = { lat: Number(fixedLat), lng: Number(fixedLng) };
@@ -560,25 +582,151 @@
     }
     if (moveMap) {
       areaMap.setCenter(markerPosition);
-      areaMap.setZoom(14);
+      areaMap.setZoom(15);
     }
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+  }
+
+  function renderSearchResults(items) {
+    if (!mapResultsEl) return;
+    if (!items || items.length === 0) {
+      mapResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2 px-3">No location found. Try a different search term.</div>';
+      mapResultsEl.classList.remove('d-none');
+      return;
+    }
+
+    mapResultsEl.innerHTML = items.map((item, idx) => `
+      <button type="button" class="list-group-item list-group-item-action py-2 px-3 small ${idx === 0 ? 'active' : ''}" data-idx="${idx}">
+        <div class="fw-semibold text-truncate">${escapeHtml(item.title)}</div>
+        ${item.subtitle ? `<div class="text-muted text-truncate" style="font-size:11px;">${escapeHtml(item.subtitle)}</div>` : ''}
+      </button>
+    `).join('');
+    mapResultsEl.classList.remove('d-none');
+
+    const buttons = mapResultsEl.querySelectorAll('.list-group-item-action');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', function () {
+        buttons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const idx = parseInt(this.getAttribute('data-idx'), 10);
+        const chosen = items[idx];
+        if (chosen) {
+          setAreaCoordinates(chosen.lat, chosen.lng, true);
+          if (areaMap) areaMap.setZoom(15);
+        }
+      });
+    });
+  }
+
   function searchOnMap() {
-    if (!mapReady || !areaGeocoder || !mapSearchEl) return;
+    if (!mapSearchEl) return;
     const query = mapSearchEl.value.trim();
     if (query.length < 2) return;
 
-    mapSearchBtn.disabled = true;
-    areaGeocoder.geocode({ address: query, region: 'PK' }, function (results, status) {
-      mapSearchBtn.disabled = false;
-      if (status === 'OK' && results && results[0]) {
-        const picked = results[0];
-        const lat = picked.geometry.location.lat();
-        const lng = picked.geometry.location.lng();
-        setAreaCoordinates(lat, lng, true);
+    if (!mapReady && typeof google !== 'undefined' && google.maps) {
+      initAreaMap();
+    }
+
+    if (mapSearchBtn) mapSearchBtn.disabled = true;
+    if (mapResultsEl) {
+      mapResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2 px-3"><span class="spinner-border spinner-border-sm me-1" role="status"></span> Searching location...</div>';
+      mapResultsEl.classList.remove('d-none');
+    }
+
+    const cityName = activeCityContext?.name ? activeCityContext.name.trim() : '';
+    const queryHasCity = cityName && query.toLowerCase().includes(cityName.toLowerCase());
+    const searchQuery = queryHasCity || !cityName ? query : `${query}, ${cityName}`;
+
+    function showItems(items) {
+      if (mapSearchBtn) mapSearchBtn.disabled = false;
+      renderSearchResults(items);
+      if (items.length > 0) {
+        setAreaCoordinates(items[0].lat, items[0].lng, true);
+        if (areaMap) areaMap.setZoom(15);
       }
-    });
+    }
+
+    // Server-side OpenStreetMap search; works without a Google key/billing.
+    function fallbackServerSearch() {
+      const params = new URLSearchParams({ q: query, country_code: 'pk' });
+      if (cityName) params.set('city_name', cityName);
+      if (activeCityContext?.latitude && activeCityContext?.longitude) {
+        params.set('city_lat', activeCityContext.latitude);
+        params.set('city_lng', activeCityContext.longitude);
+      }
+
+      fetch(mapSearchUrl + '?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then(res => res.ok ? res.json() : { results: [] })
+        .then(data => {
+          const items = (data.results || []).map(r => {
+            const parts = String(r.name || '').split(',');
+            return {
+              title: (parts[0] || r.name || 'Unknown place').trim(),
+              subtitle: parts.slice(1).join(',').trim() || r.name,
+              lat: Number(r.lat),
+              lng: Number(r.lng)
+            };
+          });
+          showItems(items);
+        })
+        .catch(() => showItems([]));
+    }
+
+    if (areaGeocoder && googleGeocodingUsable) {
+      let finished = false;
+      const finish = function (fn) {
+        if (finished) return;
+        finished = true;
+        clearTimeout(geocodeTimer);
+        fn();
+      };
+      // A denied/misconfigured Google key can leave the geocoder silent; never hang on it.
+      const geocodeTimer = setTimeout(() => finish(fallbackServerSearch), 4000);
+
+      const geocodeReq = { address: searchQuery, region: 'PK' };
+      if (areaMap && areaMap.getBounds()) {
+        geocodeReq.bounds = areaMap.getBounds();
+      }
+
+      try {
+        const pending = areaGeocoder.geocode(geocodeReq, function (results, status) {
+          finish(function () {
+            if (status === 'OK' && results && results.length > 0) {
+              showItems(results.map(r => {
+                const parts = r.formatted_address.split(',');
+                const title = parts[0] ? parts[0].trim() : r.formatted_address;
+                const subtitle = parts.slice(1).join(',').trim();
+                return {
+                  title: title,
+                  subtitle: subtitle || r.formatted_address,
+                  lat: r.geometry.location.lat(),
+                  lng: r.geometry.location.lng()
+                };
+              }));
+              return;
+            }
+            if (status === 'REQUEST_DENIED') googleGeocodingUsable = false;
+            fallbackServerSearch();
+          });
+        });
+        // Newer Maps JS returns a promise that rejects on denial; the callback above already handles it.
+        if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+      } catch (err) {
+        googleGeocodingUsable = false;
+        finish(fallbackServerSearch);
+      }
+    } else {
+      fallbackServerSearch();
+    }
   }
 
   function hideMapSearchResults() {
@@ -599,7 +747,7 @@
   }
 
   function resetMapSearchState() {
-    mapSearchEl.value = '';
+    if (mapSearchEl) mapSearchEl.value = '';
     hideMapSearchResults();
     if (areaMarker && areaMap) {
       areaMarker.setMap(null);
@@ -614,6 +762,13 @@
       searchOnMap();
     }
   });
+
+  // Prevent Bootstrap modal from stealing focus or cancelling Google Places click
+  document.addEventListener('mousedown', function (e) {
+    if (e.target && (e.target.classList.contains('pac-item') || e.target.closest('.pac-item') || e.target.closest('.pac-container'))) {
+      e.stopPropagation();
+    }
+  }, true);
 
   areaLatEl?.addEventListener('change', function () {
     if (!areaLatEl.value || !areaLngEl.value) return;
@@ -652,13 +807,17 @@
     viewCityModal.show();
   }
 
+  const updateCityUrlTemplate = "<?php echo e(route('locations.cities.update', ':id')); ?>";
+  const updateAreaUrlTemplate = "<?php echo e(route('locations.areas.update', ':id')); ?>";
+  const deleteAreaUrlTemplate = "<?php echo e(route('locations.areas.destroy', ':id')); ?>";
+
   function openEditCityModal(event, city) {
     if (event) event.preventDefault();
     document.getElementById('editCityName').value   = city.name || '';
-    document.getElementById('editCityLat').value    = city.latitude ?? '';
-    document.getElementById('editCityLng').value    = city.longitude ?? '';
+    document.getElementById('editCityLat').value    = (city.latitude !== null && city.latitude !== undefined) ? city.latitude : '';
+    document.getElementById('editCityLng').value    = (city.longitude !== null && city.longitude !== undefined) ? city.longitude : '';
     document.getElementById('editCityStatus').value = city.status || 'Active';
-    document.getElementById('editCityForm').action  = `/locations/cities/${city.id}`;
+    document.getElementById('editCityForm').action  = updateCityUrlTemplate.replace(':id', city.id);
     editCityModal.show();
   }
 
@@ -685,13 +844,13 @@
     if (event) event.preventDefault();
     activeCityContext = city;
     document.getElementById('areaModalLabel').textContent = 'Edit Area';
-    document.getElementById('areaForm').action            = `/locations/areas/${area.id}`;
+    document.getElementById('areaForm').action            = updateAreaUrlTemplate.replace(':id', area.id);
     document.getElementById('areaFormMethod').value       = 'PUT';
     document.getElementById('areaCityId').value           = area.city_id;
     document.getElementById('areaCityName').value         = city.name;
     document.getElementById('areaName').value             = area.name || '';
-    document.getElementById('areaLat').value              = area.latitude ?? '';
-    document.getElementById('areaLng').value              = area.longitude ?? '';
+    document.getElementById('areaLat').value              = (area.latitude !== null && area.latitude !== undefined) ? area.latitude : '';
+    document.getElementById('areaLng').value              = (area.longitude !== null && area.longitude !== undefined) ? area.longitude : '';
     document.getElementById('areaStatus').value           = area.status || 'Active';
     resetMapSearchState();
     focusMapToCityContext();
@@ -734,7 +893,7 @@
       if (result.isConfirmed) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/locations/areas/${areaId}`;
+        form.action = deleteAreaUrlTemplate.replace(':id', areaId);
         form.innerHTML = `
           <?php echo csrf_field(); ?>
           <input type="hidden" name="_method" value="DELETE">

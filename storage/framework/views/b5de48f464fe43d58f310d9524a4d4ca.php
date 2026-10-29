@@ -246,26 +246,16 @@ body {
               <div class="mb-4 micro-anim">
                   <label for="userPassword" class="form-label fw-medium">Password</label>
               
-                  <div class="input-group password-field">
-                      <input
-                          type="password"
-                          class="form-control"
-                          id="userPassword"
-                          name="password"
-                          autocomplete="current-password"
-                          placeholder="••••••••"
-                          required
-                      >
-              
-                      <button
-                          class="password-toggle"
-                          type="button"
-                          id="togglePassword"
-                          aria-label="Show password"
-                      >
-                          <i data-lucide="eye" id="passwordIcon"></i>
-                      </button>
-                  </div>
+                  
+                  <input
+                      type="password"
+                      class="form-control"
+                      id="userPassword"
+                      name="password"
+                      autocomplete="current-password"
+                      placeholder="••••••••"
+                      required
+                  >
               </div>
               <div class="mb-4 d-flex justify-content-between align-items-center micro-anim auth-options-row">
                 <div class="form-check">
@@ -335,44 +325,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     <?php endif; ?>
 
-    <?php if($errors->any()): ?>
-        Swal.fire({
-            icon: 'error',
-            title: 'Validation Error',
-            html: `
-                <ul class="text-start mb-0">
-                    <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <li><?php echo e($error); ?></li>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                </ul>
-            `,
-            timer: 4000,
-            showConfirmButton: true,
-            confirmButtonText: 'Ok',
-            confirmButtonColor: '#e63946',
-            scrollbarPadding: false,
-            customClass: { popup: 'rounded-4' }
-        });
-    <?php endif; ?>
-    const passwordField = document.getElementById('userPassword');
-const togglePassword = document.getElementById('togglePassword');
-const passwordIcon = document.getElementById('passwordIcon');
-
-togglePassword.addEventListener('click', function () {
-
-    const type = passwordField.getAttribute('type') === 'password'
-        ? 'text'
-        : 'password';
-
-    passwordField.setAttribute('type', type);
-
-    passwordIcon.setAttribute(
-        'data-lucide',
-        type === 'password' ? 'eye' : 'eye-off'
-    );
-
-    lucide.createIcons();
-});
 });
 </script>
 <?php $__env->stopPush(); ?>

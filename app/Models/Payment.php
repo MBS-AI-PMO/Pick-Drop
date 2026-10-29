@@ -71,13 +71,13 @@ class Payment extends Model
 
     public function receiptStatus(): string
     {
+        if ($this->status === self::STATUS_COMPLETED) {
+            return self::RECEIPT_RECEIVED;
+        }
+
         $stored = strtolower((string) ($this->receipt_status ?: ''));
         if (in_array($stored, [self::RECEIPT_PENDING, self::RECEIPT_NOT_RECEIVED, self::RECEIPT_RECEIVED], true)) {
             return $stored;
-        }
-
-        if ($this->status === self::STATUS_COMPLETED) {
-            return self::RECEIPT_RECEIVED;
         }
 
         return $this->proof_path ? self::RECEIPT_NOT_RECEIVED : self::RECEIPT_PENDING;

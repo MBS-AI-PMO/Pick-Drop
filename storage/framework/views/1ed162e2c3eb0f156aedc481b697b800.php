@@ -10,6 +10,10 @@
     || request()->is('fleet*')
     || request()->is('routes*')
     || request()->is('schools*');
+  $paymentsOpen = request()->is('payments*')
+    || request()->is('driver-payments*')
+    || request()->is('driver-payroll*')
+    || request()->is('payrolls*');
 ?>
 <nav class="sidebar pd-sidebar">
   <div class="sidebar-header">
@@ -182,25 +186,32 @@
       </li>
 
       
-      <li class="pd-nav-section pd-nav-section--link">
-        <a href="<?php echo e(route('payments.index')); ?>" class="pd-nav-section-toggle <?php echo e(active_class(['payments', 'payments/*'])); ?>">
+      <li class="pd-nav-section <?php echo e($paymentsOpen ? 'is-open' : ''); ?>">
+        <a class="pd-nav-section-toggle <?php echo e($paymentsOpen ? 'active' : ''); ?>"
+           data-bs-toggle="collapse" href="#nav-payments"
+           role="button"
+           aria-expanded="<?php echo e($paymentsOpen ? 'true' : 'false'); ?>"
+           aria-controls="nav-payments">
           <span class="pd-nav-ico"><i class="link-icon" data-lucide="credit-card"></i></span>
           <span class="link-title">Payments</span>
+          <i class="link-arrow" data-lucide="chevron-down"></i>
         </a>
+        <div class="collapse <?php echo e($paymentsOpen ? 'show' : ''); ?>" id="nav-payments">
+          <ul class="pd-nav-section-list">
+            <li class="nav-item <?php echo e(active_class(['payments', 'payments/*'])); ?>">
+              <a href="<?php echo e(route('payments.index')); ?>" class="nav-link"><span class="link-title">Invoices &amp; Payments</span></a>
+            </li>
+            <li class="nav-item <?php echo e(active_class(['driver-payments', 'driver-payments/*', 'driver-payroll', 'driver-payroll/*', 'payrolls', 'payrolls/*'])); ?>">
+              <a href="<?php echo e(route('driver-payroll.index')); ?>" class="nav-link"><span class="link-title">Driver Payments</span></a>
+            </li>
+          </ul>
+        </div>
       </li>
 
       <li class="pd-nav-section pd-nav-section--link">
         <a href="<?php echo e(route('charges.index')); ?>" class="pd-nav-section-toggle <?php echo e(active_class(['charges', 'charges/*'])); ?>">
           <span class="pd-nav-ico"><i class="link-icon" data-lucide="badge-dollar-sign"></i></span>
           <span class="link-title">Pick-Drop Charges</span>
-        </a>
-      </li>
-
-      <li class="pd-nav-section pd-nav-section--link">
-        <a href="<?php echo e(route('driver-payroll.index')); ?>"
-           class="pd-nav-section-toggle <?php echo e(active_class(['driver-payments', 'driver-payments/*', 'driver-payroll', 'driver-payroll/*', 'payrolls', 'payrolls/*'])); ?>">
-          <span class="pd-nav-ico"><i class="link-icon" data-lucide="wallet"></i></span>
-          <span class="link-title">Driver Payments</span>
         </a>
       </li>
 
