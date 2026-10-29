@@ -105,6 +105,10 @@ class Invoice extends Model
 
     public function receiptStatus(): string
     {
+        if ($this->isPaid()) {
+            return Payment::RECEIPT_RECEIVED;
+        }
+
         $this->loadMissing('payments');
         // A refunded payment is no longer "received", so it must not drive the invoice's receipt state.
         $latest = $this->payments->sortByDesc('id')->first(function (Payment $payment) {

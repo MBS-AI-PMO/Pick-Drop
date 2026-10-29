@@ -23,6 +23,7 @@ class ProfileController extends BaseApiController
 
             $validated = $request->validate([
                 'name'              => ['sometimes', 'string', 'max:255'],
+                'email'             => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
                 'phone'             => ['sometimes', 'string', 'max:50', 'unique:users,phone,' . $user->id],
                 'home_address'      => ['sometimes', 'string', 'max:500'],
                 'city_id'           => ['sometimes', 'integer', 'exists:cities,id'],

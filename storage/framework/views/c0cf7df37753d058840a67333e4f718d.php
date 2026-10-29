@@ -135,6 +135,8 @@ License: You must have a valid license to legally use this template for your pro
     <!-- end common js -->
 
     <?php echo $__env->yieldPushContent('custom-scripts'); ?>
+    <?php echo $__env->make('layout.partials.password-toggle', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+    <?php echo $__env->make('layout.partials.form-errors', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 </body>
 </html>
 <?php /**PATH C:\xampp\htdocs\Pick-Drop\resources\views/layout/master2.blade.php ENDPATH**/ ?>
