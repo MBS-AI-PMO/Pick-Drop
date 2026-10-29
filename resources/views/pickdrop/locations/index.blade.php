@@ -380,16 +380,22 @@
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Search from Map</label>
-              <div class="input-group">
-                <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map...">
-                <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn">
-                  <i data-lucide="search" class="icon-sm me-1"></i> Search
-                </button>
+              <div class="area-search position-relative">
+                <div class="input-group">
+                  <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map..." autocomplete="off">
+                  <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn">
+                    <i data-lucide="search" class="icon-sm me-1"></i> Search
+                  </button>
+                </div>
+                <div id="areaMapSearchResults" class="area-search-results d-none" role="listbox"></div>
               </div>
-              <div id="areaMapSearchResults" class="list-group mt-2 d-none"></div>
               <small class="text-muted d-block mt-1">Search a place or click directly on map to set area coordinates.</small>
             </div>
             <div class="col-12">
+              <div id="areaMapNotice" class="alert alert-warning py-2 px-3 small mb-2 d-none" role="alert">
+                Google Maps is unavailable for this site right now (billing / API key). Location search still works;
+                you can also click the map or type the latitude and longitude.
+              </div>
               <div id="areaPickerMap" class="border rounded"></div>
             </div>
             <div class="col-md-6">
@@ -486,10 +492,52 @@
   let googleGeocodingUsable = true;
   const mapSearchUrl = "{{ route('locations.map-search') }}";
 
-  // Google calls this when the key is rejected (e.g. billing not enabled).
+  // Google calls this for key/referrer rejections. It does NOT fire for BillingNotEnabledMapError,
+  // so initAreaMap() also probes the Geocoder once and routes a denial here.
   window.gm_authFailure = function () {
-    googleGeocodingUsable = false;
+    markGoogleUnavailable();
   };
+
+  function markGoogleUnavailable() {
+    googleGeocodingUsable = false;
+    if (typeof google !== 'undefined' && google.maps && mapSearchEl) {
+      google.maps.event.clearInstanceListeners(mapSearchEl);
+    }
+    document.querySelectorAll('.pac-container').forEach(el => el.remove());
+    document.getElementById('areaMapNotice')?.classList.remove('d-none');
+  }
+
+  // Places Autocomplete is only attached once Google has proven usable; otherwise every
+  // keystroke would hit a Places API that rejects the key.
+  function attachPlacesAutocomplete() {
+    if (areaSearchAutocomplete || !mapSearchEl || !areaMap || !google.maps.places) return;
+    areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
+      fields: ['geometry', 'formatted_address', 'name'],
+      componentRestrictions: { country: 'pk' }
+    });
+    areaSearchAutocomplete.bindTo('bounds', areaMap);
+    areaSearchAutocomplete.addListener('place_changed', function () {
+      const place = areaSearchAutocomplete.getPlace();
+      if (!place || !place.geometry || !place.geometry.location) {
+        searchOnMap();
+        return;
+      }
+      hideMapSearchResults();
+      setAreaCoordinates(place.geometry.location.lat(), place.geometry.location.lng(), true);
+      if (areaMap) areaMap.setZoom(15);
+    });
+  }
+
+  function probeGoogleServices() {
+    try {
+      const pending = areaGeocoder.geocode({ address: 'Pakistan' }, function (results, status) {
+        if (status === 'REQUEST_DENIED') markGoogleUnavailable(); else attachPlacesAutocomplete();
+      });
+      if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+    } catch (err) {
+      markGoogleUnavailable();
+    }
+  }
 
   window.onGoogleMapsReady = function () {
     const modalEl = document.getElementById('areaModal');
@@ -517,25 +565,7 @@
         setAreaCoordinates(event.latLng.lat(), event.latLng.lng(), true);
       });
 
-      if (mapSearchEl && google.maps.places) {
-        areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
-          fields: ['geometry', 'formatted_address', 'name'],
-          componentRestrictions: { country: 'pk' }
-        });
-        areaSearchAutocomplete.bindTo('bounds', areaMap);
-        areaSearchAutocomplete.addListener('place_changed', function () {
-          const place = areaSearchAutocomplete.getPlace();
-          if (!place || !place.geometry || !place.geometry.location) {
-            searchOnMap();
-            return;
-          }
-          hideMapSearchResults();
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
-          setAreaCoordinates(lat, lng, true);
-          if (areaMap) areaMap.setZoom(15);
-        });
-      }
+      probeGoogleServices();
     } else {
       mapReady = true;
     }
@@ -577,30 +607,29 @@
   function renderSearchResults(items) {
     if (!mapResultsEl) return;
     if (!items || items.length === 0) {
-      mapResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2 px-3">No location found. Try a different search term.</div>';
+      mapResultsEl.innerHTML = '<div class="area-search-status">No results found</div>';
       mapResultsEl.classList.remove('d-none');
       return;
     }
 
     mapResultsEl.innerHTML = items.map((item, idx) => `
-      <button type="button" class="list-group-item list-group-item-action py-2 px-3 small ${idx === 0 ? 'active' : ''}" data-idx="${idx}">
-        <div class="fw-semibold text-truncate">${escapeHtml(item.title)}</div>
-        ${item.subtitle ? `<div class="text-muted text-truncate" style="font-size:11px;">${escapeHtml(item.subtitle)}</div>` : ''}
+      <button type="button" class="area-search-item${idx === 0 ? ' is-selected' : ''}" role="option" data-idx="${idx}">
+        <span class="area-search-title">${escapeHtml(item.title)}</span>
+        ${item.subtitle ? `<span class="area-search-sub">${escapeHtml(item.subtitle)}</span>` : ''}
       </button>
     `).join('');
     mapResultsEl.classList.remove('d-none');
 
-    const buttons = mapResultsEl.querySelectorAll('.list-group-item-action');
+    const buttons = mapResultsEl.querySelectorAll('.area-search-item');
     buttons.forEach(btn => {
       btn.addEventListener('click', function () {
-        buttons.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        const idx = parseInt(this.getAttribute('data-idx'), 10);
-        const chosen = items[idx];
-        if (chosen) {
-          setAreaCoordinates(chosen.lat, chosen.lng, true);
-          if (areaMap) areaMap.setZoom(15);
-        }
+        const chosen = items[parseInt(this.getAttribute('data-idx'), 10)];
+        if (!chosen) return;
+        // Fill the input with the pick, close the list and move marker + map to it.
+        mapSearchEl.value = chosen.title;
+        hideMapSearchResults();
+        setAreaCoordinates(chosen.lat, chosen.lng, true);
+        if (areaMap) areaMap.setZoom(15);
       });
     });
   }
@@ -616,7 +645,7 @@
 
     if (mapSearchBtn) mapSearchBtn.disabled = true;
     if (mapResultsEl) {
-      mapResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2 px-3"><span class="spinner-border spinner-border-sm me-1" role="status"></span> Searching location...</div>';
+      mapResultsEl.innerHTML = '<div class="area-search-status"><span class="spinner-border spinner-border-sm me-1" role="status"></span> Searching location...</div>';
       mapResultsEl.classList.remove('d-none');
     }
 
@@ -891,7 +920,27 @@
 <style>
   .fs-13px { font-size: 13px; }
   #areaPickerMap { height: 280px; min-height: 220px; }
-  #areaMapSearchResults { max-height: 180px; overflow-y: auto; }
+  #areaPickerMap { position: relative; z-index: 0; }
+
+  /* Search suggestions: dark card with white text, floats over the map. */
+  .area-search-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+    max-height: 260px; overflow-y: auto; padding: .25rem;
+    background: #1F2937; border: 1px solid #374151; border-radius: .5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  }
+  .area-search-item {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    padding: .5rem .75rem; margin: 0; background: transparent; border: 0; border-radius: .375rem;
+  }
+  .area-search-item:hover, .area-search-item:focus, .area-search-item.is-selected { background: #374151; outline: 0; }
+  .area-search-title, .area-search-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .area-search-title { color: #fff; font-size: .875rem; font-weight: 600; }
+  .area-search-sub { color: rgba(255, 255, 255, .75); font-size: .75rem; }
+  .area-search-status { padding: .5rem .75rem; color: #fff; font-size: .875rem; }
+
+  #areaMapSearchInput::placeholder { color: #9CA3AF; opacity: 1; }
+  #areaMapSearchInput:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .2); outline: 0; }
   .pac-container { z-index: 2000 !important; }
 </style>
 @endpush
