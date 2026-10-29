@@ -7,6 +7,7 @@ use App\Models\DriverVehicleVerification;
 use App\Models\Notification;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
+use App\Services\AppNotificationService;
 use App\Support\AppPagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -249,6 +250,36 @@ class VehicleVerificationController extends Controller
         };
 
         Notification::create($payload);
+
+        // Send in-app notification to the driver's mobile app
+        $driverMessages = match ($status) {
+            DriverVehicleVerification::STATUS_APPROVED => [
+                'title' => 'Vehicle Approved',
+                'body'  => 'Your vehicle verification has been approved. You are now fully active and can start accepting rides.',
+            ],
+            DriverVehicleVerification::STATUS_REJECTED => [
+                'title' => 'Vehicle Declined',
+                'body'  => 'Your vehicle verification was declined.' . ($vehicleVerification->rejection_reason ? ' Reason: ' . $vehicleVerification->rejection_reason : ' Please re-submit your documents.'),
+            ],
+            default => [
+                'title' => 'Vehicle Status Updated',
+                'body'  => 'Your vehicle verification status has been moved back to pending.',
+            ],
+        };
+
+        if ($vehicleVerification->user_id) {
+            app(AppNotificationService::class)->notify(
+                (int) $vehicleVerification->user_id,
+                'verification_status',
+                $driverMessages['title'],
+                $driverMessages['body'],
+                [
+                    'verification_type' => 'vehicle',
+                    'verification_id'   => $vehicleVerification->id,
+                    'status'            => $status,
+                ]
+            );
+        }
     }
 
     public function document(DriverVehicleVerification $vehicleVerification, string $field)

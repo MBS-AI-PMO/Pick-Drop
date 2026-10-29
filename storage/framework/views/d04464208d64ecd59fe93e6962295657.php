@@ -99,7 +99,6 @@
               'shift' => $route->shift ? ucfirst($route->shift) : '—',
               'stops_count' => $route->stops_count,
               'description' => $route->description,
-              'edit_url' => route('routes.edit', $route),
             ];
           ?>
           <tr>
@@ -274,9 +273,6 @@
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-        <a href="#" id="viewRouteEditBtn" class="btn btn-primary">
-          <i data-lucide="edit-2" class="icon-sm me-1"></i> Edit
-        </a>
       </div>
     </div>
   </div>
@@ -319,15 +315,6 @@
   });
   <?php endif; ?>
 
-  <?php if($errors->any()): ?>
-  Swal.fire({
-      icon: 'error', title: 'Validation Error',
-      html: `<?php echo implode('<br>', $errors->all()); ?>`,
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 5000, timerProgressBar: true
-  });
-  <?php endif; ?>
-
   // Submit search on Enter
   const routeSearch = document.getElementById('routeSearch');
   if (routeSearch) {
@@ -347,7 +334,6 @@
     document.getElementById('viewRouteShift').textContent = route.shift || '—';
     document.getElementById('viewRouteStops').textContent = (route.stops_count ?? 0) + ' Stops';
     document.getElementById('viewRouteDescription').textContent = route.description || '—';
-    document.getElementById('viewRouteEditBtn').href = route.edit_url || '#';
     new bootstrap.Modal(document.getElementById('viewRouteModal')).show();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
