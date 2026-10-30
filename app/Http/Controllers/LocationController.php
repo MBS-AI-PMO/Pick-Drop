@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class LocationController extends Controller
 {
     private const AREA_CITY_MAX_DISTANCE_KM = 60;
+    private const MAP_SEARCH_CITY_RADIUS_DEGREES = 0.4;
 
     public function citiesIndex(Request $request)
     {
@@ -327,6 +328,7 @@ class LocationController extends Controller
             $countryCode = strtolower((string) $request->input('country_code', ''));
             $cityLat = $request->filled('city_lat') ? (float) $request->input('city_lat') : null;
             $cityLng = $request->filled('city_lng') ? (float) $request->input('city_lng') : null;
+            $hasCityCoords = !is_null($cityLat) && !is_null($cityLng);
 
             Log::info('Map search requested', [
                 'q' => $rawQuery,
@@ -336,46 +338,62 @@ class LocationController extends Controller
                 'city_lng' => $cityLng,
             ]);
 
-            $cacheKey = 'map_search:' . md5(json_encode([
-                'q' => $rawQuery,
-                'city_name' => $cityName,
+            $cacheKey = 'map_search:v2:' . md5(json_encode([
+                'q' => mb_strtolower($rawQuery),
+                'city_name' => $hasCityCoords ? '' : mb_strtolower($cityName),
                 'country_code' => $countryCode,
+                'lat' => $hasCityCoords ? round($cityLat, 3) : null,
+                'lng' => $hasCityCoords ? round($cityLng, 3) : null,
             ]));
             $cachedResults = Cache::get($cacheKey);
-            if (!is_null($cachedResults)) {
+            if (!empty($cachedResults)) {
                 return response()->json(['results' => $cachedResults], 200);
             }
 
-            $queries = [$rawQuery];
-            if ($cityName !== '') {
-                $queries[] = "{$rawQuery}, {$cityName}";
+            // The selected city's coordinates are the reliable signal: city names are free text
+            // (typos, aliases) and only add noise to the search. Use the name only without coordinates.
+            $variants = $this->mapSearchQueryVariants($rawQuery);
+            $queries = $variants;
+            if (!$hasCityCoords && $cityName !== '') {
+                $queries = array_map(fn ($variant) => "{$variant}, {$cityName}", $queries);
             }
 
-            $queries = array_values(array_unique(array_filter($queries)));
-            $results = collect();
+            $candidates = collect();
+            $requestsMade = 0;
 
-            foreach ($queries as $index => $query) {
+            foreach ($queries as $query) {
                 $params = [
                     'q' => $query,
                     'format' => 'jsonv2',
                     'addressdetails' => 1,
-                    'limit' => 10,
+                    'namedetails' => 1,
+                    'accept-language' => 'en',
+                    'limit' => 20,
                     'dedupe' => 1,
                 ];
 
-                if ($countryCode !== '' && $index === 0) {
+                if ($countryCode !== '') {
                     $params['countrycodes'] = $countryCode;
                 }
 
-                // Keep a soft geo-bias only for the first pass; strict bounds can hide valid local sectors.
-                if (!is_null($cityLat) && !is_null($cityLng) && $index === 0) {
-                    $delta = 0.35;
-                    $left = $cityLng - $delta;
-                    $right = $cityLng + $delta;
-                    $top = $cityLat + $delta;
-                    $bottom = $cityLat - $delta;
-                    $params['viewbox'] = "{$left},{$top},{$right},{$bottom}";
+                // Restrict to the selected city, otherwise same-named areas in other cities
+                // (e.g. "Gulshan", "Satellite Town", "DHA Phase 5") crowd out the right one.
+                if ($hasCityCoords) {
+                    $delta = self::MAP_SEARCH_CITY_RADIUS_DEGREES;
+                    $params['viewbox'] = implode(',', [
+                        $cityLng - $delta,
+                        $cityLat + $delta,
+                        $cityLng + $delta,
+                        $cityLat - $delta,
+                    ]);
+                    $params['bounded'] = 1;
                 }
+
+                // Nominatim's usage policy allows at most one request per second.
+                if ($requestsMade > 0) {
+                    usleep(1100000);
+                }
+                $requestsMade++;
 
                 $response = $this->mapHttpClient()->get('https://nominatim.openstreetmap.org/search', $params);
 
@@ -393,33 +411,23 @@ class LocationController extends Controller
                     continue;
                 }
 
-                $batch = collect($response->json())
-                    ->map(function ($item) {
-                        return [
-                            'name' => $item['display_name'] ?? 'Unknown place',
-                            'lat' => isset($item['lat']) ? (float) $item['lat'] : null,
-                            'lng' => isset($item['lon']) ? (float) $item['lon'] : null,
-                        ];
-                    })
-                    ->filter(fn ($item) => !is_null($item['lat']) && !is_null($item['lng']));
-
-                $results = $results->concat($batch);
-                if ($results->count() >= 6) {
-                    break;
-                }
+                $candidates = $candidates->concat(
+                    collect($response->json())->filter(fn ($item) => is_array($item) && isset($item['lat'], $item['lon']))
+                );
             }
 
-            $results = $results
-                ->unique(fn ($item) => $item['lat'] . '|' . $item['lng'])
-                ->take(6)
-                ->values();
+            $results = $this->rankMapSearchResults($candidates, $variants, $cityLat, $cityLng);
 
             Log::info('Map search completed', [
                 'q' => $rawQuery,
+                'candidates' => $candidates->count(),
                 'results_count' => $results->count(),
             ]);
 
-            Cache::put($cacheKey, $results->toArray(), now()->addHours(12));
+            // Never cache an empty answer: it may be a transient provider failure.
+            if ($results->isNotEmpty()) {
+                Cache::put($cacheKey, $results->toArray(), now()->addHours(12));
+            }
 
             return response()->json(['results' => $results], 200);
         } catch (\Throwable $e) {
@@ -430,6 +438,211 @@ class LocationController extends Controller
             ]);
             return response()->json(['results' => []], 200);
         }
+    }
+
+    /**
+     * The typed query, plus a hyphenated form for sector-style names ("F7" -> "F-7", "G10/4" -> "G-10/4"),
+     * which OpenStreetMap stores with the hyphen, and "Cantt" -> "Cantonment".
+     *
+     * @return list<string>
+     */
+    private function mapSearchQueryVariants(string $query): array
+    {
+        $variants = [$query];
+
+        $expanded = preg_replace('/\bcantt\b\.?/i', 'Cantonment', $query);
+        if (is_string($expanded) && $expanded !== $query) {
+            $variants[] = $expanded;
+        }
+
+        $hyphenated = preg_replace('/\b([A-Za-z])(\d+)/', '$1-$2', $query);
+        if (is_string($hyphenated) && $hyphenated !== $query) {
+            $variants[] = $hyphenated;
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Keep only results that are real areas matching what was typed, best match first.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $candidates
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function rankMapSearchResults($candidates, array $variants, ?float $cityLat, ?float $cityLng)
+    {
+        // Compare against every spelling we searched for ("F7" and "F-7", "Cantt" and "Cantonment").
+        $needles = collect($variants)
+            ->map(fn (string $variant) => [
+                'needle' => $this->normalizeSearchText($variant),
+                'tokens' => $this->searchTokens($variant),
+            ])
+            ->filter(fn (array $variant) => $variant['needle'] !== '')
+            ->values();
+        if ($needles->isEmpty()) {
+            return collect();
+        }
+
+        // The search box is square, so its corners reach into neighbouring cities; keep a circle.
+        if (!is_null($cityLat) && !is_null($cityLng)) {
+            $candidates = $candidates->filter(
+                fn (array $item) => $this->mapDistance($item, $cityLat, $cityLng) <= self::MAP_SEARCH_CITY_RADIUS_DEGREES
+            );
+        }
+
+        $scored = $candidates
+            ->map(function (array $item) use ($needles) {
+                $score = 0;
+                $nameLength = 0;
+
+                foreach ($this->searchNameCandidates($item) as $name) {
+                    $normalized = $this->normalizeSearchText($name);
+                    if ($normalized === '') {
+                        continue;
+                    }
+
+                    foreach ($needles as $variant) {
+                        $needle = $variant['needle'];
+                        $current = match (true) {
+                            $normalized === $needle => 4,
+                            str_starts_with($normalized, $needle) => 3,
+                            str_contains($normalized, $needle) => 2,
+                            $this->containsAllTokens($normalized, $variant['tokens']) => 1,
+                            default => 0,
+                        };
+
+                        if ($current > $score) {
+                            $score = $current;
+                            $nameLength = mb_strlen($normalized);
+                        }
+                    }
+                }
+
+                return [
+                    'item' => $item,
+                    'score' => $score,
+                    'area_like' => $this->isAreaLikeResult($item),
+                    'name_length' => $nameLength,
+                ];
+            })
+            ->filter(fn (array $row) => $row['score'] > 0);
+
+        // Prefer genuine areas (suburb, neighbourhood, town, administrative/residential zone).
+        // Fall back to other places (landmarks, markets) only when no area matches, and then
+        // only on an exact name: "Clifton Hotel" is not the area "Clifton".
+        $areaRows = $scored->where('area_like', true);
+        $pool = $areaRows->isNotEmpty() ? $areaRows : $scored->where('score', 4);
+
+        // Show only the best match tier: an exact name hides partial matches such as
+        // "Latifabad Taluka" when "Latifabad" was typed, unless nothing matches exactly.
+        $pool = $pool->where('score', (int) $pool->max('score'));
+
+        return $pool
+            ->sort(function (array $a, array $b) use ($cityLat, $cityLng) {
+                if ($a['score'] !== $b['score']) {
+                    return $b['score'] <=> $a['score'];
+                }
+                if ($a['name_length'] !== $b['name_length']) {
+                    return $a['name_length'] <=> $b['name_length'];
+                }
+                if (!is_null($cityLat) && !is_null($cityLng)) {
+                    return $this->mapDistance($a['item'], $cityLat, $cityLng)
+                        <=> $this->mapDistance($b['item'], $cityLat, $cityLng);
+                }
+
+                return ((float) ($b['item']['importance'] ?? 0)) <=> ((float) ($a['item']['importance'] ?? 0));
+            })
+            ->map(fn (array $row) => [
+                'name' => $row['item']['display_name'] ?? 'Unknown place',
+                'lat' => (float) $row['item']['lat'],
+                'lng' => (float) $row['item']['lon'],
+                'type' => $row['item']['type'] ?? null,
+            ])
+            // Same place returned as both a boundary and a landuse polygon, or by both query variants.
+            ->unique(fn (array $row) => round($row['lat'], 3) . '|' . round($row['lng'], 3))
+            ->take(6)
+            ->values();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function searchNameCandidates(array $item): array
+    {
+        $names = [];
+
+        foreach ((array) ($item['namedetails'] ?? []) as $key => $value) {
+            $isNameKey = $key === 'name'
+                || str_starts_with($key, 'name:')
+                || str_contains($key, 'alt_name')
+                || in_array($key, ['official_name', 'short_name', 'old_name'], true);
+
+            if (is_string($value) && $isNameKey) {
+                foreach (explode(';', $value) as $part) {
+                    $names[] = trim($part);
+                }
+            }
+        }
+
+        if (!empty($item['name']) && is_string($item['name'])) {
+            $names[] = $item['name'];
+        }
+
+        return array_values(array_unique(array_filter($names)));
+    }
+
+    private function isAreaLikeResult(array $item): bool
+    {
+        $category = (string) ($item['category'] ?? '');
+        $type = (string) ($item['type'] ?? '');
+
+        if ($category === 'place') {
+            return !in_array($type, ['house', 'building', 'postcode', 'country', 'state', 'region'], true);
+        }
+
+        if ($category === 'boundary') {
+            return $type !== 'marker';
+        }
+
+        return $category === 'landuse' && in_array($type, ['residential', 'commercial', 'retail', 'industrial'], true);
+    }
+
+    private function normalizeSearchText(string $text): string
+    {
+        return preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($text)) ?? '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function searchTokens(string $text): array
+    {
+        $parts = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_values(array_filter($parts, fn ($part) => mb_strlen($part) >= 2 || ctype_digit($part)));
+    }
+
+    /**
+     * @param  list<string>  $tokens
+     */
+    private function containsAllTokens(string $normalized, array $tokens): bool
+    {
+        if (count($tokens) < 2) {
+            return false;
+        }
+
+        foreach ($tokens as $token) {
+            if (!str_contains($normalized, $token)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function mapDistance(array $item, float $lat, float $lng): float
+    {
+        return hypot((float) $item['lat'] - $lat, (float) $item['lon'] - $lng);
     }
 
     public function pointsIndex(Request $request)

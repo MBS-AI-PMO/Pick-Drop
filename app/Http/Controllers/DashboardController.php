@@ -83,7 +83,44 @@ class DashboardController extends Controller
             'parent_satisfaction_stars' => (int) round($parentSatisfaction),
         ];
 
+        $statusBreakdown = PickupRequest::selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        $weeklyRequests = collect(range(6, 0))->map(function (int $daysAgo) {
+            $day = today()->subDays($daysAgo);
+            $completed = PickupRequest::whereDate('created_at', $day)->where('status', 'completed')->count();
+            $cancelled = PickupRequest::whereDate('created_at', $day)->where('status', 'cancelled')->count();
+
+            return [
+                'label' => $day->format('D'),
+                'date' => $day->format('d M'),
+                'weekend' => $day->isWeekend(),
+                'total' => PickupRequest::whereDate('created_at', $day)->count(),
+                'completed' => $completed,
+                'cancelled' => $cancelled,
+            ];
+        })->values()->all();
+
+        $prevWeekTotal = PickupRequest::whereBetween('created_at', [
+            today()->subDays(13)->startOfDay(),
+            today()->subDays(7)->endOfDay(),
+        ])->count();
+
+        $kpiContext = [
+            'vehicles_total' => $totalVehicles,
+            'users_active' => $activeUsers,
+            'requests_total' => $totalPickup,
+            'alerts_week' => $alertsWeek,
+        ];
+
         return view('dashboard', [
+            'kpiContext' => $kpiContext,
+            'prevWeekTotal' => $prevWeekTotal,
+            'statusBreakdown' => $statusBreakdown,
+            'weeklyRequests' => $weeklyRequests,
             'stats' => $stats,
             'activeTrips' => $activeTrips,
             'activeTripsCount' => PickupRequest::whereIn('status', $activeTripStatuses)->count(),

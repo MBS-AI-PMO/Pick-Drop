@@ -71,7 +71,9 @@
                     <img src="{{ route('parent-self-verifications.document', [$item, 'selfie_photo']) }}"
                          alt="Profile"
                          class="rounded-circle border flex-shrink-0"
-                         style="width:36px;height:36px;object-fit:cover;">
+                         style="width:36px;height:36px;object-fit:cover;"
+                         loading="lazy"
+                         onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'rounded-circle border flex-shrink-0 d-flex align-items-center justify-content-center bg-light text-muted', style:'width:36px;height:36px;font-size:12px', textContent:'{{ strtoupper(substr($item->full_name ?: '?', 0, 1)) }}'}))">
                   @endif
                   <div>
                     <div class="fw-semibold">{{ $item->full_name }}</div>
@@ -94,7 +96,7 @@
                 @if($item->status === 'pending')
                   <span class="badge bg-warning text-dark">Pending</span>
                 @elseif($item->status === 'approved')
-                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
                 @else
                   <span class="badge bg-danger">Declined</span>
                 @endif

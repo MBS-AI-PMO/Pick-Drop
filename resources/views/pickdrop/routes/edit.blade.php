@@ -158,7 +158,7 @@
         <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
             <div class="w-32px h-32px rounded-2 d-flex align-items-center justify-content-center" style="background:rgba(var(--bs-success-rgb),0.1);">
-              <i data-lucide="map-pin" style="width:16px;height:16px;color:#3f6fd9;"></i>
+              <i data-lucide="map-pin" style="width:16px;height:16px;color:#5a3fa8;"></i>
             </div>
             <h6 class="mb-0 fw-bold">Route Stops</h6>
           </div>

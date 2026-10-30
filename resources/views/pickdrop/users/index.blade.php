@@ -103,7 +103,7 @@
             <td class="py-3">
               @php $accountStatus = trim((string) ($user->status ?? '')); @endphp
               @if(strtolower($accountStatus) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
               @elseif($accountStatus !== '')
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $accountStatus }}</span>
               @else

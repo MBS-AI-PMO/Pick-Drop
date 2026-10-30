@@ -145,7 +145,12 @@
       <div class="card-body">
         <div class="mb-3">
           <label class="text-muted small">Account Status</label>
-          <div class="fw-semibold">{{ $verification->user?->status ?? '—' }}</div>
+          <div class="fw-semibold">
+            {{ $verification->user?->status ?? '—' }}
+            @if($verification->status === 'approved' && strcasecmp((string) $verification->user?->status, 'Active') !== 0)
+              <small class="text-muted d-block">KYC approved · awaiting vehicle verification to activate</small>
+            @endif
+          </div>
         </div>
         <div class="mb-3">
           <label class="text-muted small">KYC Status</label>
@@ -153,7 +158,7 @@
             @if($verification->status === 'pending')
               <span class="badge bg-warning text-dark">Pending Verification</span>
             @elseif($verification->status === 'approved')
-              <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
+              <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
             @else
               <span class="badge bg-danger">Declined</span>
             @endif
@@ -267,7 +272,7 @@
     title: 'Updated',
     text: @json(session('success')),
     confirmButtonText: 'OK',
-    confirmButtonColor: '#3f6fd9',
+    confirmButtonColor: '#5a3fa8',
     customClass: { popup: 'rounded-4' }
   });
   @endif

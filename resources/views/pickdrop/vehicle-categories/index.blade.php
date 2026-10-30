@@ -85,7 +85,7 @@
               <td class="py-3 text-secondary">{{ $category->passenger_capacity }} Seats</td>
               <td class="py-3">
                 @if($category->status == 1)
-                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
                 @else
                   <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">Inactive</span>
                 @endif

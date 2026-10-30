@@ -79,7 +79,7 @@
               </td>
               <td class="py-3">
                 @if(strtolower($area->status) === 'active')
-                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
                 @else
                   <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $area->status }}</span>
                 @endif
@@ -124,7 +124,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pt-2">
-        <form id="areaForm" method="POST">
+        <form id="areaForm" method="POST" novalidate>
           @csrf
           <input type="hidden" name="_method" id="areaFormMethod" value="POST">
 
@@ -134,7 +134,7 @@
               <select name="city_id" id="areaCityId" class="form-select" required>
                 <option value="">Select city first</option>
                 @foreach($cities as $city)
-                  <option value="{{ $city->id }}" data-lat="{{ $city->latitude }}" data-lng="{{ $city->longitude }}">
+                  <option value="{{ $city->id }}" data-lat="{{ $city->latitude }}" data-lng="{{ $city->longitude }}" data-name="{{ $city->name }}">
                     {{ $city->name }}
                   </option>
                 @endforeach
@@ -147,13 +147,24 @@
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Search from Map</label>
-              <div class="input-group">
-                <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map..." disabled>
-                <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn" disabled>Search</button>
+              <div class="area-search position-relative">
+                <div class="input-group">
+                  <input type="text" id="areaMapSearchInput" class="form-control" placeholder="Search location on map..." autocomplete="off" disabled>
+                  <button type="button" class="btn btn-outline-secondary" id="areaMapSearchBtn" disabled>
+                    <span class="spinner-border spinner-border-sm me-1 d-none" id="areaMapSearchSpinner" role="status" aria-hidden="true"></span>
+                    <span id="areaMapSearchLabel">Search</span>
+                  </button>
+                </div>
+                <div id="areaMapSearchResults" class="area-search-results d-none" role="listbox"></div>
               </div>
-              <div id="areaMapSearchResults" class="list-group mt-2 d-none"></div>
             </div>
-            <div class="col-12"><div id="areaPickerMap" class="border rounded"></div></div>
+            <div class="col-12">
+              <div id="areaMapNotice" class="alert alert-warning py-2 px-3 small mb-2 d-none" role="alert">
+                Google Maps is unavailable for this site right now (billing / API key). Location search still works;
+                you can also click the map or type the latitude and longitude.
+              </div>
+              <div id="areaPickerMap" class="border rounded"></div>
+            </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Latitude</label>
               <input type="number" step="0.0000001" name="latitude" id="areaLat" class="form-control" required disabled>
@@ -235,10 +246,26 @@
   const mapSearchEl = document.getElementById('areaMapSearchInput');
   const mapSearchBtn = document.getElementById('areaMapSearchBtn');
   const areaMapEl = document.getElementById('areaPickerMap');
-  let areaMap, areaMarker, areaGeocoder, areaSearchAutocomplete;
+  const mapResultsEl = document.getElementById('areaMapSearchResults');
+  const mapSearchUrl = "{{ route('locations.map-search') }}";
+  const mapSearchSpinnerEl = document.getElementById('areaMapSearchSpinner');
+  const mapSearchLabelEl = document.getElementById('areaMapSearchLabel');
+  let areaMap, areaMarker, areaGeocoder;
+  let searchRequestId = 0;
   let mapReady = false;
+  let googleGeocodingUsable = true;
+
+  // Google calls this for key/referrer rejections. It does NOT fire for BillingNotEnabledMapError,
+  // so initAreaMap() also probes the Geocoder once and routes a denial here.
+  window.gm_authFailure = function () {
+    markGoogleUnavailable();
+  };
+
+  function markGoogleUnavailable() {
+    googleGeocodingUsable = false;
+    document.getElementById('areaMapNotice')?.classList.remove('d-none');
+  }
   let activeCityContext = null;
-  let mapSearchDebounce;
 
   function initAreaMap() {
     if (areaMap || !areaMapEl || typeof google === 'undefined' || !google.maps) return;
@@ -247,32 +274,34 @@
       zoom: 11,
       mapTypeControl: true,
       streetViewControl: false,
-      fullscreenControl: false
+      fullscreenControl: false,
+      // Map POIs (e.g. "Khan Shinwari Hujra") would otherwise open their own info-window on click.
+      clickableIcons: false
     });
     areaGeocoder = new google.maps.Geocoder();
     mapReady = true;
     areaMap.addListener('click', function (e) {
       if (!areaCityEl?.value) return;
-      setAreaCoordinates(e.latLng.lat(), e.latLng.lng(), true);
+      setAreaCoordinates(e.latLng.lat(), e.latLng.lng(), false);
     });
 
-    if (mapSearchEl && google.maps.places) {
-      areaSearchAutocomplete = new google.maps.places.Autocomplete(mapSearchEl, {
-        fields: ['geometry', 'formatted_address', 'name'],
-        componentRestrictions: { country: 'pk' }
+    // One silent probe so a denied key/billing problem is known before the first search.
+    try {
+      const pending = areaGeocoder.geocode({ address: 'Pakistan' }, function (results, status) {
+        if (status === 'REQUEST_DENIED') markGoogleUnavailable();
       });
-      areaSearchAutocomplete.bindTo('bounds', areaMap);
-      areaSearchAutocomplete.addListener('place_changed', function () {
-        const place = areaSearchAutocomplete.getPlace();
-        if (!place || !place.geometry || !place.geometry.location) return;
-        setAreaCoordinates(place.geometry.location.lat(), place.geometry.location.lng(), true);
-      });
+      if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+    } catch (err) {
+      markGoogleUnavailable();
     }
   }
 
+  // Single place that keeps the lat/lng inputs, the marker and the map view in sync.
   function setAreaCoordinates(lat, lng, moveMap = false) {
     areaLatEl.value = Number(lat).toFixed(7);
     areaLngEl.value = Number(lng).toFixed(7);
+    areaLatEl.classList.remove('is-invalid');
+    areaLngEl.classList.remove('is-invalid');
     if (!areaMap || typeof google === 'undefined' || !google.maps) return;
     const pos = { lat: Number(areaLatEl.value), lng: Number(areaLngEl.value) };
     if (!areaMarker) {
@@ -281,7 +310,7 @@
     } else {
       areaMarker.setPosition(pos);
     }
-    if (moveMap) { areaMap.setCenter(pos); areaMap.setZoom(14); }
+    if (moveMap) { areaMap.panTo(pos); areaMap.setZoom(15); }
   }
 
   function focusMapToCityContext() {
@@ -311,7 +340,7 @@
     const citySelected = !!(areaCityEl && areaCityEl.value);
     const lat = selected?.dataset?.lat;
     const lng = selected?.dataset?.lng;
-    activeCityContext = citySelected && lat && lng ? { latitude: lat, longitude: lng } : null;
+    activeCityContext = citySelected && lat && lng ? { name: selected.dataset.name || '', latitude: lat, longitude: lng } : null;
     setAreaFieldsEnabled(citySelected);
     if (citySelected) focusMapToCityContext();
   }
@@ -341,7 +370,7 @@
 
   function openEditAreaModal(area) {
     document.getElementById('areaModalLabel').textContent = 'Edit Area';
-    document.getElementById('areaForm').action = `/locations/areas/${area.id}`;
+    document.getElementById('areaForm').action = '{{ route('locations.areas.update', ['area' => '__ID__']) }}'.replace('__ID__', area.id);
     document.getElementById('areaFormMethod').value = 'PUT';
     areaCityEl.value = area.city_id;
     document.getElementById('areaName').value = area.name || '';
@@ -366,59 +395,265 @@
       if (!result.isConfirmed) return;
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = `/locations/areas/${areaId}`;
+      form.action = '{{ route('locations.areas.destroy', ['area' => '__ID__']) }}'.replace('__ID__', areaId);
       form.innerHTML = `@csrf <input type="hidden" name="_method" value="DELETE">`;
       document.body.appendChild(form);
       form.submit();
     });
   }
 
-  function searchOnMap() {
-    if (!mapReady || !areaGeocoder || !mapSearchEl) return;
-    if (!areaCityEl?.value) return;
-    const query = mapSearchEl.value.trim();
-    if (query.length < 2) return;
-    mapSearchBtn.disabled = true;
-    areaGeocoder.geocode({ address: query, region: 'PK' }, function (results, status) {
-      mapSearchBtn.disabled = false;
-      if (status === 'OK' && results[0]) {
-        setAreaCoordinates(results[0].geometry.location.lat(), results[0].geometry.location.lng(), true);
-        return;
-      }
-      Swal.fire({
-        icon: 'info',
-        title: 'No location found',
-        text: 'Try a more specific search term.'
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+  }
+
+  function hideSearchResults() {
+    if (!mapResultsEl) return;
+    mapResultsEl.classList.add('d-none');
+    mapResultsEl.innerHTML = '';
+  }
+
+  function setSearchLoading(loading) {
+    if (mapSearchBtn) mapSearchBtn.disabled = loading || !areaCityEl?.value;
+    if (mapSearchSpinnerEl) mapSearchSpinnerEl.classList.toggle('d-none', !loading);
+    if (mapSearchLabelEl) mapSearchLabelEl.textContent = loading ? 'Searching...' : 'Search';
+  }
+
+  // Picking a suggestion: fill the input, close the list, and sync marker, view and lat/lng.
+  function selectSearchResult(item) {
+    if (!item || !Number.isFinite(item.lat) || !Number.isFinite(item.lng)) return;
+    if (mapSearchEl) mapSearchEl.value = item.title;
+    hideSearchResults();
+    setAreaCoordinates(item.lat, item.lng, true);
+  }
+
+  function renderSearchResults(items) {
+    if (!mapResultsEl) return;
+    if (!items || items.length === 0) {
+      mapResultsEl.innerHTML = '<div class="area-search-status">No results found</div>';
+      mapResultsEl.classList.remove('d-none');
+      return;
+    }
+
+    mapResultsEl.innerHTML = items.map((item, idx) => `
+      <button type="button" class="area-search-item${idx === 0 ? ' is-selected' : ''}" role="option" data-idx="${idx}">
+        <span class="area-search-title">${escapeHtml(item.title)}</span>
+        ${item.subtitle ? `<span class="area-search-sub">${escapeHtml(item.subtitle)}</span>` : ''}
+      </button>
+    `).join('');
+    mapResultsEl.classList.remove('d-none');
+
+    mapResultsEl.querySelectorAll('.area-search-item').forEach(btn => {
+      btn.addEventListener('click', function () {
+        selectSearchResult(items[parseInt(this.getAttribute('data-idx'), 10)]);
       });
     });
   }
 
-  function scheduleMapSearch() {
-    clearTimeout(mapSearchDebounce);
-    mapSearchDebounce = setTimeout(() => {
-      searchOnMap();
-    }, 450);
+  function searchOnMap() {
+    if (!mapSearchEl || !areaCityEl?.value) return;
+    const query = mapSearchEl.value.trim();
+    if (query.length < 2) return;
+
+    if (!mapReady && typeof google !== 'undefined' && google.maps) {
+      initAreaMap();
+    }
+
+    // Ignore answers from an older search if the user searched again meanwhile.
+    const requestId = ++searchRequestId;
+    setSearchLoading(true);
+    if (mapResultsEl) {
+      mapResultsEl.innerHTML = '<div class="area-search-status"><span class="spinner-border spinner-border-sm me-1" role="status"></span> Searching location...</div>';
+      mapResultsEl.classList.remove('d-none');
+    }
+
+    const cityName = activeCityContext?.name ? activeCityContext.name.trim() : '';
+    const queryHasCity = cityName && query.toLowerCase().includes(cityName.toLowerCase());
+    const searchQuery = queryHasCity || !cityName ? query : `${query}, ${cityName}`;
+
+    function showItems(items) {
+      if (requestId !== searchRequestId) return;
+      setSearchLoading(false);
+      renderSearchResults(items);
+      // Preview the best match on the map; the user confirms by picking a suggestion.
+      if (items.length > 0) setAreaCoordinates(items[0].lat, items[0].lng, true);
+    }
+
+    // Primary search: server-side OpenStreetMap lookup limited to the selected city and to real
+    // areas whose name matches what was typed. Works without a Google key/billing.
+    function serverSearch(onEmpty) {
+      const params = new URLSearchParams({ q: query, country_code: 'pk' });
+      if (cityName) params.set('city_name', cityName);
+      if (activeCityContext?.latitude && activeCityContext?.longitude) {
+        params.set('city_lat', activeCityContext.latitude);
+        params.set('city_lng', activeCityContext.longitude);
+      }
+
+      fetch(mapSearchUrl + '?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then(res => res.ok ? res.json() : { results: [] })
+        .then(data => {
+          const items = (data.results || []).map(r => {
+            const parts = String(r.name || '').split(',');
+            return {
+              title: (parts[0] || r.name || 'Unknown place').trim(),
+              subtitle: parts.slice(1).join(',').trim() || r.name,
+              lat: Number(r.lat),
+              lng: Number(r.lng)
+            };
+          });
+          if (items.length > 0) showItems(items); else onEmpty();
+        })
+        .catch(onEmpty);
+    }
+
+    // Secondary search, only when the server found nothing. Google results are kept only if
+    // they fall near the selected city, so a same-named area in another city is never offered.
+    function googleSearch() {
+      let finished = false;
+      const finish = function (items) {
+        if (finished) return;
+        finished = true;
+        clearTimeout(geocodeTimer);
+        showItems(items);
+      };
+      // A denied/misconfigured Google key can leave the geocoder silent; never hang on it.
+      const geocodeTimer = setTimeout(() => finish([]), 4000);
+
+      const cityLat = Number(activeCityContext?.latitude);
+      const cityLng = Number(activeCityContext?.longitude);
+      const hasCityPoint = Number.isFinite(cityLat) && Number.isFinite(cityLng);
+
+      try {
+        const pending = areaGeocoder.geocode({
+          address: searchQuery,
+          componentRestrictions: { country: 'PK' }
+        }, function (results, status) {
+          if (status === 'REQUEST_DENIED') googleGeocodingUsable = false;
+          if (status !== 'OK' || !results) { finish([]); return; }
+          finish(results
+            .map(r => {
+              const parts = r.formatted_address.split(',');
+              return {
+                title: parts[0] ? parts[0].trim() : r.formatted_address,
+                subtitle: parts.slice(1).join(',').trim() || r.formatted_address,
+                lat: r.geometry.location.lat(),
+                lng: r.geometry.location.lng()
+              };
+            })
+            .filter(item => !hasCityPoint || Math.hypot(item.lat - cityLat, item.lng - cityLng) <= 0.4));
+        });
+        if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+      } catch (err) {
+        googleGeocodingUsable = false;
+        finish([]);
+      }
+    }
+
+    serverSearch(function () {
+      if (areaGeocoder && googleGeocodingUsable) googleSearch(); else showItems([]);
+    });
   }
 
   mapSearchBtn?.addEventListener('click', searchOnMap);
-  mapSearchEl?.addEventListener('input', scheduleMapSearch);
   mapSearchEl?.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); searchOnMap(); } });
-  areaCityEl?.addEventListener('change', applyCityContextFromSelect);
+  mapSearchEl?.addEventListener('keydown', function (e) { if (e.key === 'Escape' && mapResultsEl && !mapResultsEl.classList.contains('d-none')) { e.stopPropagation(); hideSearchResults(); } });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.area-search')) hideSearchResults();
+  });
+  areaCityEl?.addEventListener('change', function () {
+    applyCityContextFromSelect();
+    searchRequestId++;
+    setSearchLoading(false);
+    hideSearchResults();
+  });
+
+  document.getElementById('areaModal')?.addEventListener('hidden.bs.modal', function () {
+    searchRequestId++;
+    setSearchLoading(false);
+    if (mapSearchEl) mapSearchEl.value = '';
+    hideSearchResults();
+    if (areaMarker) { areaMarker.setMap(null); areaMarker = null; }
+    [areaNameEl, areaLatEl, areaLngEl].forEach(el => el?.classList.remove('is-invalid'));
+  });
   document.getElementById('areaModal')?.addEventListener('shown.bs.modal', function () {
     initAreaMap();
     setTimeout(() => {
       if (areaMap && typeof google !== 'undefined' && google.maps) {
         google.maps.event.trigger(areaMap, 'resize');
-        focusMapToCityContext();
+        // Editing an area: show its saved point (the map may not have existed when it was loaded).
+        if (areaLatEl.value !== '' && areaLngEl.value !== '') {
+          setAreaCoordinates(areaLatEl.value, areaLngEl.value, true);
+        } else {
+          focusMapToCityContext();
+        }
       }
     }, 150);
+  });
+
+  // Validate before submit: name and a real coordinate pair are required.
+  document.getElementById('areaForm')?.addEventListener('submit', function (e) {
+    const problems = [];
+    const lat = Number(areaLatEl.value);
+    const lng = Number(areaLngEl.value);
+    [areaNameEl, areaLatEl, areaLngEl].forEach(el => el.classList.remove('is-invalid'));
+    areaNameEl.value = areaNameEl.value.trim();
+
+    if (!areaCityEl.value) problems.push('Select a city.');
+    if (areaNameEl.value === '') {
+      problems.push('Enter the area name.');
+      areaNameEl.classList.add('is-invalid');
+    }
+    if (areaLatEl.value === '' || !Number.isFinite(lat) || lat < -90 || lat > 90) {
+      problems.push('Latitude must be a number between -90 and 90. Search or click the map to set it.');
+      areaLatEl.classList.add('is-invalid');
+    }
+    if (areaLngEl.value === '' || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      problems.push('Longitude must be a number between -180 and 180. Search or click the map to set it.');
+      areaLngEl.classList.add('is-invalid');
+    }
+
+    if (problems.length === 0) return;
+    e.preventDefault();
+    Swal.fire({
+      icon: 'warning',
+      title: 'Please complete the form',
+      html: '<ul class="text-start mb-0">' + problems.map(p => '<li>' + escapeHtml(p) + '</li>').join('') + '</ul>',
+      target: document.getElementById('areaModal')
+    });
   });
 </script>
 @endpush
 
 @push('style')
 <style>
-  #areaPickerMap { height: 280px; min-height: 220px; }
-  .pac-container { z-index: 2000 !important; }
+  #areaPickerMap { height: 280px; min-height: 220px; position: relative; z-index: 0; }
+
+  /* Search input: clean border, visible placeholder, clear focus state. */
+  #areaMapSearchInput { border: 1px solid #D1D5DB; border-radius: .5rem 0 0 .5rem; }
+  #areaMapSearchInput::placeholder { color: #9CA3AF; opacity: 1; }
+  #areaMapSearchInput:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .2); outline: 0; z-index: 3; }
+  #areaMapSearchBtn { border-radius: 0 .5rem .5rem 0; min-width: 6.5rem; }
+
+  /* Suggestion list: white card, dark text, light hover. Floats over the map instead of pushing it down. */
+  .area-search-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+    max-height: 260px; overflow-y: auto; padding: .25rem;
+    background: #1F2937; border: 1px solid #374151; border-radius: .5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  }
+  .area-search-item {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    padding: .5rem .75rem; margin: 0; background: transparent; border: 0; border-radius: .375rem;
+  }
+  .area-search-item:hover, .area-search-item:focus, .area-search-item.is-selected { background: #374151; outline: 0; }
+  .area-search-title, .area-search-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .area-search-title { color: #fff; font-size: .875rem; font-weight: 600; }
+  .area-search-sub { color: rgba(255, 255, 255, .75); font-size: .75rem; }
+  .area-search-status { padding: .5rem .75rem; color: #fff; font-size: .875rem; }
 </style>
 @endpush

@@ -36,7 +36,7 @@
     <div class="card h-100">
       <div class="card-body">
         <p class="text-secondary fs-13px mb-1">Approved</p>
-        <h4 class="fw-bold mb-0" style="color:#3f6fd9;">PKR {{ number_format((float) $summary['approved'], 2) }}</h4>
+        <h4 class="fw-bold mb-0" style="color:#5a3fa8;">PKR {{ number_format((float) $summary['approved'], 2) }}</h4>
         <small class="text-muted">Awaiting payout</small>
       </div>
     </div>
@@ -334,12 +334,11 @@
     min-height: 40px;
     padding: 0 14px;
     border: 1px solid #e5ecf5;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #ffffff;
     color: #1d3557;
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(29, 53, 87, 0.04);
     cursor: pointer;
   }
   .payroll-month-picker__trigger:hover {
@@ -379,7 +378,7 @@
     width: 268px;
     padding: 14px;
     border: 1px solid #edf1f7;
-    border-radius: 12px;
+    border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 16px 40px rgba(29, 53, 87, 0.12);
   }
@@ -430,8 +429,8 @@
     text-decoration: none;
   }
   .payroll-month-picker__month:hover {
-    background: #eef4ff;
-    color: #3f6fd9;
+    background: #f3effa;
+    color: #5a3fa8;
   }
   .payroll-month-picker__month.is-active {
     background: #1d3557;
@@ -447,8 +446,7 @@
     padding: 18px 20px;
     background: #ffffff;
     border: 1px solid #edf1f7;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(29, 53, 87, 0.04);
+    border-radius: 8px;
   }
   .payroll-ready-card__main {
     display: flex;
@@ -460,9 +458,9 @@
   .payroll-ready-card__avatar {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
-    background: #eef4ff;
-    color: #3f6fd9;
+    border-radius: 6px;
+    background: #f3effa;
+    color: #5a3fa8;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -497,7 +495,7 @@
     padding: 42px 20px;
     background: #ffffff;
     border: 1px dashed #e5ecf5;
-    border-radius: 12px;
+    border-radius: 8px;
     color: #64748b;
   }
 
@@ -533,12 +531,12 @@
     color: #cbd5e1;
   }
   [data-bs-theme="dark"] .payroll-month-picker__month.is-active {
-    background: #3f6fd9;
+    background: #5a3fa8;
     color: #ffffff;
   }
   [data-bs-theme="dark"] .payroll-ready-card__avatar {
-    background: rgba(63, 111, 217, 0.18);
-    color: #93b4ff;
+    background: rgba(90, 63, 168, 0.18);
+    color: #c3b5f0;
   }
 </style>
 @endpush

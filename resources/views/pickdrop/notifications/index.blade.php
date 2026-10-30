@@ -7,11 +7,13 @@
         <div class="notification-list-card__header">
             <h4 class="notification-page__title mb-0">Notification History</h4>
             @if($notifications->total() > 0)
-                <a href="{{ route('notifications.clear') }}"
-                    class="btn btn-sm btn-outline-danger notification-clear-btn">
-                    <i data-lucide="trash-2" class="icon-xs"></i>
-                    Clear all
-                </a>
+                <form action="{{ route('notifications.clear') }}" method="POST" class="d-inline" onsubmit="confirmDelete(event, this)">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-danger notification-clear-btn">
+                        <i data-lucide="trash-2" class="icon-xs"></i>
+                        Clear all
+                    </button>
+                </form>
             @endif
         </div>
 
@@ -68,7 +70,7 @@
                                 <a href="{{ route('notifications.show', $notification) }}" class="action-btn action-btn-view me-1" title="View">
                                     <i data-lucide="eye"></i>
                                 </a>
-                                <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="d-inline">
+                                <form action="{{ route('notifications.destroy', $notification) }}" method="POST" class="d-inline" onsubmit="confirmDelete(event, this)">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="action-btn action-btn-delete" title="Delete">

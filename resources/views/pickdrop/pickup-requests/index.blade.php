@@ -178,7 +178,7 @@
               </td>
               <td>
                 @if($item->tripMode() === \App\Models\PickupRequest::TRIP_ROUND)
-                  <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Round trip</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Round trip</span>
                 @else
                   <span class="badge bg-secondary">One way</span>
                 @endif
