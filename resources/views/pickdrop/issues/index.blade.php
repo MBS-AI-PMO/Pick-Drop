@@ -8,7 +8,7 @@
     <p class="text-secondary mb-0">Parent, self, and driver reports including delays</p>
   </div>
   @if(($counts['all'] ?? 0) > 0)
-    <form action="{{ route('issues.clear') }}" method="POST">
+    <form action="{{ route('issues.clear') }}" method="POST" onsubmit="confirmDelete(event, this)">
       @csrf
       <button type="submit" class="btn btn-outline-danger">
         <i data-lucide="trash-2" class="icon-xs"></i>

@@ -8,7 +8,7 @@
     <p class="text-secondary mb-0">Record of every successful or failed login across admin and apps.</p>
   </div>
   @if(($logs->total() ?? 0) > 0)
-    <form action="{{ route('login-logs.clear') }}" method="POST">
+    <form action="{{ route('login-logs.clear') }}" method="POST" onsubmit="confirmDelete(event, this)">
       @csrf
       <button type="submit" class="btn btn-outline-danger">
         <i data-lucide="trash-2" class="icon-xs"></i>

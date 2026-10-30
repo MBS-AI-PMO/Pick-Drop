@@ -191,7 +191,7 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('bill')
         ->name('driver-payroll.reject');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('/notifications/clear', [NotificationController::class, 'clear'])
+    Route::post('/notifications/clear', [NotificationController::class, 'clear'])
         ->name('notifications.clear');
     Route::get('/notifications/{notification}', [NotificationController::class, 'show'])
         ->whereNumber('notification')
