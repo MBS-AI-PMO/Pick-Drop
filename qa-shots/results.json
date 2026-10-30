@@ -1,0 +1,203 @@
+[
+  {
+    "route": "login",
+    "url": "https://catalyst-amends-gone.ngrok-free.dev/Pick-Drop/public/dashboard",
+    "status": "see screenshot",
+    "note": "post-login landing"
+  },
+  {
+    "route": "dashboard",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "charges",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "driver-payments",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "driver-verifications",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "fleet/live",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "holidays",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "issues",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "locations/areas",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "locations/cities",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "locations/map-search",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "locations/points",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "login-logs",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "notifications",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "parent-self-verifications",
+    "status": 200,
+    "error": null,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()",
+      "Failed to load resource: the server responded with a status of 404 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()",
+      "Failed to load resource: the server responded with a status of 500 ()"
+    ]
+  },
+  {
+    "route": "payments",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "payments/screenshots",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "payments/settings",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "payroll",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "payrolls",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "pickup-requests",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "platform-settings",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "profile",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "reports",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "routes",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "routes/create",
+    "status": 200,
+    "error": null,
+    "consoleErrors": [
+      "pageerror: google.maps.Map is not a constructor",
+      "Google Maps JavaScript API error: BillingNotEnabledMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#billing-not-enabled-map-error"
+    ]
+  },
+  {
+    "route": "schools",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "sos",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "users",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "vehicle-categories",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "vehicle-verifications",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  },
+  {
+    "route": "vehicles",
+    "status": 200,
+    "error": null,
+    "consoleErrors": []
+  }
+]

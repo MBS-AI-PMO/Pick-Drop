@@ -56,7 +56,7 @@
       </div>
       @endif
       <div class="col-md-auto">
-        <span class="badge rounded-pill px-3 py-2" style="background:#eef4ff;color:#3f6fd9;">
+        <span class="badge rounded-pill px-3 py-2" style="background:#f3effa;color:#5a3fa8;">
           {{ $overview['period']['label'] }}
         </span>
       </div>
@@ -235,7 +235,7 @@
   .payroll-calendar-legend--lg {
     width: 42px;
     height: 42px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-size: 13px;
   }
 </style>

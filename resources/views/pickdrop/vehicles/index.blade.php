@@ -97,7 +97,7 @@
             <td class="py-3">
               @php $s = strtolower($vehicle->status); @endphp
               @if($s === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
               @elseif($s === 'maintenance')
                 <span class="badge rounded-pill px-3 py-1" style="background:#fef3c7;color:#92400e;">Maintenance</span>
               @else
@@ -433,7 +433,7 @@
     badge.textContent = vehicle.status || '—';
     const s = (vehicle.status || '').toLowerCase();
     if (s === 'active') {
-      badge.style.background = '#eef4ff'; badge.style.color = '#3f6fd9';
+      badge.style.background = '#f3effa'; badge.style.color = '#5a3fa8';
     } else if (s === 'maintenance') {
       badge.style.background = '#fef3c7'; badge.style.color = '#92400e';
     } else {

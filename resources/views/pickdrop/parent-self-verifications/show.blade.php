@@ -227,7 +227,7 @@
             @if($verification->status === 'pending')
               <span class="badge bg-warning text-dark">Pending Verification</span>
             @elseif($verification->status === 'approved')
-              <span class="badge rounded-pill px-3 py-1" style="background:#eef4ff;color:#3f6fd9;">Approved</span>
+              <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
             @else
               <span class="badge bg-danger">Declined</span>
             @endif
@@ -341,7 +341,7 @@
     title: 'Updated',
     text: @json(session('success')),
     confirmButtonText: 'OK',
-    confirmButtonColor: '#3f6fd9',
+    confirmButtonColor: '#5a3fa8',
     customClass: { popup: 'rounded-4' }
   });
   @endif

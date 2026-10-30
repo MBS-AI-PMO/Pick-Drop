@@ -53,7 +53,7 @@
     transform: none;
   }
   .pd-pw-toggle:focus-visible {
-    box-shadow: inset 0 0 0 2px rgba(63, 111, 217, 0.55);
+    box-shadow: inset 0 0 0 2px rgba(90, 63, 168, 0.55);
   }
   .pd-pw-toggle svg {
     width: 18px;

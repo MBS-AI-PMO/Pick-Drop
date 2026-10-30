@@ -18,7 +18,7 @@
     'accepted' => '#3b82f6',
     'picked_up' => '#0ea5e9',
     'dropped' => '#14b8a6',
-    'completed' => '#3f6fd9',
+    'completed' => '#5a3fa8',
     'cancelled' => '#e63946',
   ];
 @endphp
@@ -403,7 +403,7 @@
                 @php
                   $status = strtolower((string) $trip->status);
                   $badge = match ($status) {
-                    'completed' => 'background:#eef4ff;color:#3f6fd9;',
+                    'completed' => 'background:#f3effa;color:#5a3fa8;',
                     'cancelled' => 'background:#fee2e2;color:#991b1b;',
                     'pending' => 'background:#f3f4f6;color:#374151;',
                     'picked_up', 'dropped' => 'background:#dbeafe;color:#1e40af;',
@@ -448,8 +448,7 @@
     padding: 8px;
     background: var(--pd-theme-card, #fff);
     border: 1px solid rgba(226, 232, 244, 0.95);
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(80, 100, 160, 0.06);
+    border-radius: 8px;
   }
   .pd-period-tabs {
     display: inline-flex;
@@ -458,7 +457,7 @@
     gap: 4px;
     padding: 4px;
     background: #f3f5f9;
-    border-radius: 12px;
+    border-radius: 8px;
   }
   .pd-period-tab {
     display: inline-flex;
@@ -466,7 +465,7 @@
     justify-content: center;
     height: 34px;
     padding: 0 14px;
-    border-radius: 9px;
+    border-radius: 6px;
     color: #5b6b82;
     font-size: 13px;
     font-weight: 600;
@@ -476,11 +475,11 @@
     transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
   }
   .pd-period-tab:hover {
-    color: #5b6cff;
+    color: #5a3fa8;
     background: rgba(255, 255, 255, 0.7);
   }
   .pd-period-tab.is-active {
-    color: #5b6cff;
+    color: #5a3fa8;
     background: #fff;
     box-shadow: 0 1px 4px rgba(80, 100, 160, 0.14);
   }
@@ -497,7 +496,7 @@
     height: 36px;
     padding: 0 10px;
     border: 1px solid #e4eaf4;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #fff;
     color: #1d3557;
     font-size: 13px;
@@ -505,8 +504,8 @@
   }
   .pd-date-input:focus {
     outline: 0;
-    border-color: #5b6cff;
-    box-shadow: 0 0 0 3px rgba(91, 108, 255, 0.14);
+    border-color: #5a3fa8;
+    box-shadow: 0 0 0 3px rgba(90, 63, 168, 0.14);
   }
   .pd-date-sep {
     color: #8a96a8;
@@ -517,7 +516,7 @@
   .pd-date-apply {
     height: 36px;
     padding: 0 16px;
-    border-radius: 10px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
@@ -571,7 +570,7 @@
   }
   [data-bs-theme="dark"] .pd-period-tab.is-active {
     color: #fff;
-    background: rgba(91, 108, 255, 0.28);
+    background: rgba(90, 63, 168, 0.28);
     box-shadow: none;
   }
   [data-bs-theme="dark"] .pd-date-input {

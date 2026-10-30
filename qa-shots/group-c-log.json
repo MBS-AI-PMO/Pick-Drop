@@ -1,0 +1,23 @@
+[
+  {
+    "mod": "Routes",
+    "action": "Create route (manual lat/lng, no map click needed)",
+    "pass": true,
+    "note": "https://catalyst-amends-gone.ngrok-free.dev/Pick-Drop/public/routes",
+    "shot": "routes-create-result.png"
+  },
+  {
+    "mod": "PlatformSettings",
+    "action": "Save settings (unchanged values, non-destructive)",
+    "pass": true,
+    "note": "cancel_hours was 24",
+    "shot": "platform-settings-after.png"
+  },
+  {
+    "mod": "Profile",
+    "action": "Profile page loads",
+    "pass": true,
+    "note": "",
+    "shot": "profile-page.png"
+  }
+]

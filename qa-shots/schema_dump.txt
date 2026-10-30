@@ -1,0 +1,835 @@
+### app_notifications
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - type : varchar(255)
+  - title : varchar(255)
+  - body : text
+  - data : longtext
+  - read_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: user_id -> users.id
+
+### areas
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - city_id : bigint(20) unsigned NOT NULL [MUL]
+  - name : varchar(255) NOT NULL
+  - latitude : decimal(10,7)
+  - longitude : decimal(10,7)
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+
+### cities
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - name : varchar(255) NOT NULL
+  - latitude : decimal(10,7)
+  - longitude : decimal(10,7)
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### device_tokens
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - token : varchar(512) NOT NULL
+  - platform : varchar(255)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: user_id -> users.id
+
+### driver_location_logs
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - lat : decimal(10,7) NOT NULL
+  - lng : decimal(10,7) NOT NULL
+  - recorded_at : timestamp NOT NULL default=current_timestamp()
+  FK: user_id -> users.id
+
+### driver_messages
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - sender_id : bigint(20) unsigned NOT NULL [MUL]
+  - receiver_id : bigint(20) unsigned NOT NULL [MUL]
+  - message : text NOT NULL
+  - read_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: pickup_request_id -> pickup_requests.id
+  FK: receiver_id -> users.id
+  FK: sender_id -> users.id
+
+### driver_payroll_bills
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - bill_number : varchar(255) NOT NULL [UNI]
+  - driver_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - period_start : date NOT NULL
+  - period_end : date NOT NULL
+  - scheduled_days : smallint(5) unsigned NOT NULL default=0
+  - present_days : smallint(5) unsigned NOT NULL default=0
+  - absent_days : smallint(5) unsigned NOT NULL default=0
+  - skipped_days : smallint(5) unsigned NOT NULL default=0
+  - holiday_days : smallint(5) unsigned NOT NULL default=0
+  - monthly_rate : decimal(10,2) NOT NULL default=0.00
+  - calculated_amount : decimal(10,2) NOT NULL default=0.00
+  - status : varchar(255) NOT NULL default=pending
+  - notes : text
+  - requested_at : timestamp
+  - approved_at : timestamp
+  - paid_at : timestamp
+  - approved_by : bigint(20) unsigned [MUL]
+  - paid_by : bigint(20) unsigned [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: approved_by -> users.id
+  FK: driver_id -> users.id
+  FK: paid_by -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+
+### driver_payroll_items
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - driver_payroll_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - scheduled_days : int(10) unsigned NOT NULL default=0
+  - worked_days : int(10) unsigned NOT NULL default=0
+  - leave_days : int(10) unsigned NOT NULL default=0
+  - absent_days : int(10) unsigned NOT NULL default=0
+  - holiday_days : int(10) unsigned NOT NULL default=0
+  - parent_skip_days : int(10) unsigned NOT NULL default=0
+  - upcoming_days : int(10) unsigned NOT NULL default=0
+  - daily_rate : decimal(12,2) NOT NULL default=0.00
+  - gross : decimal(12,2) NOT NULL default=0.00
+  - deduction : decimal(12,2) NOT NULL default=0.00
+  - net : decimal(12,2) NOT NULL default=0.00
+  - expected_net : decimal(12,2) NOT NULL default=0.00
+  - deduction_note : varchar(255)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: driver_payroll_id -> driver_payrolls.id
+  FK: pickup_request_id -> pickup_requests.id
+
+### driver_payrolls
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - driver_id : bigint(20) unsigned NOT NULL [MUL]
+  - month : varchar(7) NOT NULL
+  - scheduled_days : int(10) unsigned NOT NULL default=0
+  - worked_days : int(10) unsigned NOT NULL default=0
+  - leave_days : int(10) unsigned NOT NULL default=0
+  - absent_days : int(10) unsigned NOT NULL default=0
+  - holiday_days : int(10) unsigned NOT NULL default=0
+  - parent_skip_days : int(10) unsigned NOT NULL default=0
+  - upcoming_days : int(10) unsigned NOT NULL default=0
+  - daily_rate : decimal(12,2) NOT NULL default=0.00
+  - gross : decimal(12,2) NOT NULL default=0.00
+  - deduction : decimal(12,2) NOT NULL default=0.00
+  - net : decimal(12,2) NOT NULL default=0.00
+  - expected_net : decimal(12,2) NOT NULL default=0.00
+  - deduction_note : varchar(255)
+  - status : varchar(20) NOT NULL default=draft
+  - approved_at : timestamp
+  - paid_at : timestamp
+  - processed_by : bigint(20) unsigned [MUL]
+  - notes : text
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: driver_id -> users.id
+  FK: processed_by -> users.id
+
+### driver_pickup_request_rejections
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - driver_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: driver_id -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+
+### driver_vehicle_verifications
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [UNI]
+  - vehicle_category_id : bigint(20) unsigned [MUL]
+  - vehicle_name : varchar(255) NOT NULL
+  - vehicle_model : varchar(255)
+  - vehicle_color : varchar(255)
+  - license_plate : varchar(50) NOT NULL [UNI]
+  - insurance_expiry : date
+  - registration_expiry : date
+  - registration_card_front : varchar(255) NOT NULL
+  - registration_card_back : varchar(255) NOT NULL
+  - vehicle_front_photo : varchar(255) NOT NULL
+  - vehicle_back_photo : varchar(255) NOT NULL
+  - number_plate_photo : varchar(255) NOT NULL
+  - owner_name : varchar(255) NOT NULL
+  - owner_cnic_number : varchar(20)
+  - owner_document_front : varchar(255)
+  - owner_document_back : varchar(255)
+  - status : varchar(255) NOT NULL [MUL] default=pending
+  - rejection_reason : text
+  - reviewed_by : bigint(20) unsigned [MUL]
+  - reviewed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: reviewed_by -> users.id
+  FK: user_id -> users.id
+  FK: vehicle_category_id -> vehicle_categories.id
+
+### driver_verifications
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [UNI]
+  - full_name : varchar(255) NOT NULL
+  - father_name : varchar(255)
+  - date_of_birth : date NOT NULL
+  - address : varchar(500) NOT NULL
+  - city_id : bigint(20) unsigned NOT NULL [MUL]
+  - cnic_number : varchar(20) NOT NULL [UNI]
+  - cnic_front : varchar(255) NOT NULL
+  - cnic_back : varchar(255) NOT NULL
+  - selfie_photo : varchar(255) NOT NULL
+  - license_number : varchar(50) NOT NULL
+  - license_front : varchar(255) NOT NULL
+  - license_back : varchar(255) NOT NULL
+  - license_expiry : date NOT NULL
+  - terms_accepted : tinyint(1) NOT NULL default=0
+  - terms_accepted_at : timestamp
+  - status : varchar(255) NOT NULL [MUL] default=pending
+  - rejection_reason : text
+  - reviewed_by : bigint(20) unsigned [MUL]
+  - reviewed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+  FK: reviewed_by -> users.id
+  FK: user_id -> users.id
+
+### email_verification_tokens
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - expires_at : timestamp
+  - used_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  - code : varchar(6) NOT NULL
+  FK: user_id -> users.id
+
+### holidays
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - date : date NOT NULL [MUL]
+  - name : varchar(255) NOT NULL
+  - type : varchar(255) NOT NULL default=public
+  - city_id : bigint(20) unsigned [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+
+### invoice_items
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - invoice_id : bigint(20) unsigned NOT NULL [MUL]
+  - description : varchar(255) NOT NULL
+  - quantity : decimal(10,2) NOT NULL default=1.00
+  - unit_price : decimal(12,2) NOT NULL default=0.00
+  - total : decimal(12,2) NOT NULL default=0.00
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: invoice_id -> invoices.id
+
+### invoices
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - invoice_number : varchar(255) NOT NULL [UNI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - student_id : bigint(20) unsigned [MUL]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - issued_by : bigint(20) unsigned [MUL]
+  - status : varchar(255) NOT NULL default=draft
+  - currency : varchar(10) NOT NULL default=PKR
+  - subtotal : decimal(12,2) NOT NULL default=0.00
+  - tax_percent : decimal(5,2) NOT NULL default=0.00
+  - tax_amount : decimal(12,2) NOT NULL default=0.00
+  - total : decimal(12,2) NOT NULL default=0.00
+  - amount_paid : decimal(12,2) NOT NULL default=0.00
+  - issue_date : date NOT NULL
+  - due_date : date NOT NULL [MUL]
+  - sent_at : timestamp
+  - reminder_sent_at : timestamp
+  - paid_at : timestamp
+  - cancelled_at : timestamp
+  - payment_method : varchar(30)
+  - stripe_checkout_session_id : varchar(255)
+  - stripe_payment_intent_id : varchar(255)
+  - gateway_txn_ref : varchar(255)
+  - notes : text
+  - kind : varchar(255) NOT NULL default=shift
+  - terms : text
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: issued_by -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+  FK: student_id -> students.id
+  FK: user_id -> users.id
+
+### issue_reports
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - type : varchar(255) NOT NULL default=general
+  - eta_minutes : int(10) unsigned
+  - reporter_role : varchar(255)
+  - subject : varchar(255) NOT NULL
+  - description : text
+  - status : varchar(255) NOT NULL default=open
+  - admin_notes : text
+  - resolved_by : bigint(20) unsigned [MUL]
+  - resolved_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: pickup_request_id -> pickup_requests.id
+  FK: resolved_by -> users.id
+  FK: user_id -> users.id
+
+### location_points
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - city_id : bigint(20) unsigned NOT NULL [MUL]
+  - area_id : bigint(20) unsigned [MUL]
+  - name : varchar(255) NOT NULL
+  - type : varchar(20) NOT NULL default=both
+  - address : varchar(255)
+  - latitude : decimal(10,7)
+  - longitude : decimal(10,7)
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: area_id -> areas.id
+  FK: city_id -> cities.id
+
+### login_logs
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned [MUL]
+  - name : varchar(255)
+  - email : varchar(255)
+  - role : varchar(255)
+  - channel : varchar(40) NOT NULL [MUL] default=web
+  - status : varchar(20) NOT NULL default=success
+  - ip_address : varchar(45)
+  - user_agent : text
+  - created_at : timestamp [MUL]
+  - updated_at : timestamp
+  FK: user_id -> users.id
+
+### notification_preferences
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [UNI]
+  - push_enabled : tinyint(1) NOT NULL default=1
+  - email_enabled : tinyint(1) NOT NULL default=1
+  - new_messages : tinyint(1) NOT NULL default=1
+  - child_activity : tinyint(1) NOT NULL default=1
+  - school_alerts : tinyint(1) NOT NULL default=1
+  - payment_reminders : tinyint(1) NOT NULL default=1
+  - weekly_updates : tinyint(1) NOT NULL default=0
+  - promotions : tinyint(1) NOT NULL default=0
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: user_id -> users.id
+
+### notifications
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned [MUL]
+  - title : varchar(255) NOT NULL
+  - message : text NOT NULL
+  - type : varchar(255)
+  - is_read : tinyint(1) NOT NULL default=0
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: user_id -> users.id
+
+### parent_self_verifications
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [UNI]
+  - account_type : varchar(20) NOT NULL [MUL] default=parent
+  - full_name : varchar(255) NOT NULL
+  - father_name : varchar(255)
+  - date_of_birth : date NOT NULL
+  - gender : varchar(20)
+  - nationality : varchar(100) NOT NULL
+  - address : varchar(500)
+  - country : varchar(100) NOT NULL
+  - city_id : bigint(20) unsigned [MUL]
+  - city_name : varchar(255)
+  - complete_address : varchar(1000) NOT NULL
+  - postal_code : varchar(30)
+  - cnic_number : varchar(20) NOT NULL [UNI]
+  - cnic_front : varchar(255) NOT NULL
+  - cnic_back : varchar(255) NOT NULL
+  - selfie_photo : varchar(255) NOT NULL
+  - terms_accepted : tinyint(1) NOT NULL default=0
+  - terms_accepted_at : timestamp
+  - status : varchar(255) NOT NULL [MUL] default=pending
+  - rejection_reason : text
+  - reviewed_by : bigint(20) unsigned [MUL]
+  - reviewed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+  FK: reviewed_by -> users.id
+  FK: user_id -> users.id
+
+### payment_settings
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - company_name : varchar(255) NOT NULL default=PickDrop
+  - company_email : varchar(255)
+  - company_phone : varchar(255)
+  - company_address : varchar(500)
+  - invoice_prefix : varchar(20) NOT NULL default=INV
+  - tax_percent : decimal(5,2) NOT NULL default=0.00
+  - bank_enabled : tinyint(1) NOT NULL default=1
+  - bank_name : varchar(255)
+  - bank_account_title : varchar(255)
+  - bank_account_number : varchar(255)
+  - bank_iban : varchar(255)
+  - bank_swift : varchar(255)
+  - bank_branch : varchar(255)
+  - stripe_enabled : tinyint(1) NOT NULL default=0
+  - stripe_mode : varchar(10) NOT NULL default=test
+  - stripe_test_publishable_key : varchar(255)
+  - stripe_test_secret_key : text
+  - stripe_test_webhook_secret : text
+  - stripe_live_publishable_key : varchar(255)
+  - stripe_live_secret_key : text
+  - stripe_live_webhook_secret : text
+  - stripe_publishable_key : varchar(255)
+  - stripe_secret_key : text
+  - stripe_webhook_secret : text
+  - stripe_currency : varchar(10) NOT NULL default=pkr
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### payments
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - invoice_id : bigint(20) unsigned NOT NULL [MUL]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - amount : decimal(12,2) NOT NULL
+  - currency : varchar(10) NOT NULL default=PKR
+  - method : varchar(30) NOT NULL
+  - status : varchar(255) NOT NULL default=pending
+  - receipt_status : varchar(20) NOT NULL default=pending
+  - reference : varchar(255)
+  - stripe_payment_intent_id : varchar(255)
+  - proof_path : varchar(255)
+  - notes : text
+  - recorded_by : bigint(20) unsigned [MUL]
+  - paid_at : timestamp
+  - rejected_at : timestamp
+  - reject_reason : varchar(255)
+  - refunded_at : timestamp
+  - refund_reason : varchar(255)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: invoice_id -> invoices.id
+  FK: recorded_by -> users.id
+  FK: user_id -> users.id
+
+### personal_access_tokens
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - tokenable_type : varchar(255) NOT NULL [MUL]
+  - tokenable_id : bigint(20) unsigned NOT NULL
+  - name : text NOT NULL
+  - token : varchar(64) NOT NULL [UNI]
+  - abilities : text
+  - last_used_at : timestamp
+  - expires_at : timestamp [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### pick_drop_charges
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - per_km_rate : decimal(10,2) NOT NULL default=0.00
+  - driver_monthly_rate : decimal(12,2) NOT NULL default=0.00
+  - currency : varchar(10) NOT NULL default=PKR
+  - is_active : tinyint(1) NOT NULL default=1
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### pickup_request_stops
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - type : varchar(20) NOT NULL [MUL]
+  - leg : varchar(20) NOT NULL default=outbound
+  - sequence : int(10) unsigned NOT NULL default=1
+  - name : varchar(255)
+  - point : varchar(255) NOT NULL
+  - lat : decimal(10,7) NOT NULL
+  - lng : decimal(10,7) NOT NULL
+  - area_id : bigint(20) unsigned [MUL]
+  - scheduled_time : time NOT NULL
+  - status : varchar(20) NOT NULL default=pending
+  - completed_at : timestamp
+  - notes : text
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: area_id -> areas.id
+  FK: pickup_request_id -> pickup_requests.id
+
+### pickup_requests
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - type : varchar(255) NOT NULL default=parent
+  - service_type : varchar(20) NOT NULL default=both
+  - parent_id : bigint(20) unsigned NOT NULL [MUL]
+  - student_id : bigint(20) unsigned [MUL]
+  - passenger_count : int(10) unsigned NOT NULL default=1
+  - city_id : bigint(20) unsigned NOT NULL [MUL]
+  - area_id : bigint(20) unsigned NOT NULL [MUL]
+  - drop_area_id : bigint(20) unsigned [MUL]
+  - pickup_point : varchar(255)
+  - pickup_lat : decimal(10,7)
+  - pickup_lng : decimal(10,7)
+  - drop_point : varchar(255)
+  - drop_lat : decimal(10,7)
+  - drop_lng : decimal(10,7)
+  - pickup_time : time
+  - drop_time : time
+  - days : longtext
+  - duration_months : tinyint(3) unsigned NOT NULL default=1
+  - shift_start_date : date
+  - shift_end_date : date
+  - distance_km : decimal(8,2)
+  - trip_count : int(10) unsigned
+  - round_trip : tinyint(1) NOT NULL default=1
+  - estimated_amount : decimal(12,2)
+  - cancellation_fee : decimal(12,2)
+  - driver_monthly_rate : decimal(12,2)
+  - driver_payout_amount : decimal(12,2)
+  - driver_payout_status : varchar(30) NOT NULL default=unpaid
+  - driver_payout_due_on : date
+  - driver_payout_paid_at : timestamp
+  - payment_status : varchar(30) NOT NULL default=unpaid
+  - scheduled_date : date
+  - status : varchar(255) NOT NULL default=pending
+  - match_expires_at : timestamp
+  - auto_assign_attempts : int(10) unsigned NOT NULL default=0
+  - assignment_source : varchar(255)
+  - auto_renew : tinyint(1) NOT NULL default=0
+  - renewal_status : varchar(255) NOT NULL default=none
+  - renewed_from_id : bigint(20) unsigned [MUL]
+  - last_delay_notified_on : date
+  - renewal_notified_at : timestamp
+  - driver_id : bigint(20) unsigned [MUL]
+  - vehicle_id : bigint(20) unsigned [MUL]
+  - cancelled_at : timestamp
+  - cancelled_by : bigint(20) unsigned [MUL]
+  - cancelled_by_role : varchar(30)
+  - completed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  - deleted_at : timestamp
+  FK: area_id -> areas.id
+  FK: cancelled_by -> users.id
+  FK: city_id -> cities.id
+  FK: driver_id -> users.id
+  FK: drop_area_id -> areas.id
+  FK: parent_id -> users.id
+  FK: renewed_from_id -> pickup_requests.id
+  FK: student_id -> students.id
+  FK: vehicle_id -> vehicles.id
+
+### platform_settings
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - sms_enabled : tinyint(1) NOT NULL default=0
+  - sms_provider : varchar(255)
+  - sms_api_url : varchar(255)
+  - sms_api_key : text
+  - sms_sender : varchar(255)
+  - fcm_enabled : tinyint(1) NOT NULL default=0
+  - fcm_server_key : text
+  - jazzcash_enabled : tinyint(1) NOT NULL default=0
+  - jazzcash_merchant_id : varchar(255)
+  - jazzcash_password : varchar(255)
+  - jazzcash_integrity_salt : text
+  - jazzcash_return_url : varchar(255)
+  - jazzcash_sandbox : tinyint(1) NOT NULL default=1
+  - easypaisa_enabled : tinyint(1) NOT NULL default=0
+  - easypaisa_store_id : varchar(255)
+  - easypaisa_hash_key : text
+  - easypaisa_return_url : varchar(255)
+  - easypaisa_sandbox : tinyint(1) NOT NULL default=1
+  - cancel_hours : int(10) unsigned NOT NULL default=24
+  - cancel_fee_percent : decimal(5,2) NOT NULL default=0.00
+  - geofence_meters : int(10) unsigned NOT NULL default=300
+  - referral_bonus : decimal(12,2) NOT NULL default=0.00
+  - pickup_otp_enabled : tinyint(1) NOT NULL default=1
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### ratings
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - from_user_id : bigint(20) unsigned NOT NULL [MUL]
+  - to_user_id : bigint(20) unsigned NOT NULL [MUL]
+  - rating : tinyint(3) unsigned NOT NULL
+  - comment : varchar(255)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: from_user_id -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+  FK: to_user_id -> users.id
+
+### route_stops
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - route_id : bigint(20) unsigned NOT NULL [MUL]
+  - name : varchar(255) NOT NULL
+  - latitude : decimal(10,7)
+  - longitude : decimal(10,7)
+  - address : varchar(255)
+  - arrival_time : time
+  - order : int(10) unsigned NOT NULL default=1
+  - created_by : bigint(20) unsigned [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: created_by -> users.id
+  FK: route_id -> routes.id
+
+### routes
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - code : varchar(255) [UNI]
+  - name : varchar(255) NOT NULL
+  - city_id : bigint(20) unsigned [MUL]
+  - area_id : bigint(20) unsigned [MUL]
+  - area_ids : longtext
+  - shift : varchar(255) NOT NULL default=morning
+  - vehicle_id : bigint(20) unsigned [MUL]
+  - school_id : bigint(20) unsigned [MUL]
+  - driver_id : bigint(20) unsigned [MUL]
+  - start_time : time
+  - end_time : time
+  - destination : varchar(255)
+  - destination_latitude : decimal(10,7)
+  - destination_longitude : decimal(10,7)
+  - description : text
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: area_id -> areas.id
+  FK: city_id -> cities.id
+  FK: driver_id -> users.id
+  FK: school_id -> schools.id
+  FK: vehicle_id -> vehicles.id
+
+### schools
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - name : varchar(255) NOT NULL
+  - category : varchar(255) NOT NULL default=school
+  - city_id : bigint(20) unsigned [MUL]
+  - address : varchar(255)
+  - phone : varchar(255)
+  - email : varchar(255)
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+
+### self_commute_profiles
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [UNI]
+  - city_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_area_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_point : varchar(255) NOT NULL
+  - pickup_lat : decimal(10,7) NOT NULL
+  - pickup_lng : decimal(10,7) NOT NULL
+  - office_name : varchar(255)
+  - drop_area_id : bigint(20) unsigned NOT NULL [MUL]
+  - drop_point : varchar(255) NOT NULL
+  - drop_lat : decimal(10,7) NOT NULL
+  - drop_lng : decimal(10,7) NOT NULL
+  - pickup_time : time NOT NULL
+  - drop_time : time NOT NULL
+  - days : longtext
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+  FK: drop_area_id -> areas.id
+  FK: pickup_area_id -> areas.id
+  FK: user_id -> users.id
+
+### shift_attendances
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - date : date NOT NULL
+  - status : varchar(255) NOT NULL
+  - reason : varchar(255)
+  - refunded_amount : decimal(12,2)
+  - refunded_at : timestamp
+  - refund_reason : varchar(255)
+  - marked_by : bigint(20) unsigned [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: marked_by -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+
+### shift_day_runs
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - date : date NOT NULL
+  - status : varchar(255) NOT NULL default=scheduled
+  - pickup_otp : varchar(6)
+  - pickup_photo_path : varchar(255)
+  - pickup_verified_at : timestamp
+  - arrival_notified_at : timestamp
+  - started_at : timestamp
+  - arrived_at : timestamp
+  - ended_at : timestamp
+  - ended_by : varchar(20)
+  - emergency_locked : tinyint(1) NOT NULL default=0
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: pickup_request_id -> pickup_requests.id
+
+### shift_day_stop_logs
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - shift_day_run_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_stop_id : bigint(20) unsigned NOT NULL [MUL]
+  - status : varchar(255) NOT NULL default=pending
+  - reason : varchar(255)
+  - photo_path : varchar(255)
+  - completed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: pickup_request_stop_id -> pickup_request_stops.id
+  FK: shift_day_run_id -> shift_day_runs.id
+
+### shift_replacements
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - pickup_request_id : bigint(20) unsigned NOT NULL [MUL]
+  - date : date NOT NULL
+  - original_driver_id : bigint(20) unsigned NOT NULL [MUL]
+  - replacement_driver_id : bigint(20) unsigned [MUL]
+  - original_vehicle_id : bigint(20) unsigned [MUL]
+  - replacement_vehicle_id : bigint(20) unsigned [MUL]
+  - reason : varchar(30) NOT NULL
+  - status : varchar(20) NOT NULL [MUL] default=open
+  - notes : text
+  - accepted_at : timestamp
+  - closed_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: original_driver_id -> users.id
+  FK: original_vehicle_id -> vehicles.id
+  FK: pickup_request_id -> pickup_requests.id
+  FK: replacement_driver_id -> users.id
+  FK: replacement_vehicle_id -> vehicles.id
+
+### sos_alerts
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - type : varchar(30)
+  - lat : decimal(10,7)
+  - lng : decimal(10,7)
+  - message : varchar(255)
+  - status : varchar(255) NOT NULL default=open
+  - handled_by : bigint(20) unsigned [MUL]
+  - acknowledged_at : timestamp
+  - resolved_at : timestamp
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: handled_by -> users.id
+  FK: pickup_request_id -> pickup_requests.id
+  FK: user_id -> users.id
+
+### students
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - parent_id : bigint(20) unsigned NOT NULL [MUL]
+  - name : varchar(255) NOT NULL
+  - grade : varchar(255)
+  - school_name : varchar(255)
+  - school_id : bigint(20) unsigned [MUL]
+  - school_location : varchar(255)
+  - city_id : bigint(20) unsigned [MUL]
+  - pickup_area_id : bigint(20) unsigned [MUL]
+  - pickup_location : varchar(255)
+  - pickup_lat : decimal(10,7)
+  - pickup_lng : decimal(10,7)
+  - pickup_time : time
+  - dropoff_time : time
+  - status : varchar(255) NOT NULL default=active
+  - emergency_name : varchar(255)
+  - emergency_phone : varchar(30)
+  - emergency_relation : varchar(50)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+  FK: parent_id -> users.id
+  FK: pickup_area_id -> areas.id
+  FK: school_id -> schools.id
+
+### users
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - name : varchar(255) NOT NULL
+  - email : varchar(255) NOT NULL [UNI]
+  - phone : varchar(50) [UNI]
+  - emergency_contact_name : varchar(255)
+  - emergency_contact_phone : varchar(255)
+  - email_verified_at : timestamp
+  - phone_verified_at : timestamp
+  - otp : varchar(6)
+  - phone_otp : varchar(6)
+  - phone_otp_expires_at : timestamp
+  - referral_code : varchar(50)
+  - referred_by : bigint(20) unsigned [MUL]
+  - referral_balance : decimal(12,2) NOT NULL default=0.00
+  - bank_name : varchar(255)
+  - bank_account_title : varchar(255)
+  - bank_account_number : varchar(255)
+  - bank_iban : varchar(255)
+  - password : varchar(255) NOT NULL
+  - role : varchar(255) NOT NULL default=Self
+  - status : varchar(255) NOT NULL default=Active
+  - duty_status : varchar(20) NOT NULL default=on_duty
+  - details : varchar(255)
+  - city_id : bigint(20) unsigned [MUL]
+  - service_areas : longtext
+  - available_seats : tinyint(3) unsigned
+  - availability_hours : longtext
+  - last_lat : decimal(10,7)
+  - last_lng : decimal(10,7)
+  - last_location_at : timestamp
+  - last_ride_status : varchar(255)
+  - remember_token : varchar(100)
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: city_id -> cities.id
+  FK: referred_by -> users.id
+
+### vehicle_categories
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - vehicle_name : varchar(255) NOT NULL
+  - passenger_capacity : int(11) NOT NULL
+  - status : tinyint(4) NOT NULL default=1
+  - created_at : timestamp
+  - updated_at : timestamp
+
+### vehicles
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - name : varchar(255) NOT NULL
+  - license_plate : varchar(255) NOT NULL
+  - vehicle_category_id : bigint(20) unsigned [MUL]
+  - driver_id : bigint(20) unsigned [MUL]
+  - route_id : varchar(255)
+  - status : varchar(255) NOT NULL default=Active
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: driver_id -> users.id
+  FK: vehicle_category_id -> vehicle_categories.id
+
+### wallet_transactions
+  - id : bigint(20) unsigned NOT NULL [PRI]
+  - user_id : bigint(20) unsigned NOT NULL [MUL]
+  - amount : decimal(12,2) NOT NULL
+  - type : varchar(255) NOT NULL
+  - reason : varchar(255)
+  - referred_user_id : bigint(20) unsigned [MUL]
+  - pickup_request_id : bigint(20) unsigned [MUL]
+  - created_at : timestamp
+  - updated_at : timestamp
+  FK: pickup_request_id -> pickup_requests.id
+  FK: referred_user_id -> users.id
+  FK: user_id -> users.id
+

@@ -1,0 +1,163 @@
+[
+  {
+    "mod": "Auth",
+    "action": "Login as Super Admin",
+    "pass": true,
+    "note": "https://catalyst-amends-gone.ngrok-free.dev/Pick-Drop/public/dashboard",
+    "shot": ""
+  },
+  {
+    "mod": "Users",
+    "action": "Create Driver user",
+    "pass": true,
+    "note": "row visible in list",
+    "shot": "users-create-driver-result.png"
+  },
+  {
+    "mod": "Users",
+    "action": "Create Parent user",
+    "pass": true,
+    "note": "",
+    "shot": "users-create-parent-result.png"
+  },
+  {
+    "mod": "Users",
+    "action": "Create Self user",
+    "pass": true,
+    "note": "",
+    "shot": "users-create-self-result.png"
+  },
+  {
+    "mod": "Users",
+    "action": "Search filter",
+    "pass": false,
+    "note": "",
+    "shot": "users-search-filter.png"
+  },
+  {
+    "mod": "Users",
+    "action": "View modal shows correct user",
+    "pass": true,
+    "note": "",
+    "shot": "users-view-modal.png"
+  },
+  {
+    "mod": "Users",
+    "action": "Edit user (status -> Inactive, details)",
+    "pass": true,
+    "note": "",
+    "shot": "users-edit-result.png"
+  },
+  {
+    "mod": "Users",
+    "action": "Delete user via confirm dialog",
+    "pass": false,
+    "note": "",
+    "shot": "users-delete-result.png"
+  },
+  {
+    "mod": "VehicleCategories",
+    "action": "Create category",
+    "pass": true,
+    "note": "",
+    "shot": "vehicle-categories-create-result.png"
+  },
+  {
+    "mod": "VehicleCategories",
+    "action": "Edit category capacity",
+    "pass": true,
+    "note": "",
+    "shot": "vehicle-categories-edit-result.png"
+  },
+  {
+    "mod": "VehicleCategories",
+    "action": "Delete category",
+    "pass": true,
+    "note": "",
+    "shot": "vehicle-categories-delete-result.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Create vehicle",
+    "pass": true,
+    "note": "",
+    "shot": "vehicles-create-result.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Assign driver to vehicle",
+    "pass": true,
+    "note": "",
+    "shot": "vehicles-assign-driver-result.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "View modal opens with details",
+    "pass": true,
+    "note": "",
+    "shot": "vehicles-view-modal.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Unassign driver",
+    "pass": true,
+    "note": "confirm dialog handled",
+    "shot": "vehicles-unassign-result.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Edit vehicle (plate -> QA-0002)",
+    "pass": false,
+    "note": "",
+    "shot": "vehicles-edit-result.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Status filter dropdown",
+    "pass": true,
+    "note": "exercised",
+    "shot": "vehicles-status-filter.png"
+  },
+  {
+    "mod": "Vehicles",
+    "action": "Delete vehicle",
+    "pass": true,
+    "note": "",
+    "shot": "vehicles-delete-result.png"
+  },
+  {
+    "mod": "Schools",
+    "action": "Create school/institution",
+    "pass": true,
+    "note": "",
+    "shot": "schools-create-result.png"
+  },
+  {
+    "mod": "Schools",
+    "action": "View school detail page",
+    "pass": true,
+    "note": "https://catalyst-amends-gone.ngrok-free.dev/Pick-Drop/public/schools?search=QA+Test+School&category=",
+    "shot": "schools-view-page.png"
+  },
+  {
+    "mod": "Schools",
+    "action": "Delete school",
+    "pass": true,
+    "note": "",
+    "shot": "schools-delete-result.png"
+  },
+  {
+    "mod": "Holidays",
+    "action": "Create holiday/off-day",
+    "pass": true,
+    "note": "",
+    "shot": "holidays-create-result.png"
+  },
+  {
+    "mod": "Holidays",
+    "action": "Delete holiday",
+    "pass": false,
+    "note": "",
+    "shot": "holidays-delete-result.png"
+  }
+]

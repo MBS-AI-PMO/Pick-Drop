@@ -87,14 +87,14 @@ Author: PickDrop Team
     /* custom.css sets .btn-outline-primary's colour/border directly (32% opacity border), which
        beats Bootstrap's variables, so these set the properties directly. Both themes. */
     html .btn-outline-primary {
-      color: #4a58e8;
-      border-color: #6f7cf0;
+      color: #452f87;
+      border-color: #8a7bc4;
     }
     html .btn-outline-primary:hover,
     html .btn-outline-primary:focus-visible {
       color: #ffffff;
-      background: #5b6cff;
-      border-color: #5b6cff;
+      background: #5a3fa8;
+      border-color: #5a3fa8;
     }
     html .btn-outline-secondary {
       --bs-btn-color: #566074;
@@ -107,14 +107,14 @@ Author: PickDrop Team
       --bs-btn-active-border-color: #6e788c;
     }
     html[data-bs-theme="dark"] .btn-outline-primary {
-      color: #9aa6ff;
-      border-color: rgba(154, 166, 255, 0.6);
+      color: #c3b5f0;
+      border-color: rgba(195, 181, 240, 0.6);
     }
     html[data-bs-theme="dark"] .btn-outline-primary:hover,
     html[data-bs-theme="dark"] .btn-outline-primary:focus-visible {
       color: #ffffff;
-      background: rgba(91, 108, 255, 0.4);
-      border-color: rgba(154, 166, 255, 0.9);
+      background: rgba(144, 110, 224, 0.4);
+      border-color: rgba(195, 181, 240, 0.9);
     }
     html[data-bs-theme="dark"] .btn-outline-secondary {
       --bs-btn-color: #c3cbdb;
@@ -246,31 +246,31 @@ Author: PickDrop Team
     /* selected rows */
     html .select2-container--default .select2-results__option[aria-selected=true],
     html .select2-container--default .select2-results__option--selected {
-        background-color: rgba(63, 111, 217, 0.12) !important;
-        color: #2f56b8 !important;
+        background-color: rgba(90, 63, 168, 0.12) !important;
+        color: #4a2f87 !important;
         font-weight: 600;
     }
     html[data-bs-theme="dark"] .select2-container--default .select2-results__option[aria-selected=true],
     html[data-bs-theme="dark"] .select2-container--default .select2-results__option--selected {
-        background-color: rgba(99, 140, 255, 0.16) !important;
-        color: #cfdcff !important;
+        background-color: rgba(165, 140, 230, 0.16) !important;
+        color: #ded4f7 !important;
     }
     /* hovered / keyboard-highlighted row (declared after the selected rules so it wins) */
     html .select2-container--default .select2-results__option--highlighted[aria-selected],
     html .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-        background-color: #3f6fd9 !important;
+        background-color: #5a3fa8 !important;
         color: #ffffff !important;
     }
     html[data-bs-theme="dark"] .select2-container--default .select2-results__option--highlighted[aria-selected],
     html[data-bs-theme="dark"] .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-        background-color: rgba(99, 140, 255, 0.34) !important;
+        background-color: rgba(165, 140, 230, 0.34) !important;
         color: #ffffff !important;
     }
     /* chips in multi-area mode */
     html .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: rgba(63, 111, 217, 0.12) !important;
-        border: 1px solid rgba(63, 111, 217, 0.35) !important;
-        color: #2f56b8 !important;
+        background-color: rgba(90, 63, 168, 0.12) !important;
+        border: 1px solid rgba(90, 63, 168, 0.35) !important;
+        color: #4a2f87 !important;
         border-radius: 6px !important;
         /* left padding leaves room for the absolutely positioned remove button */
         padding: 2px 8px 2px 24px !important;
@@ -294,9 +294,9 @@ Author: PickDrop Team
         color: #dc2626 !important;
     }
     html[data-bs-theme="dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: rgba(99, 140, 255, 0.2) !important;
-        border-color: rgba(99, 140, 255, 0.45) !important;
-        color: #dbe6ff !important;
+        background-color: rgba(165, 140, 230, 0.2) !important;
+        border-color: rgba(165, 140, 230, 0.45) !important;
+        color: #e3d9f7 !important;
     }
     html[data-bs-theme="dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
         color: #ff8a8a !important;
@@ -358,7 +358,7 @@ Author: PickDrop Team
     }
     html[data-bs-theme="dark"] :not(.search-form) > .input-group:focus-within > .input-group-text,
     html[data-bs-theme="dark"] :not(.search-form) > .input-group:focus-within > .form-control {
-        border-color: rgba(99, 140, 255, 0.55) !important;
+        border-color: rgba(165, 140, 230, 0.55) !important;
     }
     html[data-bs-theme="dark"] .input-group > .form-control:focus {
         box-shadow: none;
@@ -379,8 +379,8 @@ Author: PickDrop Team
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
     }
     html[data-bs-theme="dark"] .navbar .search-form .input-group:focus-within {
-        border-color: rgba(99, 140, 255, 0.55) !important;
-        box-shadow: 0 0 0 3px rgba(99, 140, 255, 0.14) !important;
+        border-color: rgba(165, 140, 230, 0.55) !important;
+        box-shadow: 0 0 0 3px rgba(165, 140, 230, 0.14) !important;
     }
     html[data-bs-theme="dark"] .navbar .search-form .input-group-text {
         color: #9aa7bb;
@@ -394,12 +394,18 @@ Author: PickDrop Team
         --pd-border: #e4eaf4;
         --pd-text: #1d2b4a;
         --pd-muted: #7a8699;
-        --pd-primary: #5b6cff;
-        --pd-primary-dark: #4a58e8;
-        --pd-primary-rgb: 91, 108, 255;
-        --pd-primary-soft: rgba(91, 108, 255, 0.14);
+        /* Brand: the pink-to-indigo wash from the login screen (bg-primary #6571ff
+           under a red→navy overlay). Used site-wide for primary actions, and as
+           the gradient on hero/banner surfaces via --pd-brand-gradient. */
+        --pd-primary: #5a3fa8;
+        --pd-primary-dark: #452f87;
+        --pd-primary-rgb: 90, 63, 168;
+        --pd-primary-soft: rgba(90, 63, 168, 0.14);
+        --pd-brand-rose: #cc4370;
+        --pd-brand-indigo: #33478a;
+        --pd-brand-gradient: linear-gradient(135deg, var(--pd-brand-rose) 0%, var(--pd-brand-indigo) 100%);
         --pd-sidebar: #ffffff;
-        --pd-sidebar-soft: #eef0ff;
+        --pd-sidebar-soft: #f3effa;
         --pd-sidebar-text: #2a3550;
     }
     body {
@@ -431,7 +437,7 @@ Author: PickDrop Team
         flex-direction: column;
         background: var(--pd-sb-bg) !important;
         box-shadow: none !important;
-        border-right: 1px solid var(--pd-sb-line) !important;
+        border-right: 0 !important;
     }
     nav.sidebar.pd-sidebar .sidebar-header {
         flex: 0 0 64px;
@@ -497,6 +503,13 @@ Author: PickDrop Team
         flex-wrap: nowrap;
         overflow-y: auto;
         overflow-x: hidden;
+        /* Scrolling still works on a short screen where the nav list overflows -- this just hides
+           the scrollbar's own track/thumb so it doesn't show as a thin bar next to the sidebar. */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    nav.sidebar.pd-sidebar .sidebar-body .nav#sidebarNav::-webkit-scrollbar {
+        display: none;
     }
     nav.sidebar.pd-sidebar .sidebar-body .nav#sidebarNav > li {
         flex: 0 0 auto;
@@ -544,7 +557,7 @@ Author: PickDrop Team
         width: 100%;
         height: 40px;
         padding: 0 10px 0 8px !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         color: var(--pd-sb-ink) !important;
         font-size: 13.5px;
         font-weight: 600;
@@ -698,7 +711,7 @@ Author: PickDrop Team
         gap: 10px;
         height: 38px !important;
         padding: 0 10px !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         color: var(--pd-sb-ink) !important;
         font-size: 13.5px;
         font-weight: 500;
@@ -866,7 +879,7 @@ Author: PickDrop Team
         --pd-sb-active: #1c1c1c;
         --pd-sb-accent: #ff4d6d;
         background: var(--pd-sb-bg) !important;
-        border-right: 1px solid var(--pd-sb-line) !important;
+        border-right: 0 !important;
     }
     [data-bs-theme="dark"] nav.sidebar.pd-sidebar .sidebar-header,
     [data-bs-theme="dark"] nav.sidebar.pd-sidebar .sidebar-body,
@@ -1006,14 +1019,14 @@ Author: PickDrop Team
     .btn-primary {
         background: var(--pd-primary);
         border-color: var(--pd-primary);
-        box-shadow: 0 8px 18px rgba(63, 111, 217, 0.18);
-        transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+        box-shadow: none;
+        transition: transform 0.16s ease, background-color 0.16s ease;
     }
     .btn-primary:hover{
         background: var(--pd-primary-dark);
         border-color: var(--pd-primary-dark);
         transform: translateY(-1px);
-        box-shadow: 0 10px 22px rgba(63, 111, 217, 0.24);
+        box-shadow: none;
     }
     .navbar {
         height: 56px !important;
@@ -1027,16 +1040,16 @@ Author: PickDrop Team
         border-bottom-color: var(--pd-theme-border, rgba(255, 255, 255, 0.08)) !important;
     }
     .card {
-        border-radius: 18px;
-        box-shadow: 0 10px 30px rgba(80, 100, 160, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        box-shadow: none;
+        border: 1px solid var(--pd-theme-border, #edf1f7);
         background: var(--pd-theme-card, var(--pd-surface, #ffffff));
-        transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+        transition: border-color 0.16s ease, background-color 0.16s ease;
     }
     [data-bs-theme="dark"] .card {
         border-color: var(--pd-theme-border, rgba(255,255,255,0.08));
         background: var(--pd-theme-card, #1e2129);
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+        box-shadow: none;
     }
     .page-wrapper,
     .page-content {
@@ -1082,7 +1095,7 @@ Author: PickDrop Team
         color: #9aa7bb !important;
     }
     [data-bs-theme="dark"] .footer a {
-        color: #93b4ff !important;
+        color: #c3b5f0 !important;
     }
     [data-bs-theme="dark"] .footer .text-primary {
         color: #ff4d6d !important;
@@ -1127,7 +1140,7 @@ Author: PickDrop Team
         height: 36px;
         padding: 0 !important;
         border: 0 !important;
-        border-radius: 10px !important;
+        border-radius: 6px !important;
         display: inline-flex !important;
         align-items: center;
         justify-content: center;
@@ -1158,7 +1171,7 @@ Author: PickDrop Team
         color: #111827 !important;
     }
     .action-btn-add {
-        background: #3f6fd9 !important;
+        background: #5a3fa8 !important;
         color: #ffffff !important;
     }
     .action-btn-delete {
@@ -1189,7 +1202,7 @@ Author: PickDrop Team
         background: var(--pd-theme-card, #1e2129) !important;
         border-color: var(--pd-theme-border, rgba(255,255,255,0.08)) !important;
     }
-    .bg-primary-subtle, .bg-primary.bg-opacity-10 { background-color: rgba(63, 111, 217, 0.1) !important; color: var(--pd-primary) !important;}
+    .bg-primary-subtle, .bg-primary.bg-opacity-10 { background-color: rgba(90, 63, 168, 0.1) !important; color: var(--pd-primary) !important;}
     .navbar .search-form .input-group-text,
     .navbar .search-form .form-control {
         background: transparent !important;
@@ -1235,18 +1248,14 @@ Author: PickDrop Team
         padding-bottom: 20px !important;
     }
     .page-content .card {
-        border-radius: 18px !important;
-        border-color: rgba(255, 255, 255, 0.9) !important;
-        box-shadow: 0 10px 30px rgba(80, 100, 160, 0.08) !important;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        border-radius: 8px !important;
+        border-color: var(--pd-theme-border, #edf1f7) !important;
+        box-shadow: none !important;
+        transition: border-color 0.2s ease;
     }
     .page-content .card:hover {
-        border-color: #e2eaf3 !important;
-        box-shadow: 0 4px 10px rgba(16, 24, 40, 0.04), 0 16px 36px rgba(16, 24, 40, 0.06) !important;
-    }
-    .dashboard-stat-card:hover,
-    .dashboard-card:hover {
-        transform: translateY(-3px);
+        border-color: #dbe5f0 !important;
+        box-shadow: none !important;
     }
 
     .page-content .card .card-body {
@@ -1266,7 +1275,7 @@ Author: PickDrop Team
         min-height: 34px;
         padding: 0.35rem 0.85rem;
         font-size: 12.5px !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
         letter-spacing: 0.01em;
         transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, filter 0.16s ease;
     }
@@ -1277,14 +1286,19 @@ Author: PickDrop Team
         transform: translateY(0);
     }
     .btn-primary {
-        background: #5b6cff !important;
-        border-color: #5b6cff !important;
-        box-shadow: 0 8px 18px rgba(91, 108, 255, 0.22);
+        background: var(--pd-primary, #5a3fa8) !important;
+        border-color: var(--pd-primary, #5a3fa8) !important;
+        box-shadow: none;
+    }
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+        background: var(--pd-primary-dark, #452f87) !important;
+        border-color: var(--pd-primary-dark, #452f87) !important;
     }
     .btn-success {
         background: #16a34a;
         border-color: #16a34a;
-        box-shadow: 0 8px 18px rgba(22, 163, 74, 0.16);
+        box-shadow: none;
     }
 
     .form-control,
@@ -1307,8 +1321,8 @@ Author: PickDrop Team
         transition: border-color 0.16s ease, box-shadow 0.16s ease;
     }
     .navbar .search-form .input-group:focus-within {
-        border-color: rgba(63, 111, 217, 0.4) !important;
-        box-shadow: 0 0 0 4px rgba(63, 111, 217, 0.1) !important;
+        border-color: rgba(90, 63, 168, 0.4) !important;
+        box-shadow: 0 0 0 4px rgba(90, 63, 168, 0.1) !important;
     }
 
     .table thead th {
@@ -1350,9 +1364,29 @@ Author: PickDrop Team
     }
 
     .dropdown-menu {
-        border-radius: 12px !important;
+        border-radius: 8px !important;
         box-shadow: 0 16px 40px rgba(16, 24, 40, 0.12) !important;
         padding: 6px !important;
+    }
+    /* Bootstrap toggles dropdowns with display:none/.show{display:block}, which is an instant
+       snap. Keep it laid out (it's position:absolute, so this doesn't affect page flow) and fade
+       it via opacity instead -- transform is left alone since Popper sets that inline to position
+       the menu, and a CSS transition on the same property would just lose to it. */
+    .dropdown-menu {
+        display: block !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transition: opacity 0.16s ease, visibility 0s linear 0.16s !important;
+    }
+    .dropdown-menu.show {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        transition: opacity 0.16s ease !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .dropdown-menu { transition: none; }
     }
     .dropdown-item {
         border-radius: 8px;
@@ -1360,7 +1394,7 @@ Author: PickDrop Team
     }
 
     .modal-content {
-        border-radius: 16px !important;
+        border-radius: 8px !important;
         box-shadow: 0 24px 64px rgba(16, 24, 40, 0.16) !important;
     }
     .modal.fade .modal-dialog {
@@ -1372,7 +1406,7 @@ Author: PickDrop Team
     }
 
     .pagination .page-link {
-        border-radius: 10px !important;
+        border-radius: 8px !important;
     }
 
     .action-btn {
@@ -1473,7 +1507,7 @@ Author: PickDrop Team
         border-width: 2px !important;
         top: 3px !important;
         left: 3px !important;
-        background: #5b6cff !important;
+        background: #5a3fa8 !important;
         border-color: #ffffff !important;
     }
     .navbar .theme-switcher-wrapper .box.dark .ball {
@@ -1503,8 +1537,8 @@ Author: PickDrop Team
     }
     .navbar .pd-icon-btn:hover,
     .navbar .pd-icon-btn[aria-expanded="true"] {
-        color: #5b6cff !important;
-        background: #eceeff !important;
+        color: #5a3fa8 !important;
+        background: #f1edfb !important;
         border-color: #d9e0f5 !important;
     }
     .navbar .pd-icon-btn svg {
@@ -1558,7 +1592,7 @@ Author: PickDrop Team
         width: 30px;
         height: 30px;
         border-radius: 50%;
-        background: #5b6cff;
+        background: #5a3fa8;
         color: #ffffff;
         font-size: 12px;
         font-weight: 700;
@@ -1659,7 +1693,7 @@ Author: PickDrop Team
         width: 18px;
         height: 18px;
     }
-    .dashboard-stat-icon.is-blue { background: #eceeff; color: #5b6cff; }
+    .dashboard-stat-icon.is-blue { background: #f1edfb; color: #5a3fa8; }
     .dashboard-stat-icon.is-green { background: #e6fbf6; color: #14b8a6; }
     .dashboard-stat-icon.is-teal { background: #e8f7ff; color: #0ea5e9; }
     .dashboard-stat-icon.is-red { background: #fff1e8; color: #f97316; }
@@ -1741,7 +1775,7 @@ Author: PickDrop Team
     [data-bs-theme="dark"] .dashboard-stat-card h3 {
         color: #f4f7fb !important;
     }
-    [data-bs-theme="dark"] .dashboard-stat-icon.is-blue { background: rgba(63, 111, 217, 0.18); color: #93b4ff; }
+    [data-bs-theme="dark"] .dashboard-stat-icon.is-blue { background: rgba(90, 63, 168, 0.18); color: #c3b5f0; }
     [data-bs-theme="dark"] .dashboard-stat-icon.is-green { background: rgba(22, 163, 74, 0.18); color: #86efac; }
     [data-bs-theme="dark"] .dashboard-stat-icon.is-teal { background: rgba(14, 165, 233, 0.18); color: #7dd3fc; }
     [data-bs-theme="dark"] .dashboard-stat-icon.is-red { background: rgba(225, 29, 72, 0.18); color: #fda4af; }
@@ -1768,8 +1802,8 @@ Author: PickDrop Team
         stroke-linecap: round;
         animation: pdBarFill 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .pd-stat-ring.is-blue .pd-stat-ring-track { stroke: #eceeff; }
-    .pd-stat-ring.is-blue .pd-stat-ring-bar { stroke: #5b6cff; }
+    .pd-stat-ring.is-blue .pd-stat-ring-track { stroke: #f1edfb; }
+    .pd-stat-ring.is-blue .pd-stat-ring-bar { stroke: #5a3fa8; }
     .pd-stat-ring.is-green .pd-stat-ring-track { stroke: #e6fbf6; }
     .pd-stat-ring.is-green .pd-stat-ring-bar { stroke: #14b8a6; }
     .pd-stat-ring.is-teal .pd-stat-ring-track { stroke: #e8f7ff; }

@@ -201,7 +201,7 @@
   .pd-cal-day {
     min-height: 92px;
     border: 1px solid var(--pd-border, #e6ebf2);
-    border-radius: 10px;
+    border-radius: 8px;
     background: var(--pd-card-bg, #fff);
     padding: 8px;
     text-align: left;
@@ -213,8 +213,8 @@
     transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
   }
   .pd-cal-day:hover {
-    border-color: #3f6fd9;
-    box-shadow: 0 6px 16px rgba(63, 111, 217, .08);
+    border-color: #5a3fa8;
+    box-shadow: 0 6px 16px rgba(90, 63, 168, .08);
     transform: translateY(-1px);
   }
   .pd-cal-day.is-muted {
@@ -229,8 +229,8 @@
     transform: none;
   }
   .pd-cal-day.is-today {
-    border-color: #3f6fd9;
-    box-shadow: inset 0 0 0 1px #3f6fd9;
+    border-color: #5a3fa8;
+    box-shadow: inset 0 0 0 1px #5a3fa8;
   }
   .pd-cal-day.has-off {
     background: #fbf8f2;
@@ -253,7 +253,7 @@
     text-overflow: ellipsis;
   }
   .pd-cal-chip-public { background: #fde8ee; color: #9f1239; }
-  .pd-cal-chip-school { background: #eef4ff; color: #1d4ed8; }
+  .pd-cal-chip-school { background: #f3effa; color: #1d4ed8; }
   .pd-cal-chip-custom { background: #fff4db; color: #92400e; }
   .pd-cal-chip-trip { background: #e8f7ef; color: #166534; }
   .pd-cal-chip-skip { background: #f3f4f6; color: #4b5563; }
