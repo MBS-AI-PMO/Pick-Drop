@@ -7,14 +7,16 @@
     <h4 class="mb-1">Edit Driver Verification</h4>
     <p class="text-secondary mb-0">{{ $verification->full_name }} · {{ $verification->user?->email }}</p>
   </div>
-  <div class="d-flex gap-2">
-    <a href="{{ route('driver-verifications.show', $verification) }}" class="btn btn-outline-secondary">Cancel</a>
-  </div>
+  <a href="{{ $listUrl }}" class="btn btn-outline-secondary">
+    <i data-lucide="arrow-left" class="icon-xs"></i>
+    Back to List
+  </a>
 </div>
 
 <form method="POST" action="{{ route('driver-verifications.update', $verification) }}" enctype="multipart/form-data">
   @csrf
   @method('PUT')
+  <input type="hidden" name="return" value="{{ request('return') }}">
 
   <div class="card mb-3">
     <div class="card-header"><h6 class="mb-0">Personal Details</h6></div>
@@ -67,7 +69,7 @@
           @error('cnic_number')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
       </div>
-      <div class="row g-3">
+      <div class="kyc-doc-grid">
         @include('pickdrop.partials.verification-doc-input', [
           'name' => 'cnic_front',
           'label' => 'CNIC Front',
@@ -103,7 +105,7 @@
           @error('license_expiry')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
       </div>
-      <div class="row g-3">
+      <div class="kyc-doc-grid kyc-doc-grid--pair">
         @include('pickdrop.partials.verification-doc-input', [
           'name' => 'license_front',
           'label' => 'License Front',
@@ -118,14 +120,63 @@
     </div>
   </div>
 
-  <div class="d-flex justify-content-end gap-2 mb-4">
-    <a href="{{ route('driver-verifications.show', $verification) }}" class="btn btn-light">Cancel</a>
+  <div class="d-flex justify-content-end mb-4">
     <button type="submit" class="btn btn-primary px-4">
       <i data-lucide="save" class="icon-xs"></i>
       Save Changes
     </button>
   </div>
 </form>
+
+<div class="card mb-4">
+  <div class="card-header"><h6 class="mb-0">Verification Status</h6></div>
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
+        @csrf
+        <input type="hidden" name="return" value="{{ request('return') }}">
+        <input type="hidden" name="status" value="approved">
+        <button type="submit" class="btn btn-primary"
+                {{ $verification->status === 'approved' ? 'disabled' : '' }}
+                onclick="return confirm('Accept this driver verification?')">
+          <i data-lucide="check" class="icon-xs"></i>
+          Accept
+        </button>
+      </form>
+
+      <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
+        @csrf
+        <input type="hidden" name="return" value="{{ request('return') }}">
+        <input type="hidden" name="status" value="pending">
+        <button type="submit" class="btn btn-outline-secondary"
+                {{ $verification->status === 'pending' ? 'disabled' : '' }}
+                onclick="return confirm('Move this verification back to pending?')">
+          <i data-lucide="clock" class="icon-xs"></i>
+          Pending
+        </button>
+      </form>
+    </div>
+
+    <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
+      @csrf
+      <input type="hidden" name="return" value="{{ request('return') }}">
+      <input type="hidden" name="status" value="rejected">
+      <label class="form-label">Decline Reason</label>
+      <textarea name="rejection_reason" class="form-control mb-3" rows="3"
+                {{ $verification->status === 'rejected' ? 'disabled' : 'required' }}
+                placeholder="Explain why documents were declined...">{{ old('rejection_reason') }}</textarea>
+      @error('rejection_reason')
+        <div class="text-danger small mb-2">{{ $message }}</div>
+      @enderror
+      <button type="submit" class="btn btn-outline-danger"
+              {{ $verification->status === 'rejected' ? 'disabled' : '' }}
+              onclick="return confirm('Decline this verification?')">
+        <i data-lucide="x" class="icon-xs"></i>
+        Decline
+      </button>
+    </form>
+  </div>
+</div>
 
 @endsection
 

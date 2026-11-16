@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class Payment extends Model
 {
@@ -102,7 +101,7 @@ class Payment extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->proof_path);
+        return public_storage_url($this->proof_path);
     }
 
     /**

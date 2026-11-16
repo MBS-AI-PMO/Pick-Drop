@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class ParentSelfVerification extends Model
 {
@@ -100,7 +99,7 @@ class ParentSelfVerification extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return public_storage_url($path);
     }
 
     /**

@@ -109,7 +109,7 @@
             </td>
             <td class="py-3">
               @if(strtolower($city->status) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Active</span>
               @else
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $city->status }}</span>
               @endif

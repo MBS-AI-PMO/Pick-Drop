@@ -59,7 +59,7 @@
   <div class="card mb-3">
     <div class="card-header"><h6 class="mb-0">Vehicle Photos & Registration</h6></div>
     <div class="card-body">
-      <div class="row g-3">
+      <div class="kyc-doc-grid">
         @include('pickdrop.partials.verification-doc-input', [
           'name' => 'registration_card_front',
           'label' => 'Registration Card Front',
@@ -104,7 +104,7 @@
           @error('owner_cnic_number')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
       </div>
-      <div class="row g-3">
+      <div class="kyc-doc-grid kyc-doc-grid--pair">
         @include('pickdrop.partials.verification-doc-input', [
           'name' => 'owner_document_front',
           'label' => 'Owner Document Front',

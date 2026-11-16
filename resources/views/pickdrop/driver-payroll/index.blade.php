@@ -36,7 +36,7 @@
     <div class="card h-100">
       <div class="card-body">
         <p class="text-secondary fs-13px mb-1">Approved</p>
-        <h4 class="fw-bold mb-0" style="color:#5a3fa8;">PKR {{ number_format((float) $summary['approved'], 2) }}</h4>
+        <h4 class="fw-bold mb-0" style="color:#1f4e79;">PKR {{ number_format((float) $summary['approved'], 2) }}</h4>
         <small class="text-muted">Awaiting payout</small>
       </div>
     </div>
@@ -429,8 +429,8 @@
     text-decoration: none;
   }
   .payroll-month-picker__month:hover {
-    background: #f3effa;
-    color: #5a3fa8;
+    background: #e8eef4;
+    color: #1f4e79;
   }
   .payroll-month-picker__month.is-active {
     background: #1d3557;
@@ -459,8 +459,8 @@
     width: 44px;
     height: 44px;
     border-radius: 6px;
-    background: #f3effa;
-    color: #5a3fa8;
+    background: #e8eef4;
+    color: #1f4e79;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -531,11 +531,11 @@
     color: #cbd5e1;
   }
   [data-bs-theme="dark"] .payroll-month-picker__month.is-active {
-    background: #5a3fa8;
+    background: #1f4e79;
     color: #ffffff;
   }
   [data-bs-theme="dark"] .payroll-ready-card__avatar {
-    background: rgba(90, 63, 168, 0.18);
+    background: rgba(31, 78, 121, 0.18);
     color: #c3b5f0;
   }
 </style>

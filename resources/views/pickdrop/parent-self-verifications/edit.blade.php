@@ -101,7 +101,7 @@
           @error('cnic_number')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
       </div>
-      <div class="row g-3">
+      <div class="kyc-doc-grid">
         @include('pickdrop.partials.verification-doc-input', [
           'name' => 'cnic_front',
           'label' => 'CNIC Front',

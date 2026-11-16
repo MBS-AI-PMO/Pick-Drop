@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class DriverVerification extends Model
 {
@@ -82,7 +81,7 @@ class DriverVerification extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return public_storage_url($path);
     }
 
     /**

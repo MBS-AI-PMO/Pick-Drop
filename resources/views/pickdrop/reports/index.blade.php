@@ -18,7 +18,7 @@
     'accepted' => '#3b82f6',
     'picked_up' => '#0ea5e9',
     'dropped' => '#14b8a6',
-    'completed' => '#5a3fa8',
+    'completed' => '#1f4e79',
     'cancelled' => '#e63946',
   ];
 @endphp
@@ -69,7 +69,7 @@
     <div class="row g-2 align-items-end">
       <div class="col-md-2">
         <label class="form-label mb-1">City</label>
-        <select name="city_id" class="form-select form-select-sm">
+        <select name="city_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">All cities</option>
           @foreach($filterCities as $city)
             <option value="{{ $city->id }}" @selected((int) ($filters['city_id'] ?? 0) === (int) $city->id)>{{ $city->name }}</option>
@@ -78,7 +78,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label mb-1">Driver</label>
-        <select name="driver_id" class="form-select form-select-sm">
+        <select name="driver_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">All drivers</option>
           @foreach($filterDrivers as $driver)
             <option value="{{ $driver->id }}" @selected((int) ($filters['driver_id'] ?? 0) === (int) $driver->id)>{{ $driver->name }}</option>
@@ -87,7 +87,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label mb-1">Status</label>
-        <select name="status" class="form-select form-select-sm">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">All statuses</option>
           @foreach(['pending' => 'Pending', 'accepted' => 'Accepted', 'picked_up' => 'Picked up', 'dropped' => 'Dropped', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $value => $label)
             <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
@@ -96,7 +96,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label mb-1">Type</label>
-        <select name="type" class="form-select form-select-sm">
+        <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">Parent & Self</option>
           <option value="parent" @selected(($filters['type'] ?? '') === 'parent')>Parent</option>
           <option value="self" @selected(($filters['type'] ?? '') === 'self')>Self</option>
@@ -104,7 +104,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label mb-1">Payment</label>
-        <select name="payment_status" class="form-select form-select-sm">
+        <select name="payment_status" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">All payments</option>
           <option value="unpaid" @selected(($filters['payment_status'] ?? '') === 'unpaid')>Unpaid</option>
           <option value="pending_confirmation" @selected(($filters['payment_status'] ?? '') === 'pending_confirmation')>Awaiting confirmation</option>
@@ -403,7 +403,7 @@
                 @php
                   $status = strtolower((string) $trip->status);
                   $badge = match ($status) {
-                    'completed' => 'background:#f3effa;color:#5a3fa8;',
+                    'completed' => 'background:#e8eef4;color:#1f4e79;',
                     'cancelled' => 'background:#fee2e2;color:#991b1b;',
                     'pending' => 'background:#f3f4f6;color:#374151;',
                     'picked_up', 'dropped' => 'background:#dbeafe;color:#1e40af;',
@@ -475,11 +475,11 @@
     transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
   }
   .pd-period-tab:hover {
-    color: #5a3fa8;
+    color: #1f4e79;
     background: rgba(255, 255, 255, 0.7);
   }
   .pd-period-tab.is-active {
-    color: #5a3fa8;
+    color: #1f4e79;
     background: #fff;
     box-shadow: 0 1px 4px rgba(80, 100, 160, 0.14);
   }
@@ -504,8 +504,8 @@
   }
   .pd-date-input:focus {
     outline: 0;
-    border-color: #5a3fa8;
-    box-shadow: 0 0 0 3px rgba(90, 63, 168, 0.14);
+    border-color: #1f4e79;
+    box-shadow: 0 0 0 3px rgba(31, 78, 121, 0.14);
   }
   .pd-date-sep {
     color: #8a96a8;
@@ -570,7 +570,7 @@
   }
   [data-bs-theme="dark"] .pd-period-tab.is-active {
     color: #fff;
-    background: rgba(90, 63, 168, 0.28);
+    background: rgba(31, 78, 121, 0.28);
     box-shadow: none;
   }
   [data-bs-theme="dark"] .pd-date-input {

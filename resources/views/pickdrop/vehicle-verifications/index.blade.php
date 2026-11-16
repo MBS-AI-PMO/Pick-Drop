@@ -72,7 +72,7 @@
                 @if($item->status === 'pending')
                   <span class="badge bg-warning text-dark">Pending</span>
                 @elseif($item->status === 'approved')
-                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Approved</span>
                 @else
                   <span class="badge bg-danger">Declined</span>
                 @endif

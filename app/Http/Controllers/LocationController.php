@@ -660,7 +660,9 @@ class LocationController extends Controller
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
+                        ->orWhere('address', 'like', "%{$search}%")
+                        ->orWhere('pickup_address', 'like', "%{$search}%")
+                        ->orWhere('drop_address', 'like', "%{$search}%");
                 });
             }
 
@@ -684,7 +686,8 @@ class LocationController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:pickup,drop,both',
-            'address' => 'nullable|string|max:500',
+            'pickup_address' => 'required|string|max:500',
+            'drop_address' => 'required|string|max:500',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'status' => 'nullable|string|max:20',
@@ -702,7 +705,9 @@ class LocationController extends Controller
             'area_id' => $data['area_id'] ?? null,
             'name' => $data['name'],
             'type' => $data['type'],
-            'address' => $data['address'] ?? null,
+            'address' => mb_substr($data['pickup_address'], 0, 255),
+            'pickup_address' => $data['pickup_address'],
+            'drop_address' => $data['drop_address'],
             'latitude' => $data['latitude'] ?? null,
             'longitude' => $data['longitude'] ?? null,
             'status' => $data['status'] ?? 'Active',
@@ -718,7 +723,8 @@ class LocationController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:pickup,drop,both',
-            'address' => 'nullable|string|max:500',
+            'pickup_address' => 'required|string|max:500',
+            'drop_address' => 'required|string|max:500',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'status' => 'nullable|string|max:20',
@@ -736,7 +742,9 @@ class LocationController extends Controller
             'area_id' => $data['area_id'] ?? null,
             'name' => $data['name'],
             'type' => $data['type'],
-            'address' => $data['address'] ?? null,
+            'address' => mb_substr($data['pickup_address'], 0, 255),
+            'pickup_address' => $data['pickup_address'],
+            'drop_address' => $data['drop_address'],
             'latitude' => $data['latitude'] ?? null,
             'longitude' => $data['longitude'] ?? null,
             'status' => $data['status'] ?? 'Active',
