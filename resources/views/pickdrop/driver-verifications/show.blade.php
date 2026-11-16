@@ -8,11 +8,7 @@
     <p class="text-secondary mb-0">{{ $verification->full_name }} · {{ $verification->user?->email }}</p>
   </div>
   <div class="d-flex gap-2">
-    <a href="{{ route('driver-verifications.edit', $verification) }}" class="btn btn-primary">
-      <i data-lucide="edit-2" class="icon-xs"></i>
-      Edit / Update
-    </a>
-    <a href="{{ route('driver-verifications.index') }}" class="btn btn-outline-secondary">Back to list</a>
+    <a href="{{ $listUrl }}" class="btn btn-outline-secondary">Back</a>
   </div>
 </div>
 
@@ -158,7 +154,7 @@
             @if($verification->status === 'pending')
               <span class="badge bg-warning text-dark">Pending Verification</span>
             @elseif($verification->status === 'approved')
-              <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
+              <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Approved</span>
             @else
               <span class="badge bg-danger">Declined</span>
             @endif
@@ -197,68 +193,6 @@
       </div>
     </div>
 
-    <div class="card verification-action-card">
-      <div class="card-header">
-        <h6 class="mb-0">Admin Actions</h6>
-      </div>
-      <div class="card-body">
-        <a href="{{ route('driver-verifications.edit', $verification) }}" class="btn btn-outline-primary w-100 mb-3">
-          <i data-lucide="edit-2" class="icon-xs"></i>
-          Edit details / documents
-        </a>
-        <div class="verification-action-grid mb-3">
-          <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
-            @csrf
-            <input type="hidden" name="status" value="approved">
-            <button type="submit" class="btn btn-primary w-100"
-                    {{ $verification->status === 'approved' ? 'disabled' : '' }}
-                    onclick="return confirm('Accept this driver verification?')">
-              <i data-lucide="check" class="icon-xs"></i>
-              Accept
-            </button>
-          </form>
-
-          <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
-            @csrf
-            <input type="hidden" name="status" value="pending">
-            <button type="submit" class="btn btn-outline-secondary w-100"
-                    {{ $verification->status === 'pending' ? 'disabled' : '' }}
-                    onclick="return confirm('Move this verification back to pending?')">
-              <i data-lucide="clock" class="icon-xs"></i>
-              Pending
-            </button>
-          </form>
-        </div>
-
-        <form method="POST" action="{{ route('driver-verifications.status', $verification) }}">
-          @csrf
-          <input type="hidden" name="status" value="rejected">
-          <label class="form-label">Decline Reason</label>
-          <textarea name="rejection_reason" class="form-control mb-2" rows="3"
-                    {{ $verification->status === 'rejected' ? 'disabled' : 'required' }}
-                    placeholder="Explain why documents were declined...">{{ old('rejection_reason') }}</textarea>
-          @error('rejection_reason')
-            <div class="text-danger small mb-2">{{ $message }}</div>
-          @enderror
-          <button type="submit" class="btn btn-outline-danger w-100"
-                  {{ $verification->status === 'rejected' ? 'disabled' : '' }}
-                  onclick="return confirm('Decline this verification?')">
-            <i data-lucide="x" class="icon-xs"></i>
-            Decline
-          </button>
-        </form>
-
-        <form method="POST" action="{{ route('driver-verifications.destroy', $verification) }}" class="mt-3"
-              onsubmit="confirmDelete(event, this)">
-          @csrf
-          @method('DELETE')
-          <button type="submit" class="btn btn-danger w-100">
-            <i data-lucide="trash-2" class="icon-xs"></i>
-            Delete record
-          </button>
-        </form>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -272,7 +206,7 @@
     title: 'Updated',
     text: @json(session('success')),
     confirmButtonText: 'OK',
-    confirmButtonColor: '#5a3fa8',
+    confirmButtonColor: '#1f4e79',
     customClass: { popup: 'rounded-4' }
   });
   @endif

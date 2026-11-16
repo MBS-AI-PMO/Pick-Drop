@@ -54,6 +54,7 @@
           </tr>
         </thead>
         <tbody>
+          @php $listReturn = request()->fullUrl(); @endphp
           @forelse($verifications as $item)
             <tr>
               <td class="ps-4">{{ $verifications->firstItem() + $loop->index }}</td>
@@ -69,23 +70,24 @@
                 @if($item->status === 'pending')
                   <span class="badge bg-warning text-dark">Pending</span>
                 @elseif($item->status === 'approved')
-                  <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Approved</span>
+                  <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Approved</span>
                 @else
                   <span class="badge bg-danger">Declined</span>
                 @endif
               </td>
               <td class="text-center">
                 <div class="action-btns">
-                  <a href="{{ route('driver-verifications.show', $item) }}" class="action-btn action-btn-view" title="View">
+                  <a href="{{ route('driver-verifications.show', ['driverVerification' => $item->id, 'return' => $listReturn]) }}" class="action-btn action-btn-view" title="View">
                     <i data-lucide="eye"></i>
                   </a>
-                  <a href="{{ route('driver-verifications.edit', $item) }}" class="action-btn action-btn-edit" title="Edit">
+                  <a href="{{ route('driver-verifications.edit', ['driverVerification' => $item->id, 'return' => $listReturn]) }}" class="action-btn action-btn-edit" title="Edit">
                     <i data-lucide="edit-2"></i>
                   </a>
-                  <form action="{{ route('driver-verifications.destroy', $item) }}" method="POST"
+                  <form action="{{ route('driver-verifications.destroy', ['driverVerification' => $item->id]) }}" method="POST"
                         class="d-inline" onsubmit="confirmDelete(event, this)">
                     @csrf
                     @method('DELETE')
+                    <input type="hidden" name="return" value="{{ $listReturn }}">
                     <button type="submit" class="action-btn action-btn-delete" title="Delete">
                       <i data-lucide="trash-2"></i>
                     </button>
@@ -104,5 +106,16 @@
   </div>
   <x-app-pagination :paginator="$verifications" label="driver verifications" />
 </div>
+
+<style>
+  .action-btns .action-btn {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .action-btns .action-btn svg {
+    pointer-events: none;
+  }
+</style>
 
 @endsection

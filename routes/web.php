@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
 
     // PickDrop Domain Routes
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+    Route::post('/users/{user}/verify', [\App\Http\Controllers\UserController::class, 'verify'])->name('users.verify');
     Route::get('/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
     Route::delete('/login-logs/{loginLog}', [LoginLogController::class, 'destroy'])->name('login-logs.destroy');
     Route::post('/login-logs/clear', [LoginLogController::class, 'clear'])->name('login-logs.clear');
@@ -250,6 +251,7 @@ Route::get('/clear-cache', function () {
 // HTML 404 for unknown admin pages only. Do not use Route::any() here —
 // it intercepts API POSTs and returns "CSRF token mismatch" instead of JSON.
 // Keep {page} required so this never steals the real "/" login route.
+// self/, parent/, and driver/ are mobile APIs (with or without the /api prefix).
 Route::get('/{page}', function () {
     return View::make('pages.error.404');
-})->where('page', '^(?!api/).+$');
+})->where('page', '^(?!api/|self/|parent/|driver/).+$');

@@ -77,6 +77,7 @@
                 <option value="evening" {{ old('shift') === 'evening' ? 'selected' : '' }}>Evening</option>
               </select>
             </div>
+            @if(institutions_visible())
             <div class="col-md-6">
               <label class="form-label fw-semibold">Institution</label>
               <select class="form-select" name="school_id">
@@ -86,6 +87,9 @@
                 @endforeach
               </select>
             </div>
+            @else
+            <input type="hidden" name="school_id" value="{{ old('school_id') }}">
+            @endif
             <div class="col-md-6">
               <label class="form-label fw-semibold">Assign Vehicle</label>
               <select class="form-select" name="vehicle_id">
@@ -151,7 +155,7 @@
         </div>
         <div class="card-body">
           <div class="rounded-3 d-flex flex-column align-items-center justify-content-center text-center mb-3"
-            style="height:180px; background:linear-gradient(135deg,#e8f0fe 0%,#f0f4ff 100%); position:relative;">
+            style="height:180px; background:#eef1f4; position:relative;">
             <svg width="100%" height="100%" style="position:absolute;top:0;left:0;opacity:0.2;">
               <defs>
                 <pattern id="previewGrid" width="30" height="30" patternUnits="userSpaceOnUse">
@@ -166,7 +170,7 @@
               <circle cx="40" cy="140" r="5" fill="#3b5bdb"/>
               <circle cx="130" cy="110" r="5" fill="#3b5bdb"/>
               <circle cx="240" cy="70" r="5" fill="#3b5bdb"/>
-              <circle cx="330" cy="45" r="7" fill="#5a3fa8" stroke="white" stroke-width="2"/>
+              <circle cx="330" cy="45" r="7" fill="#1f4e79" stroke="white" stroke-width="2"/>
             </svg>
             <i data-lucide="map" style="width:28px;height:28px;color:#3b5bdb;position:relative;z-index:1;opacity:0.4;"></i>
             <p class="text-secondary fs-12px mt-2 mb-0" style="position:relative;z-index:1;">Route Map Preview</p>

@@ -157,9 +157,11 @@
             <li class="nav-item {{ active_class(['routes', 'routes/*']) }}">
               <a href="{{ route('routes.index') }}" class="nav-link"><span class="link-title">Routes</span></a>
             </li>
+            @if(institutions_visible())
             <li class="nav-item {{ active_class(['schools', 'schools/*']) }}">
               <a href="{{ route('schools.index') }}" class="nav-link"><span class="link-title">Institutions</span></a>
             </li>
+            @endif
           </ul>
         </div>
       </li>

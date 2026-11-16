@@ -133,7 +133,7 @@
     </div>
     <div class="dsh-head__actions">
       <a href="{{ route('pickup-requests.index', ['status' => 'pending']) }}" class="dsh-btn">
-        Pending queue <span class="dsh-btn__count">{{ number_format($pendingCount) }}</span>
+        Pending queue <span class="dsh-btn__count" data-count="{{ $pendingCount }}">{{ number_format($pendingCount) }}</span>
       </a>
       <a href="{{ route('reports.index') }}" class="dsh-btn dsh-btn--primary">View reports</a>
     </div>
@@ -148,7 +148,7 @@
         <div class="dsh-kpi__value" data-count="{{ $k['value'] }}">{{ number_format($k['value']) }}</div>
         <div class="dsh-kpi__note">{{ $k['note'] }}</div>
         <div class="dsh-kpi__meter">
-          <div class="dsh-kpi__meter-head"><span>{{ $k['meter'] }}</span><b>{{ $k['pct'] }}%</b></div>
+          <div class="dsh-kpi__meter-head"><span>{{ $k['meter'] }}</span><b data-count="{{ $k['pct'] }}" data-suffix="%">{{ $k['pct'] }}%</b></div>
           <div class="dsh-track"><span style="--w:{{ $kp }}%;"></span></div>
         </div>
       </a>
@@ -246,7 +246,7 @@
             <path class="dsh-bars__trend" d="{{ $trendPath }}"/>
           @endif
           @foreach($trendPts as $i => $pt)
-            <circle class="dsh-bars__dot {{ $i === $lastIndex ? 'is-today' : '' }}" cx="{{ round($pt['x'], 1) }}" cy="{{ round($pt['y'], 1) }}" r="{{ $i === $lastIndex ? 4.5 : 3 }}"/>
+            <circle class="dsh-bars__dot {{ $i === $lastIndex ? 'is-today' : '' }}" style="--i:{{ $i }}" cx="{{ round($pt['x'], 1) }}" cy="{{ round($pt['y'], 1) }}" r="{{ $i === $lastIndex ? 4.5 : 3 }}"/>
           @endforeach
         </svg>
       </div>
@@ -289,6 +289,7 @@
                 stroke="{{ $seg['color'] }}"
                 stroke-dasharray="{{ round($segLen, 3) }} {{ round(100 - $segLen, 3) }}"
                 stroke-dashoffset="{{ round(-$seg['offset'], 3) }}"
+                style="--i:{{ $i }};stroke-dasharray:{{ round($segLen, 3) }} {{ round(100 - $segLen, 3) }}"
                 data-label="{{ $seg['label'] }}" data-n="{{ $seg['n'] }}" data-share="{{ $seg['share'] }}">
                 <title>{{ $seg['label'] }}: {{ $seg['n'] }} ({{ $seg['share'] }}%)</title>
               </circle>
@@ -315,7 +316,7 @@
             <li class="{{ $count === 0 ? 'is-zero' : '' }}" data-key="{{ $key }}">
               <span class="dsh-legend-list__swatch" style="background:{{ $color }};"></span>
               <span class="dsh-legend-list__label">{{ $label }}</span>
-              <span class="dsh-legend-list__count">{{ number_format($count) }}</span>
+              <span class="dsh-legend-list__count" data-count="{{ $count }}">{{ number_format($count) }}</span>
               <span class="dsh-legend-list__share">{{ $share }}%</span>
               <span class="dsh-legend-list__bar"><span style="--w:{{ $share }}%;background:{{ $color }};"></span></span>
             </li>
@@ -375,7 +376,7 @@
                 <td class="text-end">
                   <div class="dsh-progress dsh-tone-{{ $tone }}">
                     <div class="dsh-track"><span style="--w:{{ $trip['progress'] }}%;"></span></div>
-                    <b>{{ $trip['progress'] }}%</b>
+                    <b data-count="{{ $trip['progress'] }}" data-suffix="%">{{ $trip['progress'] }}%</b>
                   </div>
                 </td>
               </tr>
@@ -545,7 +546,7 @@
     --text-2: #42454c;
     --muted: #6d7177;
     --faint: #9b9ea3;
-    --link: #5a3fa8;
+    --link: #1f4e79;
     --radius: 8px;
     --gap: 16px;
     font-family: 'Inter', system-ui, sans-serif;
@@ -589,7 +590,7 @@
   /* Page header -- plain text, no card, no gradient */
   .dsh-head {
     display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px;
-    margin-bottom: var(--gap); animation: dshIn .5s ease backwards;
+    margin-bottom: var(--gap); animation: dshIn .75s cubic-bezier(0.33, 0, 0.2, 1) .08s backwards;
   }
   .dsh-head__date { font-size: 12px; color: var(--muted); }
   .dsh-head h1 { margin: 4px 0 2px; font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
@@ -619,7 +620,7 @@
     position: relative; display: flex; flex-direction: column; min-width: 0;
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     transition: border-color .15s ease;
-    animation: dshIn .5s ease backwards; animation-delay: var(--d, 0ms);
+    animation: dshIn .8s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: var(--d, 0ms);
   }
   .dsh-card:hover { border-color: var(--line-strong); }
   .dsh-card__head {
@@ -658,7 +659,9 @@
   .dsh-track--lg { height: 6px; }
   .dsh-track span {
     display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--c, var(--link));
-    animation: dshFill 1s ease both .3s;
+    transform-origin: left center;
+    animation: dshFill 1.15s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0ms) + .28s);
   }
 
   /* Legend */
@@ -670,7 +673,7 @@
   .dsh-legend i.is-trend { width: 11px; height: 2px; border-radius: 1px; background: #10b981; }
 
   /* Quick-read insight strip above the chart -- plain text, no icons, no pills */
-  .dsh-insights { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 13px 18px 0; font-size: 12px; color: var(--muted); }
+  .dsh-insights { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 13px 18px 0; font-size: 12px; color: var(--muted); animation: dshFade .45s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: calc(var(--d, 0ms) + 40ms); }
   .dsh-insights b { font-weight: 700; color: var(--text); }
   .dsh-insights b.is-down { color: #be123c; }
   [data-bs-theme="dark"] .dsh-insights b.is-down { color: #fda4af; }
@@ -684,25 +687,25 @@
   .dsh-bars__axis { fill: var(--muted); font-size: 11.5px; font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
   .dsh-bars__axis.is-today { fill: #d97706; font-weight: 700; }
   [data-bs-theme="dark"] .dsh-bars__axis.is-today { fill: #fbbf24; }
-  .dsh-bars__val { fill: var(--text-2); font-size: 11px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; animation: dshFade .4s ease backwards; animation-delay: calc(.6s + var(--i) * 60ms); }
+  .dsh-bars__val { fill: var(--text-2); font-size: 11px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif; animation: dshFade .4s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: calc(.72s + var(--i) * 55ms); }
   .dsh-bars__col.is-today .dsh-bars__val { fill: #d97706; }
   [data-bs-theme="dark"] .dsh-bars__col.is-today .dsh-bars__val { fill: #fbbf24; }
-  .dsh-bars__peak { fill: var(--muted); font-size: 10px; font-weight: 600; font-family: 'Inter', system-ui, sans-serif; animation: dshFade .4s ease backwards; animation-delay: calc(.65s + var(--i) * 60ms); }
+  .dsh-bars__peak { fill: var(--muted); font-size: 10px; font-weight: 600; font-family: 'Inter', system-ui, sans-serif; animation: dshFade .4s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: calc(.76s + var(--i) * 55ms); }
   .dsh-bars__hit { fill: transparent; transition: fill .15s ease; }
   .dsh-bars__col:hover .dsh-bars__hit { fill: var(--subtle); }
-  .dsh-bars__bar { fill: #6366f1; transform-box: fill-box; transform-origin: 50% 100%; animation: dshGrow .7s ease both; animation-delay: calc(.2s + var(--i) * 60ms); }
+  .dsh-bars__bar { fill: #6366f1; transform-box: fill-box; transform-origin: 50% 100%; animation: dshGrow 1s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: calc(.5s + var(--i) * 40ms); }
   .dsh-bars__col.is-today .dsh-bars__bar { fill: #d97706; }
   .dsh-bars__zero { fill: var(--line-strong); }
 
   /* Trend overlay: average reference line, soft flat area, smoothed line + dots */
-  .dsh-bars__area { fill: #10b981; opacity: .08; animation: dshFade .8s ease backwards .2s; }
+  .dsh-bars__area { fill: #10b981; opacity: .08; animation: dshFade .8s cubic-bezier(0.33, 0, 0.2, 1) .4s backwards; }
   .dsh-bars__avg { stroke: var(--faint); stroke-width: 1.25; stroke-dasharray: 3 3; }
   .dsh-bars__avg-label { fill: var(--muted); font-size: 10px; font-weight: 600; font-family: 'Inter', system-ui, sans-serif; }
   .dsh-bars__trend {
     fill: none; stroke: #059669; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 900; stroke-dashoffset: 900; animation: dshDraw 1.1s ease both .35s;
+    stroke-dasharray: 1600; stroke-dashoffset: 0; animation: dshDraw 1.45s cubic-bezier(0.33, 0, 0.2, 1) .55s backwards;
   }
-  .dsh-bars__dot { fill: #fff; stroke: #059669; stroke-width: 2; animation: dshFade .4s ease backwards; animation-delay: calc(.9s + var(--i, 0) * 35ms); }
+  .dsh-bars__dot { fill: #fff; stroke: #059669; stroke-width: 2; animation: dshFade .4s cubic-bezier(0.33, 0, 0.2, 1) backwards; animation-delay: calc(.95s + var(--i, 0) * 40ms); }
   .dsh-bars__dot.is-today { stroke: #d97706; }
   [data-bs-theme="dark"] .dsh-bars__dot { fill: #1b1e24; }
 
@@ -734,15 +737,20 @@
   /* Status donut -- flat strokes, plain legend */
   .dsh-mix { display: flex; flex-direction: column; gap: 14px; flex: 1; padding: 18px; }
   .dsh-donut { position: relative; width: 148px; height: 148px; margin: 0 auto; }
-  .dsh-donut svg { display: block; width: 100%; height: 100%; overflow: visible; animation: dshFade .6s ease backwards .2s; transform: rotate(-90deg); }
+  .dsh-donut svg { display: block; width: 100%; height: 100%; overflow: visible; animation: dshFade .55s cubic-bezier(0.33, 0, 0.2, 1) .32s backwards; transform: rotate(-90deg); }
   .dsh-donut__track { fill: none; stroke: var(--subtle); stroke-width: 13; }
-  .dsh-donut__seg { fill: none; stroke-width: 13; cursor: pointer; transition: stroke-width .15s ease, opacity .15s ease; }
+  .dsh-donut__seg {
+    fill: none; stroke-width: 13; cursor: pointer; transition: stroke-width .15s ease, opacity .15s ease;
+    animation: dshDonut 1.35s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    animation-delay: calc(.5s + var(--i, 0) * 80ms);
+  }
   .dsh-donut__seg:hover, .dsh-donut__seg.is-hot { stroke-width: 16; }
   .dsh-donut.has-hot .dsh-donut__seg:not(.is-hot) { opacity: .3; }
   .dsh-donut__label {
     fill: #fff; font-size: 9px; font-weight: 700; font-family: 'Inter', system-ui, sans-serif;
     paint-order: stroke; stroke: rgba(0, 0, 0, .3); stroke-width: 2.5px; stroke-linejoin: round;
     pointer-events: none;
+    animation: dshFade .35s cubic-bezier(0.33, 0, 0.2, 1) .95s backwards;
   }
   .dsh-donut__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   .dsh-donut__center b { font-family: 'Outfit', 'Inter', sans-serif; font-size: 24px; font-weight: 700; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -760,7 +768,11 @@
   .dsh-legend-list__count { grid-area: count; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
   .dsh-legend-list__share { grid-area: share; font-size: 11.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
   .dsh-legend-list__bar { grid-area: bar; display: block; height: 3px; border-radius: 999px; background: var(--subtle); overflow: hidden; }
-  .dsh-legend-list__bar span { display: block; height: 100%; width: var(--w); border-radius: inherit; animation: dshFill 1s ease both .4s; }
+  .dsh-legend-list__bar span {
+    display: block; height: 100%; width: var(--w); border-radius: inherit; transform-origin: left center;
+    animation: dshFill .85s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0ms) + .22s);
+  }
   .dsh-legend-list li.is-zero .dsh-legend-list__label,
   .dsh-legend-list li.is-zero .dsh-legend-list__count { color: var(--faint); font-weight: 500; }
   .dsh-legend-list li.is-zero .dsh-legend-list__swatch { opacity: .35; }
@@ -844,12 +856,123 @@
   .dsh-empty b { font-size: 13px; font-weight: 600; color: var(--text); }
   .dsh-empty > span:not([data-lucide]) { max-width: 300px; font-size: 12px; color: var(--muted); }
 
-  /* Motion -- subtle entrance only, no lift/scale/glow */
-  @keyframes dshIn { from { opacity: 0; transform: translateY(8px); } }
-  @keyframes dshFade { from { opacity: 0; } }
-  @keyframes dshFill { from { width: 0; } }
-  @keyframes dshGrow { from { transform: scaleY(0); } }
-  @keyframes dshDraw { to { stroke-dashoffset: 0; } }
+  /* Load-in motion. fill-mode is backwards so transforms do not stick around
+     after the animation and interfere with the fixed sidebar, navbar, or charts. */
+  @keyframes dshIn {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes dshFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dshGrow {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+  @keyframes dshFill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes dshDraw {
+    from { stroke-dashoffset: 1600; }
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes dshDonut {
+    from { stroke-dasharray: 0 100; }
+  }
+  @keyframes dshFromLeft {
+    from { opacity: 0; transform: translate3d(-16px, 0, 0); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes dshFromTop {
+    from { opacity: 0; transform: translate3d(0, -8px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Keep the entrance off until the splash screen starts to clear.
+     A running animation would finish while the splash still covers the page. */
+  body:not(.dsh-go) .dsh,
+  body:not(.dsh-go) .dsh *,
+  body:not(.dsh-go) nav.sidebar,
+  body:not(.dsh-go) .page-wrapper > nav.navbar,
+  body:not(.dsh-go) .page-wrapper > footer.footer {
+    animation-name: none !important;
+  }
+
+  @media (min-width: 992px) {
+    body:has(.dsh) nav.sidebar {
+      animation: dshFromLeft .8s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    }
+  }
+  body:has(.dsh) .page-wrapper > nav.navbar {
+    animation: dshFromTop .7s cubic-bezier(0.33, 0, 0.2, 1) .04s backwards;
+  }
+  body:has(.dsh) .page-wrapper > footer.footer {
+    animation: dshIn .75s cubic-bezier(0.33, 0, 0.2, 1) .18s backwards;
+  }
+
+  .dsh-table tbody tr:nth-child(1),
+  .dsh-sched__item:nth-child(1),
+  .dsh-list > li:nth-child(1),
+  .dsh-health__item:nth-child(1),
+  .dsh-stat:nth-child(1),
+  .dsh-legend-list li:nth-child(1) { --n: 0; }
+  .dsh-table tbody tr:nth-child(2),
+  .dsh-sched__item:nth-child(2),
+  .dsh-list > li:nth-child(2),
+  .dsh-health__item:nth-child(2),
+  .dsh-stat:nth-child(2),
+  .dsh-legend-list li:nth-child(2) { --n: 1; }
+  .dsh-table tbody tr:nth-child(3),
+  .dsh-sched__item:nth-child(3),
+  .dsh-list > li:nth-child(3),
+  .dsh-health__item:nth-child(3),
+  .dsh-stat:nth-child(3),
+  .dsh-legend-list li:nth-child(3) { --n: 2; }
+  .dsh-table tbody tr:nth-child(4),
+  .dsh-sched__item:nth-child(4),
+  .dsh-list > li:nth-child(4),
+  .dsh-health__item:nth-child(4),
+  .dsh-stat:nth-child(4),
+  .dsh-legend-list li:nth-child(4) { --n: 3; }
+  .dsh-table tbody tr:nth-child(5),
+  .dsh-sched__item:nth-child(5),
+  .dsh-list > li:nth-child(5),
+  .dsh-health__item:nth-child(5),
+  .dsh-stat:nth-child(5),
+  .dsh-legend-list li:nth-child(5) { --n: 4; }
+  .dsh-table tbody tr:nth-child(6),
+  .dsh-sched__item:nth-child(6),
+  .dsh-list > li:nth-child(6),
+  .dsh-health__item:nth-child(6),
+  .dsh-stat:nth-child(6),
+  .dsh-legend-list li:nth-child(6) { --n: 5; }
+  .dsh-table tbody tr:nth-child(7),
+  .dsh-sched__item:nth-child(7),
+  .dsh-list > li:nth-child(7),
+  .dsh-legend-list li:nth-child(7) { --n: 6; }
+  .dsh-table tbody tr:nth-child(8),
+  .dsh-sched__item:nth-child(8),
+  .dsh-list > li:nth-child(8),
+  .dsh-legend-list li:nth-child(8) { --n: 7; }
+  .dsh-table tbody tr:nth-child(n+9),
+  .dsh-sched__item:nth-child(n+9),
+  .dsh-list > li:nth-child(n+9),
+  .dsh-legend-list li:nth-child(n+9) { --n: 8; }
+
+  .dsh-sched__item,
+  .dsh-list > li,
+  .dsh-health__item,
+  .dsh-stat,
+  .dsh-legend-list li {
+    animation: dshIn .7s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0ms) + .12s + (var(--n, 0) * 35ms));
+  }
+  .dsh-table tbody td {
+    animation: dshFade .42s cubic-bezier(0.33, 0, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0ms) + .12s + (var(--n, 0) * 45ms));
+  }
 
   /* Responsive */
   @media (max-width: 1399px) {
@@ -881,33 +1004,61 @@
     .dsh-legend { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .dsh *, .dsh *::before, .dsh *::after { animation: none !important; transition: none !important; }
     .dsh-donut svg { transform: rotate(-90deg); }
   }
 </style>
 
-@push('custom-scripts')
 <script>
   (function () {
-    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.querySelectorAll('.dsh [data-count]').forEach(function (el) {
-      var target = parseFloat(el.getAttribute('data-count')) || 0;
-      var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
-      var suffix = el.getAttribute('data-suffix') || '';
-      var fmt = function (v) {
-        return v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
-      };
-      if (reduce || target === 0) { el.textContent = fmt(target); return; }
-      var start = null, duration = 1100;
-      el.textContent = fmt(0);
-      function step(ts) {
-        if (start === null) start = ts;
-        var p = Math.min((ts - start) / duration, 1);
-        el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));
-        if (p < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    });
+    var started = false;
+
+    function runCounts() {
+      document.querySelectorAll('.dsh [data-count]').forEach(function (el, i) {
+        var target = parseFloat(el.getAttribute('data-count')) || 0;
+        var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
+        var suffix = el.getAttribute('data-suffix') || '';
+        var fmt = function (v) {
+          return v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+        };
+        if (target === 0) { el.textContent = fmt(target); return; }
+        var delay = 220 + Math.min(i, 16) * 35;
+        var start = null, begun = null, duration = 1600;
+        el.textContent = fmt(0);
+        function step(ts) {
+          if (begun === null) begun = ts;
+          if (ts - begun > delay + duration + 80) {
+            if (!el._countHold) el.textContent = fmt(target);
+            return;
+          }
+          if (el._countHold) { requestAnimationFrame(step); return; }
+          if (ts - begun < delay) { requestAnimationFrame(step); return; }
+          if (start === null) start = ts;
+          var p = Math.min((ts - start) / duration, 1);
+          var eased = p * p * (3 - 2 * p);
+          el.textContent = fmt(target * eased);
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    function go() {
+      if (started) return;
+      started = true;
+      var nodes = document.querySelectorAll('.dsh, .dsh *, nav.sidebar, .page-wrapper > nav.navbar, .page-wrapper > footer.footer');
+      nodes.forEach(function (el) { el.style.animation = 'none'; });
+      document.body.classList.add('dsh-go');
+      void document.body.offsetWidth;
+      nodes.forEach(function (el) { el.style.animation = ''; });
+      runCounts();
+    }
+
+    function arm() {
+      window.setTimeout(go, 900);
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
+    else arm();
   })();
 
   // Status mix: hovering a donut wedge or its legend row highlights both and swaps the
@@ -925,6 +1076,7 @@
       segs.forEach(function (seg) { seg.classList.toggle('is-hot', seg.dataset.key === key); });
       rows.forEach(function (row) { row.classList.toggle('is-hot', row.dataset.key === key); });
       donut.classList.toggle('has-hot', !!key);
+      if (centerVal) centerVal._countHold = !!key;
       if (key) {
         var seg = mix.querySelector('.dsh-donut__seg[data-key="' + key + '"]');
         if (seg && centerVal && centerLabel) {
@@ -948,5 +1100,4 @@
     donut.addEventListener('mouseleave', function () { setHot(null); });
   })();
 </script>
-@endpush
 @endsection

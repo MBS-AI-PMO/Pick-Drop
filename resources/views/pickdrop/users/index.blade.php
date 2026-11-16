@@ -103,7 +103,7 @@
             <td class="py-3">
               @php $accountStatus = trim((string) ($user->status ?? '')); @endphp
               @if(strtolower($accountStatus) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Active</span>
               @elseif($accountStatus !== '')
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $accountStatus }}</span>
               @else
@@ -140,6 +140,7 @@
                     'role' => $user->role,
                     'status' => $user->status,
                     'details' => is_array($user->details) ? null : $user->details,
+                    'can_verify' => $showsVerification && $kycStatus !== 'approved',
                 ];
               @endphp
               <div class="action-btns">
@@ -314,11 +315,15 @@
               </div>
             </div>
           </div>
-          <div class="modal-footer border-0 pt-4 pb-0 px-0">
-            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary px-4">Save Changes</button>
-          </div>
         </form>
+        <div class="modal-footer border-0 pt-4 pb-0 px-0">
+          <form id="editVerifyUserForm" method="POST" class="d-none me-auto">
+            @csrf
+            <button type="submit" class="btn btn-primary">Verify</button>
+          </form>
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4" form="editUserForm">Save Changes</button>
+        </div>
       </div>
     </div>
   </div>
@@ -361,6 +366,11 @@
         </div>
       </div>
       <div class="modal-footer">
+        <form id="verifyUserForm" method="POST" class="d-none"
+              onsubmit="return confirm('Mark this user as verified?')">
+          @csrf
+          <button type="submit" class="btn btn-primary">Verify</button>
+        </form>
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -428,6 +438,12 @@
     document.getElementById('viewUserRole').textContent = user.role || '—';
     document.getElementById('viewUserStatus').textContent = user.status || 'Pending';
     document.getElementById('viewUserVerified').textContent = verifiedLabel || '—';
+    const verifyForm = document.getElementById('verifyUserForm');
+    if (verifyForm) {
+      const canVerify = verifiedLabel && verifiedLabel !== 'Verified';
+      verifyForm.classList.toggle('d-none', !canVerify);
+      verifyForm.action = userUpdateBase + '/' + user.id + '/verify';
+    }
     document.getElementById('viewUserDetails').textContent = (typeof user.details === 'object' && user.details)
       ? JSON.stringify(user.details)
       : (user.details || '—');
@@ -464,6 +480,14 @@
       editToggle.setAttribute('aria-label', 'Show password');
     }
     document.getElementById('editUserForm').action   = userUpdateBase + '/' + user.id;
+    const editVerifyForm = document.getElementById('editVerifyUserForm');
+    if (editVerifyForm) {
+      editVerifyForm.classList.toggle('d-none', !user.can_verify);
+      editVerifyForm.action = userUpdateBase + '/' + user.id + '/verify';
+      editVerifyForm.onsubmit = function () {
+        return confirm('Mark ' + (user.name || 'this user') + ' as verified?');
+      };
+    }
     editModal.show();
   }
 

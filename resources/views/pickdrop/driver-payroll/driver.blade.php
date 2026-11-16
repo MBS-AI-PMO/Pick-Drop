@@ -56,7 +56,7 @@
       </div>
       @endif
       <div class="col-md-auto">
-        <span class="badge rounded-pill px-3 py-2" style="background:#f3effa;color:#5a3fa8;">
+        <span class="badge rounded-pill px-3 py-2" style="background:#e8eef4;color:#1f4e79;">
           {{ $overview['period']['label'] }}
         </span>
       </div>

@@ -54,16 +54,17 @@ class DriverVerificationController extends Controller
         }
     }
 
-    public function show(DriverVerification $driverVerification)
+    public function show(Request $request, DriverVerification $driverVerification)
     {
         $driverVerification->load(['user', 'city', 'reviewer']);
 
         return view('pickdrop.driver-verifications.show', [
             'verification' => $driverVerification,
+            'listUrl' => $this->verificationListUrl($request),
         ]);
     }
 
-    public function edit(DriverVerification $driverVerification)
+    public function edit(Request $request, DriverVerification $driverVerification)
     {
         $driverVerification->load(['user', 'city']);
         $cities = City::active()->orderBy('name')->get(['id', 'name']);
@@ -71,6 +72,7 @@ class DriverVerificationController extends Controller
         return view('pickdrop.driver-verifications.edit', [
             'verification' => $driverVerification,
             'cities' => $cities,
+            'listUrl' => $this->verificationListUrl($request),
         ]);
     }
 
@@ -130,7 +132,7 @@ class DriverVerificationController extends Controller
             ]);
 
             return redirect()
-                ->route('driver-verifications.show', $driverVerification)
+                ->to($this->verificationListUrl($request))
                 ->with('success', 'Driver verification updated successfully.');
         } catch (\Throwable $e) {
             Log::error('Failed to update driver verification details', [
@@ -195,7 +197,10 @@ class DriverVerificationController extends Controller
             $this->notifyStatusChange($driverVerification, $status, $previousStatus);
 
             return redirect()
-                ->route('driver-verifications.show', $driverVerification)
+                ->route('driver-verifications.edit', array_filter([
+                    'driverVerification' => $driverVerification->getKey(),
+                    'return' => $request->input('return'),
+                ], fn ($value) => $value !== null && $value !== ''))
                 ->with('success', 'Driver verification status updated successfully.');
         } catch (\Throwable $e) {
             Log::error('Failed to update driver verification status', [
@@ -302,12 +307,54 @@ class DriverVerificationController extends Controller
         return Storage::disk('public')->response($path);
     }
 
-    public function destroy(DriverVerification $driverVerification)
+    public function destroy(Request $request, DriverVerification $driverVerification)
     {
         $driverVerification->delete();
 
         return redirect()
-            ->route('driver-verifications.index')
+            ->to($this->verificationListUrl($request))
             ->with('success', 'Driver verification deleted.');
+    }
+
+    /**
+     * List URL the admin was on, limited to this page's own filters.
+     */
+    private function verificationListUrl(Request $request): string
+    {
+        $fallback = route('driver-verifications.index');
+        $return = $request->input('return', $request->query('return'));
+
+        if (! is_string($return) || trim($return) === '') {
+            return $fallback;
+        }
+
+        $parts = parse_url(trim($return));
+        if (! is_array($parts)) {
+            return $fallback;
+        }
+
+        $index = parse_url($fallback) ?: [];
+        $indexHost = $index['host'] ?? $request->getHost();
+        $returnHost = $parts['host'] ?? $indexHost;
+        if (strcasecmp((string) $returnHost, (string) $indexHost) !== 0) {
+            return $fallback;
+        }
+
+        $indexPath = $index['path'] ?? '';
+        $returnPath = $parts['path'] ?? '';
+        if ($returnPath !== $indexPath) {
+            return $fallback;
+        }
+
+        $query = [];
+        if (! empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+
+        $allowed = array_intersect_key($query, array_flip(['search', 'status', 'page']));
+
+        return $allowed === []
+            ? $fallback
+            : route('driver-verifications.index', $allowed);
     }
 }

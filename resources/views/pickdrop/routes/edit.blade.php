@@ -82,6 +82,7 @@
                 <option value="evening" {{ $shiftVal === 'evening' ? 'selected' : '' }}>Evening</option>
               </select>
             </div>
+            @if(institutions_visible())
             <div class="col-md-6">
               <label class="form-label fw-semibold">Institution</label>
               <select class="form-select" name="school_id">
@@ -93,6 +94,9 @@
                 @endforeach
               </select>
             </div>
+            @else
+            <input type="hidden" name="school_id" value="{{ old('school_id', $route->school_id) }}">
+            @endif
             <div class="col-md-6">
               <label class="form-label fw-semibold">Assign Vehicle</label>
               <select class="form-select" name="vehicle_id">
@@ -158,7 +162,7 @@
         <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
             <div class="w-32px h-32px rounded-2 d-flex align-items-center justify-content-center" style="background:rgba(var(--bs-success-rgb),0.1);">
-              <i data-lucide="map-pin" style="width:16px;height:16px;color:#5a3fa8;"></i>
+              <i data-lucide="map-pin" style="width:16px;height:16px;color:#1f4e79;"></i>
             </div>
             <h6 class="mb-0 fw-bold">Route Stops</h6>
           </div>
@@ -280,10 +284,12 @@
                 <span class="badge rounded-pill px-3 py-1 fs-12px" style="background:#f3f4f6;color:#6b7280;">{{ $route->shift }}</span>
               @endif
             </div>
+            @if(institutions_visible())
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Institution</span>
               <span class="fw-semibold fs-13px">{{ $route->school?->name ?? '—' }}</span>
             </div>
+            @endif
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
               <span class="text-secondary fs-13px">Status</span>
               <span class="fw-semibold fs-13px">{{ $route->status ?? 'Active' }}</span>

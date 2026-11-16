@@ -29,7 +29,7 @@ class ReportController extends Controller
         [$period, $from, $to] = $this->resolvePeriod($request);
         $filters = $this->resolveFilters($request);
 
-        $tripQuery = PickupRequest::query()->whereBetween('created_at', [$from, $to]);
+        $tripQuery = $this->tripsInPeriod($from, $to);
         $this->applyFilters($tripQuery, $filters);
 
         $totalTrips = (clone $tripQuery)->count();
@@ -69,23 +69,12 @@ class ReportController extends Controller
             'pending' => $pendingTrips,
             'completion_rate' => $this->percentage($completedTrips, $totalTrips),
             'cancellation_rate' => $this->percentage($cancelledTrips, $totalTrips),
-            'revenue' => (float) Invoice::query()
-                ->where('status', Invoice::STATUS_PAID)
-                ->whereBetween('paid_at', [$from, $to])
-                ->sum('total'),
-            'pending_invoices' => (int) Invoice::query()
-                ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL, Invoice::STATUS_OVERDUE])
-                ->count(),
-            'refunds' => (float) Payment::query()
-                ->where('status', Payment::STATUS_REFUNDED)
-                ->whereBetween('refunded_at', [$from, $to])
-                ->sum('amount'),
-            'driver_payouts' => (float) DriverPayrollBill::query()
-                ->where('status', DriverPayrollBill::STATUS_PAID)
-                ->whereBetween('paid_at', [$from, $to])
-                ->sum('calculated_amount'),
-            'sos' => (int) SosAlert::query()->whereBetween('created_at', [$from, $to])->count(),
-            'complaints' => (int) IssueReport::query()->whereBetween('created_at', [$from, $to])->count(),
+            'revenue' => (float) $this->paidInvoices($from, $to, $filters)->sum('total'),
+            'pending_invoices' => $this->pendingInvoices($from, $to, $filters),
+            'refunds' => (float) $this->refunds($from, $to, $filters)->sum('amount'),
+            'driver_payouts' => (float) $this->driverPayouts($from, $to, $filters)->sum('calculated_amount'),
+            'sos' => $this->sosAlerts($from, $to, $filters)->count(),
+            'complaints' => $this->complaints($from, $to, $filters)->count(),
         ];
 
         $snapshot = [
@@ -110,10 +99,9 @@ class ReportController extends Controller
             $snapshot['vehicles_total']
         );
 
-        $trips = PickupRequest::with(['parent', 'student', 'driver', 'city', 'area', 'vehicle'])
-            ->whereBetween('created_at', [$from, $to]);
-        $this->applyFilters($trips, $filters);
-        $trips = $trips->latest()
+        $trips = (clone $tripQuery)
+            ->with(['parent', 'student', 'driver', 'city', 'area', 'vehicle'])
+            ->latest()
             ->paginate(AppPagination::PER_PAGE)
             ->withQueryString();
 
@@ -130,10 +118,10 @@ class ReportController extends Controller
                 ->get(['id', 'name']),
             'kpis' => $kpis,
             'snapshot' => $snapshot,
-            'trend' => $this->tripTrend($from, $to, $period),
+            'trend' => $this->tripTrend($from, $to, $period, clone $tripQuery),
             'statusBreakdown' => $statusBreakdown,
-            'topCities' => $this->topCities($from, $to),
-            'topDrivers' => $this->topDrivers($from, $to),
+            'topCities' => $this->topCities(clone $tripQuery),
+            'topDrivers' => $this->topDrivers(clone $tripQuery, $filters),
             'trips' => $trips,
         ]);
     }
@@ -152,8 +140,7 @@ class ReportController extends Controller
                 'City', 'Area', 'Pickup', 'Drop', 'Created at',
             ]);
 
-            $query = PickupRequest::with(['parent', 'student', 'driver', 'city', 'area'])
-                ->whereBetween('created_at', [$from, $to]);
+            $query = $this->tripsInPeriod($from, $to)->with(['parent', 'student', 'driver', 'city', 'area']);
             $this->applyFilters($query, $filters);
 
             $query->orderByDesc('id')
@@ -214,7 +201,7 @@ class ReportController extends Controller
                 [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
             }
 
-            if ($from->diffInDays($to) > 90) {
+            if ($from->diffInDays($to, true) > 90) {
                 $from = $to->copy()->subDays(90)->startOfDay();
             }
 
@@ -243,6 +230,41 @@ class ReportController extends Controller
     }
 
     /**
+     * Requests that were created in the window, scheduled in it, or whose
+     * service shift overlaps it. School runs are stored as one request with
+     * a shift range, so a created_at-only window hides trips that are running now.
+     */
+    private function tripsInPeriod(Carbon $from, Carbon $to): Builder
+    {
+        $query = PickupRequest::query();
+        $this->constrainTripPeriod($query, $from, $to);
+
+        return $query;
+    }
+
+    private function constrainTripPeriod(Builder $query, Carbon $from, Carbon $to): void
+    {
+        $start = $from->toDateString();
+        $end = $to->toDateString();
+
+        $query->where(function (Builder $query) use ($from, $to, $start, $end) {
+            $query->whereBetween('created_at', [$from, $to])
+                ->orWhereBetween('scheduled_date', [$start, $end])
+                ->orWhere(function (Builder $query) use ($start, $end) {
+                    $query->whereNotNull('shift_start_date')
+                        ->where('shift_start_date', '<=', $end)
+                        ->where(function (Builder $query) use ($start) {
+                            $query->where('shift_end_date', '>=', $start)
+                                ->orWhere(function (Builder $query) use ($start) {
+                                    $query->whereNull('shift_end_date')
+                                        ->where('shift_start_date', '>=', $start);
+                                });
+                        });
+                });
+        });
+    }
+
+    /**
      * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
      */
     private function applyFilters(Builder $query, array $filters): void
@@ -254,14 +276,121 @@ class ReportController extends Controller
             $query->where('driver_id', $filters['driver_id']);
         }
         if ($filters['status']) {
-            $query->where('status', $filters['status']);
+            $query->whereRaw('LOWER(status) = ?', [$filters['status']]);
         }
         if ($filters['type']) {
-            $query->where('type', $filters['type']);
+            $query->whereRaw('LOWER(type) = ?', [$filters['type']]);
         }
         if ($filters['payment_status']) {
-            $query->where('payment_status', $filters['payment_status']);
+            $query->whereRaw('LOWER(payment_status) = ?', [$filters['payment_status']]);
         }
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function hasTripFilters(array $filters): bool
+    {
+        return (bool) ($filters['city_id'] || $filters['driver_id'] || $filters['status'] || $filters['type'] || $filters['payment_status']);
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function applyRelatedTripFilters(Builder $query, string $relation, array $filters): void
+    {
+        if (! $this->hasTripFilters($filters)) {
+            return;
+        }
+
+        $query->whereHas($relation, function (Builder $trip) use ($filters) {
+            $this->applyFilters($trip, $filters);
+        });
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function paidInvoices(Carbon $from, Carbon $to, array $filters): Builder
+    {
+        $query = Invoice::query()
+            ->where('status', Invoice::STATUS_PAID)
+            ->whereBetween('paid_at', [$from, $to]);
+        $this->applyRelatedTripFilters($query, 'pickupRequest', $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function pendingInvoices(Carbon $from, Carbon $to, array $filters): int
+    {
+        $start = $from->toDateString();
+        $end = $to->toDateString();
+
+        $query = Invoice::query()
+            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIAL, Invoice::STATUS_OVERDUE]);
+        $this->applyRelatedTripFilters($query, 'pickupRequest', $filters);
+        $query->where(function (Builder $query) use ($from, $to, $start, $end, $filters) {
+            $query->whereBetween('issue_date', [$start, $end])
+                ->orWhereBetween('due_date', [$start, $end])
+                ->orWhereBetween('created_at', [$from, $to])
+                ->orWhereHas('pickupRequest', function (Builder $trip) use ($from, $to, $filters) {
+                    $this->constrainTripPeriod($trip, $from, $to);
+                    $this->applyFilters($trip, $filters);
+                });
+        });
+
+        return (int) $query->count();
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function refunds(Carbon $from, Carbon $to, array $filters): Builder
+    {
+        $query = Payment::query()
+            ->where('status', Payment::STATUS_REFUNDED)
+            ->whereBetween('refunded_at', [$from, $to]);
+        $this->applyRelatedTripFilters($query, 'invoice.pickupRequest', $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function driverPayouts(Carbon $from, Carbon $to, array $filters): Builder
+    {
+        $query = DriverPayrollBill::query()
+            ->where('status', DriverPayrollBill::STATUS_PAID)
+            ->whereBetween('paid_at', [$from, $to]);
+        $this->applyRelatedTripFilters($query, 'pickupRequest', $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function sosAlerts(Carbon $from, Carbon $to, array $filters): Builder
+    {
+        $query = SosAlert::query()->whereBetween('created_at', [$from, $to]);
+        $this->applyRelatedTripFilters($query, 'pickupRequest', $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
+     */
+    private function complaints(Carbon $from, Carbon $to, array $filters): Builder
+    {
+        $query = IssueReport::query()->whereBetween('created_at', [$from, $to]);
+        $this->applyRelatedTripFilters($query, 'pickupRequest', $filters);
+
+        return $query;
     }
 
     private function periodLabel(string $period, Carbon $from, Carbon $to): string
@@ -277,18 +406,25 @@ class ReportController extends Controller
     /**
      * @return list<array{label: string, value: int}>
      */
-    private function tripTrend(Carbon $from, Carbon $to, string $period): array
+    private function tripTrend(Carbon $from, Carbon $to, string $period, Builder $trips): array
     {
-        if ($period === 'daily') {
-            $rows = PickupRequest::query()
-                ->whereBetween('created_at', [$from, $to])
-                ->selectRaw('HOUR(created_at) as bucket, COUNT(*) as total')
-                ->groupBy('bucket')
-                ->pluck('total', 'bucket');
+        $rows = (clone $trips)->get([
+            'id',
+            'created_at',
+            'scheduled_date',
+            'shift_start_date',
+            'shift_end_date',
+            'pickup_time',
+        ]);
 
+        if ($period === 'daily') {
             $points = [];
             for ($hour = 0; $hour < 24; $hour += 2) {
-                $value = (int) ($rows[$hour] ?? 0) + (int) ($rows[$hour + 1] ?? 0);
+                $value = $rows->filter(function (PickupRequest $trip) use ($hour, $from) {
+                    $tripHour = $this->tripHour($trip, $from);
+
+                    return $tripHour === $hour || $tripHour === $hour + 1;
+                })->count();
                 $points[] = [
                     'label' => Carbon::createFromTime($hour)->format('g A'),
                     'value' => $value,
@@ -298,21 +434,15 @@ class ReportController extends Controller
             return $points;
         }
 
-        $rows = PickupRequest::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->selectRaw('DATE(created_at) as bucket, COUNT(*) as total')
-            ->groupBy('bucket')
-            ->pluck('total', 'bucket');
-
         $points = [];
         $cursor = $from->copy()->startOfDay();
         $end = $to->copy()->startOfDay();
 
         while ($cursor->lte($end)) {
-            $key = $cursor->toDateString();
+            $day = $cursor->copy();
             $points[] = [
                 'label' => $period === 'monthly' ? $cursor->format('j') : $cursor->format('D j'),
-                'value' => (int) ($rows[$key] ?? 0),
+                'value' => $rows->filter(fn (PickupRequest $trip) => $this->tripCoversDate($trip, $day))->count(),
             ];
             $cursor->addDay();
         }
@@ -320,13 +450,51 @@ class ReportController extends Controller
         return $points;
     }
 
+    private function tripCoversDate(PickupRequest $trip, Carbon $day): bool
+    {
+        $date = $day->toDateString();
+
+        if ($trip->created_at && $trip->created_at->toDateString() === $date) {
+            return true;
+        }
+
+        if ($trip->scheduled_date && $trip->scheduled_date->toDateString() === $date) {
+            return true;
+        }
+
+        if (! $trip->shift_start_date) {
+            return false;
+        }
+
+        $start = $trip->shift_start_date->toDateString();
+        $end = $trip->shift_end_date?->toDateString();
+        if ($end === null) {
+            return $start === $date;
+        }
+
+        return $start <= $date && $end >= $date;
+    }
+
+    private function tripHour(PickupRequest $trip, Carbon $day): ?int
+    {
+        if ($trip->created_at && $trip->created_at->toDateString() === $day->toDateString()) {
+            return (int) $trip->created_at->format('G');
+        }
+
+        $time = trim((string) $trip->pickup_time);
+        if ($time === '' || ! str_contains($time, ':')) {
+            return null;
+        }
+
+        return (int) substr($time, 0, 2);
+    }
+
     /**
      * @return list<array{name: string, trips: int}>
      */
-    private function topCities(Carbon $from, Carbon $to): array
+    private function topCities(Builder $trips): array
     {
-        $rows = PickupRequest::query()
-            ->whereBetween('created_at', [$from, $to])
+        $rows = (clone $trips)
             ->whereNotNull('city_id')
             ->selectRaw('city_id, COUNT(*) as trips')
             ->groupBy('city_id')
@@ -343,14 +511,17 @@ class ReportController extends Controller
     }
 
     /**
+     * @param  array{city_id:?int,driver_id:?int,status:?string,type:?string,payment_status:?string}  $filters
      * @return list<array{name: string, trips: int}>
      */
-    private function topDrivers(Carbon $from, Carbon $to): array
+    private function topDrivers(Builder $trips, array $filters): array
     {
-        $rows = PickupRequest::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->whereNotNull('driver_id')
-            ->where('status', '!=', 'cancelled')
+        $query = (clone $trips)->whereNotNull('driver_id');
+        if (! $filters['status']) {
+            $query->whereRaw('LOWER(status) != ?', ['cancelled']);
+        }
+
+        $rows = $query
             ->selectRaw('driver_id, COUNT(*) as trips')
             ->groupBy('driver_id')
             ->orderByDesc('trips')

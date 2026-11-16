@@ -38,6 +38,7 @@ class User extends Authenticatable
         'phone_verified_at',
         'referral_code',
         'email_verified_at',
+        'admin_verified_at',
         'last_lat',
         'last_lng',
         'last_location_at',
@@ -73,6 +74,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'admin_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'phone_otp_expires_at' => 'datetime',
             'last_location_at' => 'datetime',
@@ -228,7 +230,7 @@ class User extends Authenticatable
         $status = $this->parentSelfVerification?->status;
 
         if (! is_string($status) || trim($status) === '' || strcasecmp($status, 'null') === 0) {
-            return 'not_submitted';
+            return $this->admin_verified_at ? 'approved' : 'not_submitted';
         }
 
         return strtolower(trim($status));
@@ -385,7 +387,7 @@ class User extends Authenticatable
         $status = $this->driverVerification?->status;
 
         if (! is_string($status) || trim($status) === '' || strcasecmp($status, 'null') === 0) {
-            return 'not_submitted';
+            return $this->admin_verified_at ? 'approved' : 'not_submitted';
         }
 
         return strtolower(trim($status));
@@ -400,7 +402,7 @@ class User extends Authenticatable
             'approved' => 'Verified',
             'pending' => 'Pending',
             'rejected' => 'Rejected',
-            default => 'Not verified',
+            default => 'Unverified',
         };
     }
 

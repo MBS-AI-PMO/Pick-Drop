@@ -44,7 +44,17 @@ abstract class BaseApiController extends Controller
     {
         $name = (string) $request->route()?->getName();
 
-        return str_starts_with($name, 'api.self.') ? 'self' : 'parent';
+        // /api/self/* is named api.self.*. The same routes are also mounted at
+        // /self/* with a name prefix, so match the marker anywhere in the name.
+        if (str_contains($name, 'api.self.')) {
+            return 'self';
+        }
+
+        $path = trim($request->path(), '/');
+
+        return str_starts_with($path, 'self/') || str_starts_with($path, 'api/self/')
+            ? 'self'
+            : 'parent';
     }
 
     protected function denyUnlessAccountType(User $user, Request $request): ?JsonResponse

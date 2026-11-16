@@ -61,7 +61,9 @@
 
         <div class="d-flex flex-wrap gap-3 mt-3 small text-secondary">
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-public"></span> Public holiday</span>
+          @if(institutions_visible())
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-school"></span> Institution holiday</span>
+          @endif
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-custom"></span> Announced off day</span>
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-trip"></span> Scheduled trips</span>
           <span class="d-flex align-items-center gap-1"><span class="pd-cal-dot pd-cal-chip-skip"></span> Skips</span>
@@ -84,7 +86,7 @@
                 <tr>
                   <td class="ps-3">
                     <div class="fw-semibold">{{ $holiday->name }}</div>
-                    <div class="text-secondary small">{{ $holiday->date?->format('d M Y') }} · {{ $holiday->typeLabel() }} · {{ $holiday->city?->name ?? 'All cities' }}</div>
+                    <div class="text-secondary small">{{ $holiday->date?->format('d M Y') }}@if($holiday->type !== 'school' || institutions_visible()) · {{ $holiday->typeLabel() }}@endif · {{ $holiday->city?->name ?? 'All cities' }}</div>
                   </td>
                   <td class="text-end pe-3">
                     <form method="POST" action="{{ route('holidays.destroy', $holiday) }}"
@@ -130,6 +132,7 @@
           <label class="form-label">Type</label>
           <select name="type" class="form-select mb-3" required>
             @foreach($types as $value => $label)
+              @continue($value === 'school' && ! institutions_visible())
               <option value="{{ $value }}" {{ old('type', 'custom') === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
           </select>
@@ -213,8 +216,8 @@
     transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
   }
   .pd-cal-day:hover {
-    border-color: #5a3fa8;
-    box-shadow: 0 6px 16px rgba(90, 63, 168, .08);
+    border-color: #1f4e79;
+    box-shadow: 0 6px 16px rgba(31, 78, 121, .08);
     transform: translateY(-1px);
   }
   .pd-cal-day.is-muted {
@@ -229,8 +232,8 @@
     transform: none;
   }
   .pd-cal-day.is-today {
-    border-color: #5a3fa8;
-    box-shadow: inset 0 0 0 1px #5a3fa8;
+    border-color: #1f4e79;
+    box-shadow: inset 0 0 0 1px #1f4e79;
   }
   .pd-cal-day.has-off {
     background: #fbf8f2;
@@ -253,7 +256,7 @@
     text-overflow: ellipsis;
   }
   .pd-cal-chip-public { background: #fde8ee; color: #9f1239; }
-  .pd-cal-chip-school { background: #f3effa; color: #1d4ed8; }
+  .pd-cal-chip-school { background: #e8eef4; color: #1d4ed8; }
   .pd-cal-chip-custom { background: #fff4db; color: #92400e; }
   .pd-cal-chip-trip { background: #e8f7ef; color: #166534; }
   .pd-cal-chip-skip { background: #f3f4f6; color: #4b5563; }

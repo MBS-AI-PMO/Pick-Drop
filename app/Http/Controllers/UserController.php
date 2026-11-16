@@ -126,6 +126,62 @@ Notification::create([
         }
     }
 
+    public function verify(Request $request, User $user)
+    {
+        if ($user->isPanelAdmin()) {
+            return redirect()->route('users.index')->with('error', 'Admin accounts cannot be verified from here.');
+        }
+
+        try {
+            $now = now();
+
+            $user->forceFill([
+                'email_verified_at' => $user->email_verified_at ?? $now,
+                'phone_verified_at' => filled($user->phone) ? ($user->phone_verified_at ?? $now) : $user->phone_verified_at,
+                'admin_verified_at' => $user->admin_verified_at ?? $now,
+            ])->save();
+
+            if ($user->isParentSelf()) {
+                $verification = $user->parentSelfVerification;
+                if ($verification && strcasecmp((string) $verification->status, 'approved') !== 0) {
+                    $verification->update([
+                        'status' => 'approved',
+                        'rejection_reason' => null,
+                        'reviewed_by' => $request->user()?->id,
+                        'reviewed_at' => $now,
+                    ]);
+                }
+            } else {
+                $verification = $user->driverVerification;
+                if ($verification && strcasecmp((string) $verification->status, 'approved') !== 0) {
+                    $verification->update([
+                        'status' => 'approved',
+                        'rejection_reason' => null,
+                        'reviewed_by' => $request->user()?->id,
+                        'reviewed_at' => $now,
+                    ]);
+                }
+            }
+
+            $user->refresh();
+
+            Notification::create([
+                'title' => 'User Verified',
+                'message' => $user->name . ' has been verified.',
+                'type' => 'success',
+            ]);
+
+            return redirect()->back()->with('success', $user->name . ' is now verified.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to verify user', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to verify user: ' . $e->getMessage());
+        }
+    }
+
     public function destroy(User $user)
     {
         if ($user->isPanelAdmin()) {

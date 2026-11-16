@@ -11,6 +11,10 @@ class SchoolController extends Controller
 {
     public function index(Request $request)
     {
+        if ($redirect = $this->hiddenRedirect()) {
+            return $redirect;
+        }
+
         $this->ensureAdmin();
         $categories = School::CATEGORIES;
 
@@ -81,6 +85,10 @@ class SchoolController extends Controller
 
     public function show(School $school)
     {
+        if ($redirect = $this->hiddenRedirect()) {
+            return $redirect;
+        }
+
         $this->ensureAdmin();
         $school->load(['city', 'students.parent']);
         $categories = School::CATEGORIES;
@@ -105,6 +113,15 @@ class SchoolController extends Controller
         $school->delete();
 
         return redirect()->route('schools.index')->with('success', 'Institution removed.');
+    }
+
+    private function hiddenRedirect()
+    {
+        if (! institutions_visible()) {
+            return redirect()->route('dashboard');
+        }
+
+        return null;
     }
 
     private function ensureAdmin(): void

@@ -132,7 +132,7 @@
             </td>
             <td>
               @if(strtolower($school->status) === 'active')
-                <span class="badge rounded-pill px-3 py-1" style="background:#f3effa;color:#5a3fa8;">Active</span>
+                <span class="badge rounded-pill px-3 py-1" style="background:#e8eef4;color:#1f4e79;">Active</span>
               @else
                 <span class="badge rounded-pill px-3 py-1" style="background:#f3f4f6;color:#6b7280;">{{ $school->status }}</span>
               @endif
@@ -357,8 +357,8 @@
     const badge = document.getElementById('vSchoolStatusBadge');
     badge.textContent = school.status || '—';
     const active = (school.status || '').toLowerCase() === 'active';
-    badge.style.background = active ? '#f3effa' : '#f3f4f6';
-    badge.style.color = active ? '#5a3fa8' : '#6b7280';
+    badge.style.background = active ? '#e8eef4' : '#f3f4f6';
+    badge.style.color = active ? '#1f4e79' : '#6b7280';
     if (typeof lucide !== 'undefined') lucide.createIcons();
     viewSchoolModal.show();
   }

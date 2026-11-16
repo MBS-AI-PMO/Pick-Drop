@@ -96,7 +96,7 @@
           <span class="badge {{ $canManageAdmins ? 'bg-danger bg-opacity-10 text-danger' : 'bg-primary bg-opacity-10 text-primary' }}">
             {{ $user->role ?: 'Admin' }}
           </span>
-          <span class="badge {{ ($user->status ?? 'Active') === 'Active' ? 'rounded-pill px-3 py-1' : 'bg-secondary bg-opacity-10 text-secondary' }}" @if(($user->status ?? 'Active') === 'Active') style="background:#f3effa;color:#5a3fa8;" @endif>
+          <span class="badge {{ ($user->status ?? 'Active') === 'Active' ? 'rounded-pill px-3 py-1' : 'bg-secondary bg-opacity-10 text-secondary' }}" @if(($user->status ?? 'Active') === 'Active') style="background:#e8eef4;color:#1f4e79;" @endif>
             {{ $user->status ?: 'Active' }}
           </span>
         </div>

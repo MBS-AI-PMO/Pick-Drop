@@ -1,5 +1,13 @@
 @php
   $point = $point ?? null;
+  $pickupAddress = $point?->pickup_address;
+  if (($pickupAddress === null || $pickupAddress === '') && $point && in_array($point->type, ['pickup', 'both'], true)) {
+      $pickupAddress = $point->address;
+  }
+  $dropAddress = $point?->drop_address;
+  if (($dropAddress === null || $dropAddress === '') && $point && in_array($point->type, ['drop', 'both'], true)) {
+      $dropAddress = $point->address;
+  }
 @endphp
 <label class="form-label">City</label>
 <select name="city_id" class="form-select mb-3" required>
@@ -31,8 +39,11 @@
   @endforeach
 </select>
 
-<label class="form-label">Address</label>
-<input type="text" name="address" class="form-control mb-3" value="{{ old('address', $point?->address) }}">
+<label class="form-label">Pickup Point</label>
+<input type="text" name="pickup_address" class="form-control mb-3" value="{{ old('pickup_address', $pickupAddress) }}" required placeholder="Pickup address">
+
+<label class="form-label">Drop-off Point</label>
+<input type="text" name="drop_address" class="form-control mb-3" value="{{ old('drop_address', $dropAddress) }}" required placeholder="Drop-off address">
 
 <div class="row g-2 mb-3">
   <div class="col-6">

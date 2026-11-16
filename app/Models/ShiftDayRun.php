@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class ShiftDayRun extends Model
 {
@@ -58,9 +57,7 @@ class ShiftDayRun extends Model
 
     public function photoUrl(): ?string
     {
-        return $this->pickup_photo_path
-            ? Storage::disk('public')->url($this->pickup_photo_path)
-            : null;
+        return public_storage_url($this->pickup_photo_path);
     }
 
     /**

@@ -4,19 +4,18 @@
 <style>
 /* Custom Styles for Pick-Drop Auth Pages */
 body {
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+    background: #eef0f3;
     font-family: 'Outfit', 'Inter', sans-serif;
 }
 [data-bs-theme="dark"] body {
-    background: linear-gradient(135deg, #1a1c23 0%, #121317 100%);
+    background: #14171c;
 }
 
 .auth-card {
-    border: none;
-    border-radius: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
     background: #ffffff;
 }
 [data-bs-theme="dark"] .auth-card {
@@ -31,13 +30,11 @@ body {
     background-size: cover;
     background-position: center;
     position: relative;
-    border-radius: 20px 0 0 20px;
+    border-radius: 0;
+    background: #1d3557 !important;
 }
 .auth-side-wrapper::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to right, rgba(230,57,70,0.8), rgba(29,53,87,0.7));
+    content: none;
 }
 
 .auth-form-wrapper {
@@ -85,18 +82,17 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+    background: #1d3557;
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 0.8rem;
     font-weight: 600;
-    letter-spacing: 0.5px;
-    transition: all 0.3s;
+    letter-spacing: 0;
 }
 .btn-primary:hover {
-    background: linear-gradient(135deg, #d90429 0%, #b3001b 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.3);
+    background: #15283f;
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-google {
@@ -113,8 +109,8 @@ body {
 }
 .btn-google:hover {
     background-color: #f8f9fa;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    transform: none;
+    box-shadow: none;
 }
 [data-bs-theme="dark"] .btn-google {
     background-color: #252833;
@@ -141,20 +137,7 @@ body {
 }
 
 .micro-anim {
-    animation: fadeIn 0.6s ease-out forwards;
-    opacity: 0;
-    transform: translateY(10px);
-}
-.micro-anim:nth-child(2) { animation-delay: 0.1s; }
-.micro-anim:nth-child(3) { animation-delay: 0.2s; }
-.micro-anim:nth-child(4) { animation-delay: 0.3s; }
-.micro-anim:nth-child(5) { animation-delay: 0.4s; }
-
-@keyframes fadeIn {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    opacity: 1;
 }
 </style>
 @endpush
@@ -165,14 +148,10 @@ body {
     <div class="auth-card">
       <div class="row g-0">
         <div class="col-md-5 d-none d-md-block">
-          <div class="auth-side-wrapper bg-primary overflow-hidden">
-            <!-- Decorative CSS Shapes -->
-            <div class="position-absolute rounded-circle" style="width: 300px; height: 300px; background: rgba(255,255,255,0.1); top: -50px; right: -50px; z-index: 1;"></div>
-            <div class="position-absolute rounded-circle" style="width: 200px; height: 200px; background: rgba(255,255,255,0.05); bottom: -20px; left: -20px; z-index: 1;"></div>
-            
+          <div class="auth-side-wrapper overflow-hidden">
             <div class="position-absolute top-50 start-50 translate-middle text-center w-100 px-4" style="z-index: 2;">
-                <div class="mb-4 text-white opacity-75 d-flex justify-content-center">
-                    <i data-lucide="users" style="width: 80px; height: 80px;"></i>
+                <div class="mb-3 text-white d-flex justify-content-center">
+                    <i data-lucide="users" style="width: 36px; height: 36px;"></i>
                 </div>
                 <h3 class="text-white fw-bold mb-2">Join Pick-Drop</h3>
                 <p class="text-white-50">Ensure a safe journey for every student.</p>

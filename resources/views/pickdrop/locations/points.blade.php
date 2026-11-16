@@ -67,7 +67,13 @@
               <td class="ps-4 py-3 text-muted">{{ $points->firstItem() + $loop->index }}</td>
               <td class="py-3">
                 <div class="fw-semibold">{{ $point->name }}</div>
-                @if($point->address)
+                @if($point->pickup_address)
+                  <small class="text-secondary d-block">Pickup: {{ $point->pickup_address }}</small>
+                @endif
+                @if($point->drop_address)
+                  <small class="text-secondary d-block">Drop-off: {{ $point->drop_address }}</small>
+                @endif
+                @if(! $point->pickup_address && ! $point->drop_address && $point->address)
                   <small class="text-secondary">{{ $point->address }}</small>
                 @endif
               </td>
